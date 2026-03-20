@@ -1,0 +1,97 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FolderFlow.App.ViewModels"
+        xmlns:v="using:FolderFlow.App.Views"
+        xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
+        Width="1100" Height="750"
+        MinWidth="950" MinHeight="650"
+        x:Class="FolderFlow.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="FolderFlow">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Window.DataTemplates>
+        <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+            <v:DashboardView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:JobsViewModel}">
+            <v:JobsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
+            <v:HistoryView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <v:SettingsView/>
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <SplitView IsPaneOpen="True"
+               DisplayMode="CompactInline"
+               CompactPaneLength="64"
+               OpenPaneLength="220"
+               Background="{DynamicResource SystemRegionBrush}"
+               PaneBackground="{DynamicResource SystemControlBackgroundAltHighBrush}">
+        <SplitView.Pane>
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- Header/Logo -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15" Margin="16,20,16,20">
+                    <material:MaterialIcon Kind="CloudSync" Width="32" Height="32" Foreground="#3B82F6"/>
+                    <TextBlock Text="FolderFlow" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Menu de Navegação -->
+                <StackPanel Grid.Row="1" Spacing="5" Margin="8,0,8,0">
+                    <Button Command="{Binding NavigateToDashboardCommand}" 
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
+                        <StackPanel Orientation="Horizontal" Spacing="15">
+                            <material:MaterialIcon Kind="ViewDashboard" Width="24" Height="24" Foreground="#64748B"/>
+                            <TextBlock Text="Dashboard" VerticalAlignment="Center" FontSize="15" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding NavigateToJobsCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
+                        <StackPanel Orientation="Horizontal" Spacing="15">
+                            <material:MaterialIcon Kind="FormatListGroup" Width="24" Height="24" Foreground="#64748B"/>
+                            <TextBlock Text="Fila de Automação" VerticalAlignment="Center" FontSize="15" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding NavigateToHistoryCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
+                        <StackPanel Orientation="Horizontal" Spacing="15">
+                            <material:MaterialIcon Kind="History" Width="24" Height="24" Foreground="#64748B"/>
+                            <TextBlock Text="Histórico e Logs" VerticalAlignment="Center" FontSize="15" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Configurações no Rodapé -->
+                <StackPanel Grid.Row="2" Margin="8,0,8,20">
+                    <Button Command="{Binding NavigateToSettingsCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
+                        <StackPanel Orientation="Horizontal" Spacing="15">
+                            <material:MaterialIcon Kind="Settings" Width="24" Height="24" Foreground="#64748B"/>
+                            <TextBlock Text="Configurações" VerticalAlignment="Center" FontSize="15" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </SplitView.Pane>
+
+        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" CornerRadius="12,0,0,0" Margin="0,0,0,0">
+            <TransitioningContentControl Content="{Binding CurrentPage}" Margin="20" />
+        </Border>
+    </SplitView>
+</Window>

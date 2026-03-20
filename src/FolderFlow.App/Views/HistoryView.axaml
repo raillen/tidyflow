@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FolderFlow.App.ViewModels"
+             xmlns:material="using:Material.Icons.Avalonia"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="FolderFlow.App.Views.HistoryView"
+             x:DataType="vm:HistoryViewModel">
+    <Grid RowDefinitions="Auto,Auto,*">
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="20,20,20,10" Spacing="20">
+            <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                <TextBlock Text="Histórico de Automação" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*, Auto">
+                <!-- Search and Filters -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15">
+                    <TextBox Text="{Binding SearchText}" Watermark="Pesquisar caminhos ou detalhes..." Width="250" VerticalAlignment="Center">
+                        <TextBox.InnerLeftContent>
+                            <material:MaterialIcon Kind="Magnify" Margin="5,0"/>
+                        </TextBox.InnerLeftContent>
+                    </TextBox>
+
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <TextBlock Text="Job:" VerticalAlignment="Center" Foreground="Gray"/>
+                        <ComboBox ItemsSource="{Binding AvailableJobs}" SelectedItem="{Binding SelectedJobFilter}" Width="150"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <TextBlock Text="Status:" VerticalAlignment="Center" Foreground="Gray"/>
+                        <ComboBox ItemsSource="{Binding AvailableStatuses}" SelectedItem="{Binding SelectedStatusFilter}" Width="150"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Actions -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <Button Command="{Binding LoadLogsCommand}" CornerRadius="6" Padding="15,8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Refresh" Width="18" Height="18"/>
+                            <TextBlock Text="Atualizar Logs" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ClearLogsCommand}" CornerRadius="6" Padding="15,8" BorderBrush="#EF4444" BorderThickness="1" Background="Transparent">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="TrashCanOutline" Width="18" Height="18" Foreground="#EF4444"/>
+                            <TextBlock Text="Limpar Histórico" VerticalAlignment="Center" Foreground="#EF4444"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+
+        <!-- DataGrid -->
+        <DataGrid Grid.Row="2" Margin="20" ItemsSource="{Binding Logs}" 
+                  AutoGenerateColumns="False" 
+                  CanUserReorderColumns="True" 
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="True"
+                  GridLinesVisibility="All"
+                  BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Binding="{Binding Entry.Timestamp, StringFormat={}{0:dd/MM/yyyy HH:mm:ss}}" Header="Data/Hora" />
+                <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="Tarefa (Job)" />
+                
+                <DataGridTemplateColumn Header="Status">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Border Background="{Binding StatusColor}" CornerRadius="4" Padding="6,2" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Entry.Status}" FontSize="12" FontWeight="Bold" Foreground="White"/>
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTextColumn Binding="{Binding Entry.SourcePath}" Header="Origem" Width="*" />
+                <DataGridTextColumn Binding="{Binding Entry.TargetPath}" Header="Destino" Width="*" />
+                <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Detalhes" Width="1.5*" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

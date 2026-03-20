@@ -1,0 +1,169 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FolderFlow.App.ViewModels"
+             xmlns:material="using:Material.Icons.Avalonia"
+             xmlns:enums="using:FolderFlow.Domain.Enums"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignWidth="850" d:DesignHeight="750"
+             x:Class="FolderFlow.App.Views.JobEditorView"
+             x:DataType="vm:JobEditorViewModel">
+    
+    <Grid RowDefinitions="*, Auto">
+        <TabControl Grid.Row="0" Margin="10">
+            <!-- ABA GERAL -->
+            <TabItem Header="Geral">
+                <ScrollViewer>
+                    <StackPanel Spacing="15" Margin="10">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Nome do Job:" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding Job.Name}"/>
+                        </StackPanel>
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="5" Margin="0,0,0,10">
+                                <TextBlock Text="Pasta de Origem:" FontWeight="SemiBold"/>
+                                <DockPanel>
+                                    <Button Content="Procurar..." DockPanel.Dock="Right" Command="{Binding SelectSourcePathCommand}" Margin="5,0,0,0"/>
+                                    <TextBox Text="{Binding SourcePathText}"/>
+                                </DockPanel>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="5" Margin="0,0,0,10">
+                                <TextBlock Text="Pasta de Destino:" FontWeight="SemiBold"/>
+                                <DockPanel>
+                                    <Button Content="Procurar..." DockPanel.Dock="Right" Command="{Binding SelectTargetPathCommand}" Margin="5,0,0,0"/>
+                                    <TextBox Text="{Binding TargetPathText}"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <UniformGrid Columns="2">
+                            <StackPanel Spacing="5" Margin="0,0,10,0">
+                                <TextBlock Text="Modo de Operação:" FontWeight="SemiBold"/>
+                                <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding Job.Mode}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Política de Conflito:" FontWeight="SemiBold"/>
+                                <ComboBox ItemsSource="{Binding ConflictModes}" SelectedItem="{Binding Job.ConflictMode}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <CheckBox IsChecked="{Binding Job.Recursive}" Content="Incluir subpastas (Recursividade)"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ABA FILTROS -->
+            <TabItem Header="Filtros">
+                <ScrollViewer>
+                    <StackPanel Spacing="15" Margin="10">
+                        <TextBlock Text="Filtros de Inclusão e Exclusão" FontSize="16" FontWeight="SemiBold"/>
+                        
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Extensões Permitidas (ex: .pdf, .jpg):" Foreground="Gray"/>
+                            <TextBox Text="{Binding ExtensionsText}" Watermark="vazio para todos"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Padrões para Ignorar (Exclusão):" Foreground="Gray"/>
+                            <TextBox Text="{Binding ExcludePatternsText}" Watermark="ex: temp, node_modules, log"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Regex para Nome do Arquivo:" Foreground="Gray"/>
+                            <TextBox Text="{Binding Job.NameRegex}" Watermark="Expressão regular opcional"/>
+                        </StackPanel>
+
+                        <Separator/>
+
+                        <TextBlock Text="Critérios de Tamanho e Data" FontSize="16" FontWeight="SemiBold"/>
+                        
+                        <UniformGrid Columns="2">
+                            <StackPanel Spacing="5" Margin="0,0,10,0">
+                                <TextBlock Text="Tamanho Mínimo (KB):" Foreground="Gray"/>
+                                <NumericUpDown Value="{Binding Job.MinSizeKB}" Minimum="0"/>
+                            </StackPanel>
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Tamanho Máximo (KB):" Foreground="Gray"/>
+                                <NumericUpDown Value="{Binding Job.MaxSizeKB}" Minimum="0"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Modificado nos últimos (dias):" Foreground="Gray"/>
+                            <NumericUpDown Value="{Binding Job.ModifiedWithinDays}" Minimum="0" Maximum="3650"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ABA AVANÇADO -->
+            <TabItem Header="Avançado">
+                <ScrollViewer>
+                    <StackPanel Spacing="15" Margin="10">
+                        <TextBlock Text="Performance e Segurança" FontSize="16" FontWeight="SemiBold"/>
+                        
+                        <CheckBox IsChecked="{Binding Job.SmartSync}" Content="Sincronização Delta (Pular arquivos idênticos)"/>
+                        <CheckBox IsChecked="{Binding Job.VerifyHash}" Content="Integridade SHA256 (Validar DNA do arquivo)"/>
+                        <CheckBox IsChecked="{Binding Job.EnableTrash}" Content="Lixeira Segura (Backup em .folderflow/trash)"/>
+                        <CheckBox IsChecked="{Binding Job.WatchEnabled}" Content="Monitoramento Hotfolder (Watch Folder)"/>
+
+                        <StackPanel Spacing="5" IsVisible="{Binding Job.WatchEnabled}">
+                            <TextBlock Text="Settle Time (Segundos):" Foreground="Gray"/>
+                            <NumericUpDown Value="{Binding Job.SettleTimeSeconds}" Minimum="1" Maximum="300"/>
+                        </StackPanel>
+
+                        <Separator/>
+
+                        <TextBlock Text="Agendamento (Scheduler)" FontSize="16" FontWeight="SemiBold"/>
+                        <ComboBox ItemsSource="{Binding ScheduleTypes}" SelectedItem="{Binding Job.ScheduleType}" Width="200"/>
+                        
+                        <StackPanel IsVisible="{Binding Job.ScheduleType, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Static enums:ScheduleType.Interval}}" Spacing="5">
+                            <TextBlock Text="Intervalo (minutos):"/>
+                            <NumericUpDown Value="{Binding Job.IntervalMinutes}" Minimum="1" Maximum="1440"/>
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding Job.ScheduleType, Converter={StaticResource NotEqualsConverter}, ConverterParameter={x:Static enums:ScheduleType.None}}" Spacing="5">
+                            <TextBlock Text="Horário Programado (HH:mm):"/>
+                            <TextBox Text="{Binding Job.ScheduleTime}" Watermark="ex: 03:00"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ABA PREVIEW -->
+            <TabItem Header="Simulação">
+                <Grid RowDefinitions="Auto,*">
+                    <Button Grid.Row="0" Command="{Binding GeneratePreviewCommand}" Classes="accent" Margin="0,0,0,15">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="PlayBoxOutline"/>
+                            <TextBlock Text="Iniciar Simulação"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundAltHighBrush}" CornerRadius="8" Padding="15">
+                        <Grid RowDefinitions="Auto, *">
+                            <UniformGrid Columns="4" Rows="1" Margin="0,0,0,15">
+                                <StackPanel><TextBlock Text="Copiar" FontSize="12"/><TextBlock Text="{Binding CurrentPreview.FilesToCopy}" FontSize="20" FontWeight="Bold" Foreground="#10B981"/></StackPanel>
+                                <StackPanel><TextBlock Text="Mover" FontSize="12"/><TextBlock Text="{Binding CurrentPreview.FilesToMove}" FontSize="20" FontWeight="Bold" Foreground="#3B82F6"/></StackPanel>
+                                <StackPanel><TextBlock Text="Ignorar" FontSize="12"/><TextBlock Text="{Binding CurrentPreview.FilesToSkip}" FontSize="20" FontWeight="Bold" Foreground="#F59E0B"/></StackPanel>
+                                <StackPanel><TextBlock Text="Erro" FontSize="12"/><TextBlock Text="{Binding CurrentPreview.FilesToOverwrite}" FontSize="20" FontWeight="Bold" Foreground="#EF4444"/></StackPanel>
+                            </UniformGrid>
+                            <ListBox Grid.Row="1" ItemsSource="{Binding CurrentPreview.AffectedPaths}" Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" FontSize="11" FontFamily="Consolas"/></DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="20">
+            <Button Command="{Binding CancelCommand}" Content="Cancelar" Padding="20,10"/>
+            <Button Command="{Binding SaveCommand}" Content="Salvar Tarefa" Padding="20,10" Classes="accent"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

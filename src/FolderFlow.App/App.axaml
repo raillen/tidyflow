@@ -1,0 +1,40 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FolderFlow.App.App"
+             xmlns:local="using:FolderFlow.App"
+             xmlns:conv="using:FolderFlow.App.Converters"
+             xmlns:materialIcons="using:Material.Icons.Avalonia"
+             RequestedThemeVariant="Default">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <local:ViewLocator x:Key="ViewLocator"/>
+            <conv:EqualsConverter x:Key="EqualsConverter"/>
+            <conv:NotEqualsConverter x:Key="NotEqualsConverter"/>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+  
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <materialIcons:MaterialIconStyles />
+    </Application.Styles>
+
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="FolderFlow">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="Abrir FolderFlow" Click="OnOpenClick"/>
+                        <NativeMenuItemSeparator/>
+                        <NativeMenuItem Header="Sair" Click="OnExitClick"/>
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+</Application>
