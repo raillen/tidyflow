@@ -4,6 +4,12 @@ using FolderFlow.Domain.Enums;
 
 namespace FolderFlow.App.Services;
 
+public class CustomThemeVariants
+{
+    public static readonly ThemeVariant Dracula = new ThemeVariant("Dracula", ThemeVariant.Dark);
+    public static readonly ThemeVariant Neon = new ThemeVariant("Neon", ThemeVariant.Dark);
+}
+
 public class ThemeService
 {
     public void SetTheme(ThemeMode theme)
@@ -14,6 +20,8 @@ public class ThemeService
         {
             ThemeMode.Light => ThemeVariant.Light,
             ThemeMode.Dark => ThemeVariant.Dark,
+            ThemeMode.Dracula => CustomThemeVariants.Dracula,
+            ThemeMode.Neon => CustomThemeVariants.Neon,
             _ => ThemeVariant.Default
         };
     }

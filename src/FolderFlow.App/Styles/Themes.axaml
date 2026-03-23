@@ -1,0 +1,93 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:svc="using:FolderFlow.App.Services">
+    <ResourceDictionary.ThemeDictionaries>
+        <!-- LIGHT THEME (Default) -->
+        <ResourceDictionary x:Key="Default">
+            <SolidColorBrush x:Key="AppBackground">#F1F5F9</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBackground">#E2E8F0</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBorderBrush">#CBD5E1</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="CardBackground">#FFFFFF</SolidColorBrush>
+            <SolidColorBrush x:Key="CardBorderBrush">#E2E8F0</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="TextPrimary">#0F172A</SolidColorBrush>
+            <SolidColorBrush x:Key="TextSecondary">#475569</SolidColorBrush>
+            <SolidColorBrush x:Key="TextMuted">#94A3B8</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="AccentColor">#2563EB</SolidColorBrush>
+            <SolidColorBrush x:Key="SuccessColor">#16A34A</SolidColorBrush>
+            <SolidColorBrush x:Key="DangerColor">#DC2626</SolidColorBrush>
+            <SolidColorBrush x:Key="WarningColor">#D97706</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="ButtonHoverBackground">#F1F5F9</SolidColorBrush>
+            <BoxShadows x:Key="PremiumShadow">0 4 12 0 #15000000</BoxShadows>
+        </ResourceDictionary>
+
+        <!-- DARK THEME -->
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="AppBackground">#0F172A</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBackground">#1E293B</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBorderBrush">#334155</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="CardBackground">#1E293B</SolidColorBrush>
+            <SolidColorBrush x:Key="CardBorderBrush">#334155</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="TextPrimary">#F8FAFC</SolidColorBrush>
+            <SolidColorBrush x:Key="TextSecondary">#94A3B8</SolidColorBrush>
+            <SolidColorBrush x:Key="TextMuted">#64748B</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="AccentColor">#3B82F6</SolidColorBrush>
+            <SolidColorBrush x:Key="SuccessColor">#10B981</SolidColorBrush>
+            <SolidColorBrush x:Key="DangerColor">#EF4444</SolidColorBrush>
+            <SolidColorBrush x:Key="WarningColor">#F59E0B</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="ButtonHoverBackground">#334155</SolidColorBrush>
+            <BoxShadows x:Key="PremiumShadow">0 10 30 0 #40000000</BoxShadows>
+        </ResourceDictionary>
+
+        <!-- DRACULA THEME (Premium Refined) -->
+        <ResourceDictionary x:Key="{x:Static svc:CustomThemeVariants.Dracula}">
+            <SolidColorBrush x:Key="AppBackground">#282A36</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBackground">#1E1F29</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBorderBrush">#44475A</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="CardBackground">#44475A</SolidColorBrush>
+            <SolidColorBrush x:Key="CardBorderBrush">#6272A4</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="TextPrimary">#F8F8F2</SolidColorBrush>
+            <SolidColorBrush x:Key="TextSecondary">#BD93F9</SolidColorBrush>
+            <SolidColorBrush x:Key="TextMuted">#6272A4</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="AccentColor">#BD93F9</SolidColorBrush>
+            <SolidColorBrush x:Key="SuccessColor">#50FA7B</SolidColorBrush>
+            <SolidColorBrush x:Key="DangerColor">#FF5555</SolidColorBrush>
+            <SolidColorBrush x:Key="WarningColor">#FFB86C</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="ButtonHoverBackground">#6272A4</SolidColorBrush>
+            <BoxShadows x:Key="PremiumShadow">0 8 24 0 #60000000</BoxShadows>
+        </ResourceDictionary>
+
+        <!-- NEON CITY THEME (Vibrant Refined) -->
+        <ResourceDictionary x:Key="{x:Static svc:CustomThemeVariants.Neon}">
+            <SolidColorBrush x:Key="AppBackground">#050505</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBackground">#0D0D15</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBorderBrush">#1A1A2E</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="CardBackground">#16213E</SolidColorBrush>
+            <SolidColorBrush x:Key="CardBorderBrush">#0F3460</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="TextPrimary">#E94560</SolidColorBrush>
+            <SolidColorBrush x:Key="TextSecondary">#00D2FF</SolidColorBrush>
+            <SolidColorBrush x:Key="TextMuted">#533483</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="AccentColor">#00FFF0</SolidColorBrush>
+            <SolidColorBrush x:Key="SuccessColor">#39FF14</SolidColorBrush>
+            <SolidColorBrush x:Key="DangerColor">#FF0055</SolidColorBrush>
+            <SolidColorBrush x:Key="WarningColor">#FAFF00</SolidColorBrush>
+            
+            <SolidColorBrush x:Key="ButtonHoverBackground">#1F1F3D</SolidColorBrush>
+            <BoxShadows x:Key="PremiumShadow">0 0 20 2 #3000FFF0</BoxShadows>
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

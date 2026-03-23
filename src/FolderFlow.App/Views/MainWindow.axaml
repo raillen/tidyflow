@@ -5,13 +5,17 @@
         xmlns:material="using:Material.Icons.Avalonia"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
-        Width="1100" Height="750"
-        MinWidth="950" MinHeight="650"
+        mc:Ignorable="d" d:DesignWidth="1150" d:DesignHeight="800"
+        Width="1150" Height="800"
+        MinWidth="1000" MinHeight="700"
         x:Class="FolderFlow.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="FolderFlow">
+        Title="FolderFlow"
+        TransparencyLevelHint="Mica,AcrylicBlur"
+        Background="Transparent"
+        ExtendClientAreaToDecorationsHint="True"
+        WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -32,66 +36,96 @@
         </DataTemplate>
     </Window.DataTemplates>
 
-    <SplitView IsPaneOpen="True"
-               DisplayMode="CompactInline"
-               CompactPaneLength="64"
-               OpenPaneLength="220"
-               Background="{DynamicResource SystemRegionBrush}"
-               PaneBackground="{DynamicResource SystemControlBackgroundAltHighBrush}">
-        <SplitView.Pane>
-            <Grid RowDefinitions="Auto,*,Auto">
-                <!-- Header/Logo -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15" Margin="16,20,16,20">
-                    <material:MaterialIcon Kind="CloudSync" Width="32" Height="32" Foreground="#3B82F6"/>
-                    <TextBlock Text="FolderFlow" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
-                </StackPanel>
+    <Panel>
+        <!-- Global Acrylic/Glass Background Layer -->
+        <Border Background="{DynamicResource AppBackground}" 
+                Opacity="{Binding Settings.Settings.GlassOpacity, FallbackValue=0.8}"/>
 
-                <!-- Menu de Navegação -->
-                <StackPanel Grid.Row="1" Spacing="5" Margin="8,0,8,0">
-                    <Button Command="{Binding NavigateToDashboardCommand}" 
-                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                            Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
-                        <StackPanel Orientation="Horizontal" Spacing="15">
-                            <material:MaterialIcon Kind="ViewDashboard" Width="24" Height="24" Foreground="#64748B"/>
-                            <TextBlock Text="Dashboard" VerticalAlignment="Center" FontSize="15" FontWeight="Medium"/>
-                        </StackPanel>
-                    </Button>
+        <!-- Custom Draggable Area (TitleBar Area) -->
+        <Border Name="DragArea" Height="45" VerticalAlignment="Top" Background="Transparent" />
 
-                    <Button Command="{Binding NavigateToJobsCommand}"
-                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                            Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
-                        <StackPanel Orientation="Horizontal" Spacing="15">
-                            <material:MaterialIcon Kind="FormatListGroup" Width="24" Height="24" Foreground="#64748B"/>
-                            <TextBlock Text="Fila de Automação" VerticalAlignment="Center" FontSize="15" FontWeight="Medium"/>
-                        </StackPanel>
-                    </Button>
+        <SplitView IsPaneOpen="True"
+                   DisplayMode="CompactInline"
+                   CompactPaneLength="64"
+                   OpenPaneLength="240"
+                   Background="Transparent"
+                   PaneBackground="Transparent">
+            <SplitView.Pane>
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <!-- Sidebar Background Layer (Glass) -->
+                    <Border Grid.RowSpan="3" 
+                            Background="{DynamicResource SidebarBackground}" 
+                            Opacity="{Binding Settings.Settings.GlassOpacity, FallbackValue=0.9}"/>
 
-                    <Button Command="{Binding NavigateToHistoryCommand}"
-                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                            Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
-                        <StackPanel Orientation="Horizontal" Spacing="15">
-                            <material:MaterialIcon Kind="History" Width="24" Height="24" Foreground="#64748B"/>
-                            <TextBlock Text="Histórico e Logs" VerticalAlignment="Center" FontSize="15" FontWeight="Medium"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                    <!-- Header/Logo Premium -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15" Margin="16,45,16,30">
+                        <material:MaterialIcon Kind="CloudSync" Width="32" Height="32" Foreground="{DynamicResource AccentColor}"/>
+                        <TextBlock Text="FolderFlow" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
+                    </StackPanel>
 
-                <!-- Configurações no Rodapé -->
-                <StackPanel Grid.Row="2" Margin="8,0,8,20">
-                    <Button Command="{Binding NavigateToSettingsCommand}"
-                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                            Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
-                        <StackPanel Orientation="Horizontal" Spacing="15">
-                            <material:MaterialIcon Kind="Settings" Width="24" Height="24" Foreground="#64748B"/>
-                            <TextBlock Text="Configurações" VerticalAlignment="Center" FontSize="15" FontWeight="Medium"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                    <!-- Menu de Navegação -->
+                    <StackPanel Grid.Row="1" Spacing="8" Margin="8,0,8,0">
+                        <Button Command="{Binding NavigateToDashboardCommand}" 
+                                AutomationProperties.Name="Dashboard"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
+                            <StackPanel Orientation="Horizontal" Spacing="15">
+                                <material:MaterialIcon Kind="ViewDashboard" Width="24" Height="24" Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock Text="Dashboard" VerticalAlignment="Center" FontSize="15" FontWeight="Medium" Foreground="{DynamicResource TextPrimary}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding NavigateToJobsCommand}"
+                                AutomationProperties.Name="Fila de Automação"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
+                            <StackPanel Orientation="Horizontal" Spacing="15">
+                                <material:MaterialIcon Kind="FormatListGroup" Width="24" Height="24" Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock Text="Fila de Automação" VerticalAlignment="Center" FontSize="15" FontWeight="Medium" Foreground="{DynamicResource TextPrimary}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding NavigateToHistoryCommand}"
+                                AutomationProperties.Name="Histórico e Logs"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
+                            <StackPanel Orientation="Horizontal" Spacing="15">
+                                <material:MaterialIcon Kind="History" Width="24" Height="24" Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock Text="Histórico e Logs" VerticalAlignment="Center" FontSize="15" FontWeight="Medium" Foreground="{DynamicResource TextPrimary}"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Configurações no Rodapé -->
+                    <StackPanel Grid.Row="2" Margin="8,0,8,30">
+                        <Button Command="{Binding NavigateToSettingsCommand}"
+                                AutomationProperties.Name="Configurações"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12">
+                            <StackPanel Orientation="Horizontal" Spacing="15">
+                                <material:MaterialIcon Kind="Settings" Width="24" Height="24" Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock Text="Configurações" VerticalAlignment="Center" FontSize="15" FontWeight="Medium" Foreground="{DynamicResource TextPrimary}"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </SplitView.Pane>
+
+            <!-- Main Content Area -->
+            <Grid Margin="0,40,0,0">
+                <!-- Content Background Layer (Glass) -->
+                <Border Background="{DynamicResource AppBackground}" 
+                        Opacity="{Binding Settings.Settings.GlassOpacity, FallbackValue=1.0}"
+                        CornerRadius="16,0,0,0" 
+                        BoxShadow="{DynamicResource PremiumShadow}"/>
+
+                <!-- Opaque Content Layer -->
+                <TransitioningContentControl Content="{Binding CurrentPage}" Margin="24">
+                    <TransitioningContentControl.PageTransition>
+                        <CrossFade Duration="0:0:0.35" />
+                    </TransitioningContentControl.PageTransition>
+                </TransitioningContentControl>
             </Grid>
-        </SplitView.Pane>
-
-        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" CornerRadius="12,0,0,0" Margin="0,0,0,0">
-            <TransitioningContentControl Content="{Binding CurrentPage}" Margin="20" />
-        </Border>
-    </SplitView>
+        </SplitView>
+    </Panel>
 </Window>

@@ -4,56 +4,92 @@
              xmlns:material="using:Material.Icons.Avalonia"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             mc:Ignorable="d" d:DesignWidth="850" d:DesignHeight="700"
              x:Class="FolderFlow.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
     <ScrollViewer>
-        <StackPanel Margin="20" Spacing="30">
-            <TextBlock Text="Configurações do Sistema" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        <StackPanel Margin="25" Spacing="30">
+            <StackPanel Spacing="5">
+                <TextBlock Text="Configurações do Ecossistema" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="Personalize sua experiência visual e funcional no FolderFlow" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
+            </StackPanel>
             
-            <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" CornerRadius="12" Padding="25">
-                <StackPanel Spacing="25">
-                    <!-- Apresentação -->
-                    <StackPanel Spacing="15">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <material:MaterialIcon Kind="Palette" Width="20" Height="20" Foreground="#3B82F6"/>
-                            <TextBlock Text="Aparência e Localização" FontSize="18" FontWeight="SemiBold"/>
+            <!-- Cards de Configuração -->
+            <StackPanel Spacing="20">
+                
+                <!-- Aparência Premium -->
+                <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="25">
+                    <StackPanel Spacing="25">
+                        <StackPanel Orientation="Horizontal" Spacing="15">
+                            <material:MaterialIcon Kind="Palette" Width="24" Height="24" Foreground="{DynamicResource AccentColor}"/>
+                            <TextBlock Text="Visual Engine (Glass &amp; Themes)" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
                         </StackPanel>
-                        <Grid ColumnDefinitions="200, *" RowDefinitions="Auto, Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Tema do Aplicativo:" VerticalAlignment="Center" Foreground="Gray"/>
-                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Themes}" SelectedItem="{Binding Settings.Theme}" Width="250" Margin="0,0,0,15"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Idioma (Cultura):" VerticalAlignment="Center" Foreground="Gray"/>
-                            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding Settings.Language}" Width="250"/>
+
+                        <Grid ColumnDefinitions="250, *" RowDefinitions="Auto, Auto, Auto" Margin="0,10,0,0">
+                            <!-- Tema -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Esquema de Cores:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Themes}" SelectedItem="{Binding Settings.Theme}" Width="250" Margin="0,0,0,20"/>
+                            
+                            <!-- Opacidade -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Opacidade do Vidro (Glass):" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="15" Margin="0,0,0,20">
+                                <Slider Value="{Binding GlassOpacity}" Minimum="0.1" Maximum="1.0" Width="200" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding GlassOpacity, StringFormat='{}{0:P0}'}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource AccentColor}"/>
+                            </StackPanel>
+
+                            <!-- Idioma -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Cultura e Localização:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding Settings.Language}" Width="250"/>
                         </Grid>
                     </StackPanel>
+                </Border>
 
-                    <Separator/>
-
-                    <!-- Suporte -->
-                    <StackPanel Spacing="15">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <material:MaterialIcon Kind="Heart" Width="20" Height="20" Foreground="#EF4444"/>
-                            <TextBlock Text="Suporte e Doação" FontSize="18" FontWeight="SemiBold"/>
+                <!-- Comportamento -->
+                <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="25">
+                    <StackPanel Spacing="20">
+                        <StackPanel Orientation="Horizontal" Spacing="15">
+                            <material:MaterialIcon Kind="AutoFix" Width="24" Height="24" Foreground="{DynamicResource SuccessColor}"/>
+                            <TextBlock Text="Sistema e Background" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
                         </StackPanel>
-                        <TextBlock Text="Se o FolderFlow tem sido útil para você, considere apoiar o desenvolvedor!" FontSize="13" Foreground="Gray" TextWrapping="Wrap"/>
+
+                        <StackPanel Spacing="15" Margin="0,10,0,0">
+                            <CheckBox IsChecked="{Binding Settings.StartAtStartup}" Content="Iniciar com o Windows (Minimizado)"/>
+                            <CheckBox IsChecked="{Binding Settings.ShowNotifications}" Content="Habilitar notificações do sistema (FlowNotify)"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Suporte -->
+                <Border BorderBrush="{DynamicResource SuccessColor}" BorderThickness="1" CornerRadius="16">
+                    <Panel>
+                        <!-- Background Layer with low opacity -->
+                        <Border Background="{DynamicResource SuccessColor}" Opacity="0.1" CornerRadius="16"/>
                         
-                        <Border Background="{DynamicResource SystemRegionBrush}" CornerRadius="8" Padding="15">
-                            <StackPanel Spacing="10">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <material:MaterialIcon Kind="Qrcode" Width="20" Height="20" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                    <TextBlock Text="Chave PIX: contato@raillen.site" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <!-- Content Layer fully opaque -->
+                        <Border Padding="25">
+                            <StackPanel Spacing="15">
+                                <StackPanel Orientation="Horizontal" Spacing="15">
+                                    <material:MaterialIcon Kind="HeartPulse" Width="24" Height="24" Foreground="{DynamicResource SuccessColor}"/>
+                                    <TextBlock Text="Apoie o Desenvolvimento" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
                                 </StackPanel>
-                                <Button Content="Comprar um Café (Buy Me a Coffee)" Classes="accent" CornerRadius="6" HorizontalAlignment="Left"/>
+                                <TextBlock Text="O FolderFlow é gratuito e open-source. Se ele economiza seu tempo, considere uma doação via PIX." FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"/>
+                                <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,10,0,0">
+                                    <Border Background="{DynamicResource CardBackground}" CornerRadius="8" Padding="15,8" BoxShadow="{DynamicResource PremiumShadow}">
+                                        <TextBlock Text="PIX: contato@raillen.site" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                    </Border>
+                                    <Button Content="Buy Me a Coffee" Classes="accent" CornerRadius="8" Height="36"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
+                    </Panel>
+                </Border>
 
-            <Button Command="{Binding SaveSettingsCommand}" Classes="accent" CornerRadius="6" Padding="20,12" HorizontalAlignment="Left">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <material:MaterialIcon Kind="ContentSave" Width="18" Height="18"/>
-                    <TextBlock Text="Salvar Configurações" VerticalAlignment="Center" FontWeight="Bold"/>
+            </StackPanel>
+
+            <Button Command="{Binding SaveSettingsCommand}" Background="{DynamicResource AccentColor}" Foreground="White" CornerRadius="10" Padding="30,15" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <material:MaterialIcon Kind="ContentSaveCheck" Width="20" Height="20"/>
+                    <TextBlock Text="Salvar Alterações Premium" VerticalAlignment="Center" FontWeight="Bold" FontSize="16"/>
                 </StackPanel>
             </Button>
         </StackPanel>

@@ -12,41 +12,41 @@
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="20,20,20,10" Spacing="20">
             <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-                <TextBlock Text="Histórico de Automação" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                <TextBlock Text="Histórico de Automação" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
             </StackPanel>
 
-            <Grid ColumnDefinitions="*, Auto">
-                <!-- Search and Filters -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15">
-                    <TextBox Text="{Binding SearchText}" Watermark="Pesquisar caminhos ou detalhes..." Width="250" VerticalAlignment="Center">
+            <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
+                <!-- Search and Filters (Responsive) -->
+                <WrapPanel Grid.Column="0" Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBox Text="{Binding SearchText}" Watermark="Pesquisar..." Width="200" Margin="0,0,15,10" VerticalAlignment="Center">
                         <TextBox.InnerLeftContent>
-                            <material:MaterialIcon Kind="Magnify" Margin="5,0"/>
+                            <material:MaterialIcon Kind="Magnify" Margin="10,0" Foreground="{DynamicResource TextSecondary}"/>
                         </TextBox.InnerLeftContent>
                     </TextBox>
 
-                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                        <TextBlock Text="Job:" VerticalAlignment="Center" Foreground="Gray"/>
-                        <ComboBox ItemsSource="{Binding AvailableJobs}" SelectedItem="{Binding SelectedJobFilter}" Width="150"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,15,10" VerticalAlignment="Center">
+                        <TextBlock Text="Job:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                        <ComboBox ItemsSource="{Binding AvailableJobs}" SelectedItem="{Binding SelectedJobFilter}" Width="150" Height="36" CornerRadius="8"/>
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                        <TextBlock Text="Status:" VerticalAlignment="Center" Foreground="Gray"/>
-                        <ComboBox ItemsSource="{Binding AvailableStatuses}" SelectedItem="{Binding SelectedStatusFilter}" Width="150"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,15,10" VerticalAlignment="Center">
+                        <TextBlock Text="Status:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                        <ComboBox ItemsSource="{Binding AvailableStatuses}" SelectedItem="{Binding SelectedStatusFilter}" Width="120" Height="36" CornerRadius="8"/>
                     </StackPanel>
-                </StackPanel>
+                </WrapPanel>
 
                 <!-- Actions -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                    <Button Command="{Binding LoadLogsCommand}" CornerRadius="6" Padding="15,8">
+                <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top">
+                    <Button Command="{Binding LoadLogsCommand}" Background="{DynamicResource AccentColor}" Foreground="White" CornerRadius="8" Padding="15,8" Height="36">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <material:MaterialIcon Kind="Refresh" Width="18" Height="18"/>
-                            <TextBlock Text="Atualizar Logs" VerticalAlignment="Center"/>
+                            <TextBlock Text="Atualizar" VerticalAlignment="Center" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Button>
-                    <Button Command="{Binding ClearLogsCommand}" CornerRadius="6" Padding="15,8" BorderBrush="#EF4444" BorderThickness="1" Background="Transparent">
+                    <Button Command="{Binding ClearLogsCommand}" Background="Transparent" BorderBrush="{DynamicResource DangerColor}" BorderThickness="1" CornerRadius="8" Padding="15,8" Height="36">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <material:MaterialIcon Kind="TrashCanOutline" Width="18" Height="18" Foreground="#EF4444"/>
-                            <TextBlock Text="Limpar Histórico" VerticalAlignment="Center" Foreground="#EF4444"/>
+                            <material:MaterialIcon Kind="TrashCanOutline" Width="18" Height="18" Foreground="{DynamicResource DangerColor}"/>
+                            <TextBlock Text="Limpar" VerticalAlignment="Center" Foreground="{DynamicResource DangerColor}"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
