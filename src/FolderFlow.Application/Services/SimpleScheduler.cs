@@ -51,7 +51,7 @@ public class SimpleScheduler : ISchedulerService
                 // No MVP, log simples ou ignorar
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
         }
     }
 }

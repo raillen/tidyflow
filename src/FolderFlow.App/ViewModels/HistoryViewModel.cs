@@ -52,57 +52,64 @@ public partial class HistoryViewModel : ViewModelBase
     {
         if (!Directory.Exists(_reportsFolder)) return;
 
-        _allEntries.Clear();
-        var tempJobs = new HashSet<string>();
-
-        try
+        await Task.Run(async () =>
         {
-            var files = Directory.GetFiles(_reportsFolder, "*.csv").OrderByDescending(f => File.GetCreationTime(f));
+            var allEntries = new List<AuditEntryViewModel>();
+            var tempJobs = new HashSet<string>();
 
-            foreach (var file in files)
+            try
             {
-                var lines = await File.ReadAllLinesAsync(file);
-                // Ignora o cabeçalho (linha 0)
-                for (int i = 1; i < lines.Length; i++)
-                {
-                    var line = lines[i];
-                    var parts = line.Split(';');
-                    if (parts.Length >= 6)
-                    {
-                        var entry = new AuditEntry
-                        {
-                            Timestamp = DateTime.TryParse(parts[0], out var dt) ? dt : DateTime.Now,
-                            JobName = parts[1].Trim('"'),
-                            Status = parts[2].Trim('"'),
-                            SourcePath = parts[3].Trim('"'),
-                            TargetPath = parts[4].Trim('"'),
-                            Details = parts[5].Trim('"')
-                        };
+                var dirInfo = new DirectoryInfo(_reportsFolder);
+                var files = dirInfo.GetFiles("*.csv").OrderByDescending(f => f.CreationTime);
 
-                        _allEntries.Add(new AuditEntryViewModel(entry));
-                        tempJobs.Add(entry.JobName);
+                foreach (var file in files)
+                {
+                    var lines = await File.ReadAllLinesAsync(file.FullName);
+                    // Ignora o cabeçalho (linha 0)
+                    for (int i = 1; i < lines.Length; i++)
+                    {
+                        var line = lines[i];
+                        var parts = line.Split(';');
+                        if (parts.Length >= 6)
+                        {
+                            var entry = new AuditEntry
+                            {
+                                Timestamp = DateTime.TryParse(parts[0], out var dt) ? dt : DateTime.Now,
+                                JobName = parts[1].Trim('"'),
+                                Status = parts[2].Trim('"'),
+                                SourcePath = parts[3].Trim('"'),
+                                TargetPath = parts[4].Trim('"'),
+                                Details = parts[5].Trim('"')
+                            };
+
+                            allEntries.Add(new AuditEntryViewModel(entry));
+                            tempJobs.Add(entry.JobName);
+                        }
                     }
                 }
+
+                allEntries = allEntries.OrderByDescending(e => e.Entry.Timestamp).ToList();
+
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    _allEntries = allEntries;
+                    
+                    var currentJob = SelectedJobFilter;
+                    AvailableJobs.Clear();
+                    AvailableJobs.Add("Todos");
+                    foreach (var job in tempJobs.OrderBy(j => j)) AvailableJobs.Add(job);
+
+                    if (AvailableJobs.Contains(currentJob)) SelectedJobFilter = currentJob;
+                    else SelectedJobFilter = "Todos";
+
+                    ApplyFilters();
+                });
             }
-
-            // Atualiza os filtros de Job
-            var currentJob = SelectedJobFilter;
-            AvailableJobs.Clear();
-            AvailableJobs.Add("Todos");
-            foreach (var job in tempJobs.OrderBy(j => j)) AvailableJobs.Add(job);
-            
-            if (AvailableJobs.Contains(currentJob)) SelectedJobFilter = currentJob;
-            else SelectedJobFilter = "Todos";
-
-            // Ordena os registros do mais recente para o mais antigo
-            _allEntries = _allEntries.OrderByDescending(e => e.Entry.Timestamp).ToList();
-
-            ApplyFilters();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar logs CSV: {ex.Message}");
-        }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao carregar logs CSV: {ex.Message}");
+            }
+        });
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilters();
@@ -111,7 +118,6 @@ public partial class HistoryViewModel : ViewModelBase
 
     private void ApplyFilters()
     {
-        Logs.Clear();
         var filtered = _allEntries.AsEnumerable();
 
         if (SelectedJobFilter != "Todos")
@@ -133,6 +139,7 @@ public partial class HistoryViewModel : ViewModelBase
             );
         }
 
+        Logs.Clear();
         foreach (var item in filtered)
         {
             Logs.Add(item);

@@ -4,6 +4,7 @@
              xmlns:local="using:FolderFlow.App"
              xmlns:conv="using:FolderFlow.App.Converters"
              xmlns:materialIcons="using:Material.Icons.Avalonia"
+             xmlns:semi="using:Semi.Avalonia"
              RequestedThemeVariant="Default">
 
     <Application.Resources>
@@ -14,6 +15,12 @@
             <local:ViewLocator x:Key="ViewLocator"/>
             <conv:EqualsConverter x:Key="EqualsConverter"/>
             <conv:NotEqualsConverter x:Key="NotEqualsConverter"/>
+            <conv:PageToColorConverter x:Key="PageToColorConverter"/>
+            <conv:PlayPauseConverter x:Key="StatusToIconConverter"/>
+            <conv:PlayPauseColorConverter x:Key="StatusToColorConverter"/>
+            <conv:StatusToProgressColorConverter x:Key="StatusToProgressColorConverter"/>
+            <conv:BoolToIconConverter x:Key="BoolToIconConverter"/>
+            <conv:StatusToPercentageConverter x:Key="StatusToPercentageConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 
@@ -22,14 +29,14 @@
     </Application.DataTemplates>
   
     <Application.Styles>
-        <FluentTheme />
-        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <semi:SemiTheme Locale="pt-BR" />
+        <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml" />
         <materialIcons:MaterialIconStyles />
     </Application.Styles>
 
     <TrayIcon.Icons>
         <TrayIcons>
-            <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="FolderFlow">
+            <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="FolderFlow" Clicked="OnOpenClick">
                 <TrayIcon.Menu>
                     <NativeMenu>
                         <NativeMenuItem Header="Abrir FolderFlow" Click="OnOpenClick"/>

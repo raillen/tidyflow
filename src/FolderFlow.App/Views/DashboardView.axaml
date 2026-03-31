@@ -1,126 +1,228 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:FolderFlow.App.ViewModels"
+             xmlns:interfaces="using:FolderFlow.Application.Interfaces"
              xmlns:material="using:Material.Icons.Avalonia"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="750"
              x:Class="FolderFlow.App.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
     <ScrollViewer>
-        <StackPanel Margin="20" Spacing="30">
-            <!-- Header -->
-            <StackPanel Spacing="5">
-                <TextBlock Text="Resumo do Sistema" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock Text="Visão geral do desempenho e saúde da sua automação" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
-            </StackPanel>
+        <StackPanel Margin="25" Spacing="25">
+            <!-- Header & Filters -->
+            <Grid ColumnDefinitions="*, Auto">
+                <StackPanel Grid.Column="0" Spacing="5">
+                    <TextBlock Text="Painel de Controle" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="Viso geral do sistema e métricas de desempenho" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
+                </StackPanel>
 
-            <!-- Status Cards (Premium) -->
-            <UniformGrid Columns="4" Rows="1">
-                <!-- Card: Jobs Ativos -->
-                <Border Margin="0,0,15,0" Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="20" BoxShadow="{DynamicResource PremiumShadow}">
-                    <StackPanel Spacing="10">
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <material:MaterialIcon Kind="FileTree" Width="26" Height="26" Foreground="{DynamicResource AccentColor}"/>
-                            <TextBlock Text="Jobs Totais" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                <Border Grid.Column="1" Background="{DynamicResource SidebarBackground}" CornerRadius="12" Padding="15,8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <StackPanel Orientation="Horizontal" Spacing="20">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="FilterVariant" Width="16" Height="16" Foreground="{DynamicResource AccentColor}"/>
+                            <TextBlock Text="Tipo:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"/>
+                            <ComboBox ItemsSource="{Binding AvailableTypes}" SelectedItem="{Binding SelectedTypeFilter}" Width="130" Height="32" CornerRadius="6"/>
                         </StackPanel>
-                        <TextBlock Text="{Binding TotalJobs}" FontSize="36" FontWeight="ExtraBold" Foreground="{DynamicResource TextPrimary}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="ClipboardListOutline" Width="16" Height="16" Foreground="{DynamicResource AccentColor}"/>
+                            <TextBlock Text="Tarefa:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"/>
+                            <ComboBox ItemsSource="{Binding AvailableTasks}" SelectedItem="{Binding SelectedTaskFilter}" Width="160" Height="32" CornerRadius="6"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Metrics Cards Row -->
+            <Grid ColumnDefinitions="*, *, *">
+                <!-- Cpia Direta -->
+                <Border Grid.Column="0" Margin="0,0,10,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <StackPanel Spacing="15">
+                        <Grid ColumnDefinitions="Auto, *">
+                            <Border Grid.Column="0" Background="{DynamicResource AccentColor}" Opacity="0.1" CornerRadius="8" Width="40" Height="40">
+                                <material:MaterialIcon Kind="FileMoveOutline" Foreground="{DynamicResource AccentColor}" Width="24" Height="24"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="CPIA DIRETA" VerticalAlignment="Center" Margin="12,0" FontSize="12" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*, *, *">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{Binding DirectActive}" FontSize="24" FontWeight="Bold"/>
+                                <TextBlock Text="Ativas" FontSize="11" Opacity="0.6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{Binding DirectPaused}" FontSize="24" FontWeight="Bold"/>
+                                <TextBlock Text="Pausadas" FontSize="11" Opacity="0.6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="{Binding DirectCompleted}" FontSize="24" FontWeight="Bold"/>
+                                <TextBlock Text="Concludas" FontSize="11" Opacity="0.6"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
-                <!-- Card: Watch Folders -->
-                <Border Margin="0,0,15,0" Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="20" BoxShadow="{DynamicResource PremiumShadow}">
-                    <StackPanel Spacing="10">
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <material:MaterialIcon Kind="EyeRefresh" Width="26" Height="26" Foreground="{DynamicResource SuccessColor}"/>
-                            <TextBlock Text="Hotfolders" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                        </StackPanel>
-                        <TextBlock Text="{Binding ActiveWatchers}" FontSize="36" FontWeight="ExtraBold" Foreground="{DynamicResource TextPrimary}"/>
+                <!-- Watch Folder -->
+                <Border Grid.Column="1" Margin="10,0,10,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <StackPanel Spacing="15">
+                        <Grid ColumnDefinitions="Auto, *">
+                            <Border Grid.Column="0" Background="{DynamicResource SuccessColor}" Opacity="0.1" CornerRadius="8" Width="40" Height="40">
+                                <material:MaterialIcon Kind="Radar" Foreground="{DynamicResource SuccessColor}" Width="24" Height="24"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="WATCH FOLDER" VerticalAlignment="Center" Margin="12,0" FontSize="12" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*, *, *">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{Binding WatchActive}" FontSize="24" FontWeight="Bold"/>
+                                <TextBlock Text="Ativas" FontSize="11" Opacity="0.6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{Binding WatchPaused}" FontSize="24" FontWeight="Bold"/>
+                                <TextBlock Text="Pausadas" FontSize="11" Opacity="0.6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="{Binding WatchCompleted}" FontSize="24" FontWeight="Bold"/>
+                                <TextBlock Text="Concludas" FontSize="11" Opacity="0.6"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
-                <!-- Card: Processados -->
-                <Border Margin="0,0,15,0" Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="20" BoxShadow="{DynamicResource PremiumShadow}">
-                    <StackPanel Spacing="10">
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <material:MaterialIcon Kind="CheckCircleOutline" Width="26" Height="26" Foreground="{DynamicResource AccentColor}"/>
-                            <TextBlock Text="Arquivos Sinc." FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                        </StackPanel>
-                        <TextBlock Text="{Binding TotalFilesProcessed}" FontSize="36" FontWeight="ExtraBold" Foreground="{DynamicResource TextPrimary}"/>
+                <!-- Processed Files -->
+                <Border Grid.Column="2" Margin="10,0,0,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <StackPanel Spacing="15">
+                        <Grid ColumnDefinitions="Auto, *">
+                            <Border Grid.Column="0" Background="{DynamicResource AccentColor}" Opacity="0.1" CornerRadius="8" Width="40" Height="40">
+                                <material:MaterialIcon Kind="Files" Foreground="{DynamicResource AccentColor}" Width="24" Height="24"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="ARQUIVOS PROCESSADOS" VerticalAlignment="Center" Margin="12,0" FontSize="12" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*, *, *">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{Binding TotalProcessed}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource SuccessColor}"/>
+                                <TextBlock Text="Sucesso" FontSize="11" Opacity="0.6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{Binding TotalIgnored}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
+                                <TextBlock Text="Ignorados" FontSize="11" Opacity="0.6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="{Binding TotalErrors}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource DangerColor}"/>
+                                <TextBlock Text="Erros" FontSize="11" Opacity="0.6"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
+            </Grid>
 
-                <!-- Card: Erros -->
-                <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="20" BoxShadow="{DynamicResource PremiumShadow}">
-                    <StackPanel Spacing="10">
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <material:MaterialIcon Kind="AlertCircleOutline" Width="26" Height="26" Foreground="{DynamicResource DangerColor}"/>
-                            <TextBlock Text="Erros" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+            <!-- Quick Actions -->
+            <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="15">
+                    <Button Command="{Binding NewDirectCopyCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="15,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="PlusThick" Width="18" Height="18"/>
+                            <TextBlock Text="Cpia Direta"/>
                         </StackPanel>
-                        <TextBlock Text="{Binding TotalErrors}" FontSize="36" FontWeight="ExtraBold" Foreground="{DynamicResource TextPrimary}"/>
-                    </StackPanel>
-                </Border>
-            </UniformGrid>
+                    </Button>
+                    <Button Command="{Binding NewWatchFolderCommand}" Classes="Success" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="15,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Radar" Width="18" Height="18"/>
+                            <TextBlock Text="Watch Folder"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ViewHistoryCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="15,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="History" Width="18" Height="18"/>
+                            <TextBlock Text="Ver Histrico"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding AccessSettingsCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="15,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="CogOutline" Width="18" Height="18"/>
+                            <TextBlock Text="Configuraes"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding OpenLogFolderCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="15,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="FolderOpenOutline" Width="18" Height="18"/>
+                            <TextBlock Text="Pasta de Logs"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
 
-            <!-- Seção de Atividade Recente e Performance -->
-            <Grid ColumnDefinitions="*, 350">
-                <!-- Gráfico ou Lista Grande de Atividade -->
-                <Border Grid.Column="0" Margin="0,0,25,0" Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="20">
+            <!-- Lower Section: Activity & System Monitor -->
+            <Grid ColumnDefinitions="*, 350" Height="400">
+                <!-- Recent Activities -->
+                <Border Grid.Column="0" Margin="0,0,10,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                     <Grid RowDefinitions="Auto, *">
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15" Margin="0,0,0,20">
-                            <material:MaterialIcon Kind="LightningBolt" Width="22" Height="22" Foreground="{DynamicResource WarningColor}"/>
-                            <TextBlock Text="Logs em Tempo Real" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
-                        </StackPanel>
-                        
-                        <ListBox Grid.Row="1" ItemsSource="{Binding RecentActivity}" Background="Transparent" BorderThickness="0">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="0,0,0,10" Padding="12" Background="{DynamicResource ButtonHoverBackground}" CornerRadius="8">
-                                        <Grid ColumnDefinitions="Auto, *">
-                                            <material:MaterialIcon Grid.Column="0" Kind="History" Width="18" Height="18" Foreground="{DynamicResource AccentColor}" Margin="0,0,15,0"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding}" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                        <Border Grid.Row="0" Padding="20,15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <material:MaterialIcon Kind="History" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
+                                <TextBlock Text="ATIVIDADES RECENTES" FontSize="13" FontWeight="Bold" LetterSpacing="1"/>
+                            </StackPanel>
+                        </Border>
+                        <ScrollViewer Grid.Row="1">
+                            <ItemsControl ItemsSource="{Binding RecentActivities}" Margin="15">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="interfaces:SystemActivity">
+                                        <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource CardBackground}" CornerRadius="8">
+                                            <Grid ColumnDefinitions="80, *">
+                                                <TextBlock Grid.Column="0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Message}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
                     </Grid>
                 </Border>
 
-                <!-- Status Atual do Motor de Execução -->
-                <StackPanel Grid.Column="1" Spacing="20">
-                    <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="20">
-                        <StackPanel Spacing="15">
-                            <TextBlock Text="Motor FlowEngine" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
-                            
-                            <Grid RowDefinitions="Auto, Auto" ColumnDefinitions="*, Auto" Margin="0,10,0,0">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Instâncias Ativas" Foreground="{DynamicResource TextSecondary}"/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentlyRunning}" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
-                                
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Uso de Banda (Estimado)" Foreground="{DynamicResource TextSecondary}" Margin="0,10,0,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="12.4 MB/s" FontWeight="Bold" Foreground="{DynamicResource SuccessColor}" Margin="0,10,0,0"/>
-                            </Grid>
-                            
-                            <Separator Background="{DynamicResource CardBorderBrush}" Margin="0,10"/>
-                            
-                            <Button HorizontalAlignment="Stretch" Classes="accent" CornerRadius="8">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <material:MaterialIcon Kind="Broom"/>
-                                    <TextBlock Text="Limpar Cache de Auditoria"/>
-                                </StackPanel>
-                            </Button>
+                <!-- System Monitor -->
+                <Border Grid.Column="1" Margin="10,0,0,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <Grid RowDefinitions="Auto, *">
+                        <Border Grid.Row="0" Padding="20,15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <material:MaterialIcon Kind="Monitor" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
+                                <TextBlock Text="MONITOR DO SISTEMA" FontSize="13" FontWeight="Bold" LetterSpacing="1"/>
+                            </StackPanel>
+                        </Border>
+                        <StackPanel Grid.Row="1" Margin="20" Spacing="25">
+                            <!-- Transfer Speed -->
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Velocidade de Cpia" FontSize="12" Opacity="0.7"/>
+                                <TextBlock Text="{Binding TransferSpeed}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
+                                <ProgressBar Value="45" Height="4" CornerRadius="2" IsIndeterminate="{Binding TransferSpeed, Converter={StaticResource NotEqualsConverter}, ConverterParameter='0 KB/s'}"/>
+                            </StackPanel>
+
+                            <!-- CPU -->
+                            <StackPanel Spacing="10">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Grid.Column="0" Text="Processador (CPU)" FontSize="12" Opacity="0.7"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CpuUsage, StringFormat='{}{0:F1}%'}" FontSize="12" FontWeight="Bold"/>
+                                </Grid>
+                                <ProgressBar Value="{Binding CpuUsage}" Maximum="100" Height="8" CornerRadius="4" Foreground="{DynamicResource AccentColor}"/>
+                            </StackPanel>
+
+                            <!-- RAM -->
+                            <StackPanel Spacing="10">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Grid.Column="0" Text="Memria RAM" FontSize="12" Opacity="0.7"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding RamUsage}" FontSize="12" FontWeight="Bold"/>
+                                </Grid>
+                                <ProgressBar Value="30" Height="8" CornerRadius="4" Foreground="{DynamicResource SuccessColor}"/>
+                            </StackPanel>
+
+                            <!-- Cloud Sync -->
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="10" Padding="15">
+                                <Grid ColumnDefinitions="Auto, *">
+                                    <material:MaterialIcon Kind="CloudCheck" Width="24" Height="24" Foreground="{DynamicResource SuccessColor}"/>
+                                    <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Sincronizao Nuvem" FontSize="11" Opacity="0.6"/>
+                                        <TextBlock Text="{Binding CloudSyncStatus}" FontSize="13" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
                         </StackPanel>
-                    </Border>
-                    
-                    <!-- Banner Premium -->
-                    <Border Background="{DynamicResource AccentColor}" CornerRadius="16" Padding="20">
-                        <StackPanel Spacing="10">
-                            <material:MaterialIcon Kind="StarCircle" Width="30" Height="30" Foreground="White"/>
-                            <TextBlock Text="FolderFlow Pro Ativo" FontWeight="Bold" Foreground="White" FontSize="16"/>
-                            <TextBlock Text="Acesso total a Cloud Hydration e Hotfolders." Foreground="White" Opacity="0.8" TextWrapping="Wrap" FontSize="12"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                    </Grid>
+                </Border>
             </Grid>
         </StackPanel>
     </ScrollViewer>

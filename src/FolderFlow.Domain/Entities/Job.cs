@@ -13,13 +13,15 @@ public class Job
     public JobMode Mode { get; set; } = JobMode.Copy;
     public bool Recursive { get; set; } = true;
     public ConflictMode ConflictMode { get; set; } = ConflictMode.Skip;
-    
-    // Automação e Segurança
+
+    // Automa��o e Seguran�a
     public bool SmartSync { get; set; } = true;
     public bool WatchEnabled { get; set; } = false;
     public bool VerifyHash { get; set; } = false;
     public bool EnableTrash { get; set; } = true;
-    public int SettleTimeSeconds { get; set; } = 5;
+    public int SettleTimeSeconds { get; set; } = 1;
+    public MonitoringMode MonitoringMode { get; set; } = MonitoringMode.RealTime;
+    public int ScanIntervalSeconds { get; set; } = 300;
 
     // Filtros
     public List<string> IncludeExtensions { get; set; } = new();
@@ -32,7 +34,9 @@ public class Job
     // Agendamento
     public ScheduleType ScheduleType { get; set; } = ScheduleType.None;
     public int IntervalMinutes { get; set; } = 60;
-    public string? ScheduleTime { get; set; }
+    public string? ScheduleTime { get; set; } // HH:mm:ss
+    public DateTime? SpecificDate { get; set; } // Calendar Date
+    public List<DayOfWeek> DaysOfWeek { get; set; } = new(); // Para agendamento semanal
     public DateTime? LastRun { get; set; }
     public DateTime? NextRun { get; set; }
 }

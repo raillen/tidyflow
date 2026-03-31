@@ -22,32 +22,35 @@ public class PreviewEngine
 
     public async Task<PreviewSummary> GeneratePreviewAsync(Job job, CancellationToken cancellationToken = default)
     {
-        var summary = new PreviewSummary();
-
-        if (!_fileOperator.Exists(job.SourcePath))
+        return await Task.Run(() =>
         {
-            summary.AffectedPaths.Add($"[ERRO] Diretório de origem não encontrado: {job.SourcePath}");
+            var summary = new PreviewSummary();
+
+            if (!_fileOperator.Exists(job.SourcePath))
+            {
+                summary.AffectedPaths.Add($"[ERRO] Diretório de origem não encontrado: {job.SourcePath}");
+                return summary;
+            }
+
+            var files = _fileOperator.EnumerateFiles(job.SourcePath, "*", job.Recursive).ToList();
+
+            foreach (var file in files)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                if (ShouldProcessFile(file, job))
+                {
+                    AnalyzeFile(file, job, summary);
+                }
+                else
+                {
+                    summary.FilesToSkip++;
+                    summary.AffectedPaths.Add($"[IGNORADO] {Path.GetFileName(file)}");
+                }
+            }
+
             return summary;
-        }
-
-        var files = _fileOperator.EnumerateFiles(job.SourcePath, "*", job.Recursive).ToList();
-
-        foreach (var file in files)
-        {
-            if (cancellationToken.IsCancellationRequested) break;
-
-            if (ShouldProcessFile(file, job))
-            {
-                AnalyzeFile(file, job, summary);
-            }
-            else
-            {
-                summary.FilesToSkip++;
-                summary.AffectedPaths.Add($"[IGNORADO] {Path.GetFileName(file)}");
-            }
-        }
-
-        return await Task.FromResult(summary);
+        }, cancellationToken);
     }
 
     private bool ShouldProcessFile(string file, Job job)

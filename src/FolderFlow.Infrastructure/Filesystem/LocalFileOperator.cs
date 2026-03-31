@@ -8,11 +8,32 @@ namespace FolderFlow.Infrastructure.Filesystem;
 
 public class LocalFileOperator : IFileOperator
 {
-    public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default)
+    public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null)
     {
         await using var sourceStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
         await using var targetStream = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
-        await sourceStream.CopyToAsync(targetStream, cancellationToken);
+        
+        if (progress == null)
+        {
+            await sourceStream.CopyToAsync(targetStream, cancellationToken);
+            return;
+        }
+
+        var totalBytes = sourceStream.Length;
+        var buffer = new byte[1024 * 1024]; // 1MB buffer for better performance and speed tracking
+        long totalRead = 0;
+        int bytesRead;
+
+        while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+        {
+            await targetStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+            totalRead += bytesRead;
+            
+            if (totalBytes > 0)
+            {
+                progress.Report((double)totalRead / totalBytes * 100);
+            }
+        }
     }
 
     public async Task MoveAsync(string source, string target, CancellationToken cancellationToken = default)

@@ -8,5 +8,5 @@ public interface ICloudHydrationService
     /// Verifica se um arquivo é "Online-Only" (ex: OneDrive/SharePoint placeholder)
     /// e força o download para o disco local antes do processamento.
     /// </summary>
-    void EnsureFileIsLocal(string filePath);
+    Task EnsureFileIsLocalAsync(string filePath, CancellationToken cancellationToken = default);
 }

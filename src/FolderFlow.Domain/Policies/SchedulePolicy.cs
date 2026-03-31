@@ -10,6 +10,9 @@ public static class SchedulePolicy
     {
         if (job.ScheduleType == ScheduleType.None) return false;
 
+        // Se tem data especifica, s roda se for HOJE e a hora bateu
+        if (job.SpecificDate.HasValue && job.SpecificDate.Value.Date != now.Date) return false;
+
         if (job.ScheduleType == ScheduleType.Interval)
         {
             if (job.LastRun == null) return true;
@@ -20,12 +23,27 @@ public static class SchedulePolicy
         {
             if (string.IsNullOrEmpty(job.ScheduleTime)) return false;
             
-            // Se já rodou hoje, não roda de novo
+            // Se j rodou hoje, no roda de novo
             if (job.LastRun != null && job.LastRun.Value.Date == now.Date) return false;
 
             if (TimeSpan.TryParse(job.ScheduleTime, out var scheduledTime))
             {
-                // Se a hora atual já passou da hora agendada
+                return now.TimeOfDay >= scheduledTime;
+            }
+        }
+
+        if (job.ScheduleType == ScheduleType.Weekly)
+        {
+            if (string.IsNullOrEmpty(job.ScheduleTime)) return false;
+            
+            // Se no definiu dias, assume todos (Daily) ou bloqueia? Vamos assumir que precisa estar na lista
+            if (job.DaysOfWeek != null && job.DaysOfWeek.Any() && !job.DaysOfWeek.Contains(now.DayOfWeek)) return false;
+
+            // Se j rodou hoje, no roda de novo
+            if (job.LastRun != null && job.LastRun.Value.Date == now.Date) return false;
+
+            if (TimeSpan.TryParse(job.ScheduleTime, out var scheduledTime))
+            {
                 return now.TimeOfDay >= scheduledTime;
             }
         }

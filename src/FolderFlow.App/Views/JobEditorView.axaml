@@ -5,184 +5,343 @@
              xmlns:enums="using:FolderFlow.Domain.Enums"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" d:DesignWidth="850" d:DesignHeight="750"
+             mc:Ignorable="d" d:DesignWidth="950" d:DesignHeight="700"
              x:Class="FolderFlow.App.Views.JobEditorView"
              x:DataType="vm:JobEditorViewModel">
     
-    <Grid RowDefinitions="*, Auto" Margin="10">
-        <TabControl Grid.Row="0" Margin="0" Theme="{StaticResource {x:Type TabControl}}">
-            <!-- ABA GERAL -->
-            <TabItem Header="Configurações Base">
-                <ScrollViewer>
-                    <StackPanel Spacing="20" Margin="15">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Nome da Tarefa" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                            <TextBox Text="{Binding Job.Name}" Watermark="Ex: Backup Diário SharePoint" Height="36" CornerRadius="8"/>
-                        </StackPanel>
+    <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="0" MinHeight="500" Width="650">
+        
+        <!-- Header do Modal -->
+        <Border Grid.Row="0" Padding="25,20,25,10" Background="Transparent">
+            <StackPanel Spacing="2">
+                <TextBlock IsVisible="{Binding !IsWatchMode}" Text="Configurar Cópia Direta" FontSize="22" FontWeight="ExtraBold" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock IsVisible="{Binding IsWatchMode}" Text="Configurar Watch Folder" FontSize="22" FontWeight="ExtraBold" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="Ajuste os parâmetros do motor FlowEngine para esta tarefa." FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
+            </StackPanel>
+        </Border>
 
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0,5">
-                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="8" Margin="0,0,0,15">
-                                <TextBlock Text="Diretório de Origem" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                                <DockPanel>
-                                    <Button Content="Selecionar" DockPanel.Dock="Right" Command="{Binding SelectSourcePathCommand}" Margin="10,0,0,0" Classes="accent" CornerRadius="8" Height="36"/>
-                                    <TextBox Text="{Binding SourcePathText}" Height="36" CornerRadius="8" Background="{DynamicResource CardBackground}"/>
-                                </DockPanel>
-                            </StackPanel>
+        <!-- Navegação Lateral (Unificada para evitar erros de índice) -->
+        <Border Grid.Row="1" Margin="25,5,25,10" Padding="4" Background="{DynamicResource SidebarBackground}" CornerRadius="12">
+            <ListBox Name="NavList" SelectedIndex="{Binding #ContentTabs.SelectedIndex}" Background="Transparent" BorderThickness="0">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Rows="1"/>
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="8,10"/>
+                        <Setter Property="CornerRadius" Value="8"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                    </Style>
+                    <Style Selector="ListBoxItem:selected">
+                        <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
+                    </Style>
+                    <Style Selector="ListBoxItem:selected TextBlock">
+                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                        <Setter Property="FontWeight" Value="Bold"/>
+                    </Style>
+                </ListBox.Styles>
+                
+                <ListBoxItem>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <material:MaterialIcon Kind="TuneVariant" Width="16" Height="16"/>
+                        <TextBlock Text="Geral" FontSize="13"/>
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <material:MaterialIcon Kind="FilterOutline" Width="16" Height="16"/>
+                        <TextBlock Text="Filtros" FontSize="13"/>
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <material:MaterialIcon Kind="{Binding IsWatchMode, Converter={StaticResource PageToColorConverter}, ConverterParameter='Icon'}" Width="16" Height="16"/>
+                        <TextBlock Text="{Binding IsWatchMode, Converter={StaticResource PageToColorConverter}, ConverterParameter='Text'}" FontSize="13"/>
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <material:MaterialIcon Kind="CloudSyncOutline" Width="16" Height="16"/>
+                        <TextBlock Text="Cloud" FontSize="13"/>
+                    </StackPanel>
+                </ListBoxItem>
+            </ListBox>
+        </Border>
 
-                            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="8" Margin="0,0,0,10">
-                                <TextBlock Text="Diretório de Destino" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                                <DockPanel>
-                                    <Button Content="Selecionar" DockPanel.Dock="Right" Command="{Binding SelectTargetPathCommand}" Margin="10,0,0,0" Classes="accent" CornerRadius="8" Height="36"/>
-                                    <TextBox Text="{Binding TargetPathText}" Height="36" CornerRadius="8" Background="{DynamicResource CardBackground}"/>
-                                </DockPanel>
+        <!-- Conteúdo Principal -->
+        <TabControl Name="ContentTabs" Grid.Row="2" Margin="0">
+            <TabControl.Styles>
+                <Style Selector="TabItem">
+                    <Setter Property="Header" Value=""/>
+                    <Setter Property="MinHeight" Value="0"/>
+                    <Setter Property="Padding" Value="0"/>
+                </Style>
+            </TabControl.Styles>
+
+            <!-- ABA 0: GERAL -->
+            <TabItem>
+                <ScrollViewer Padding="25,5,25,25" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="20">
+                        <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20" BoxShadow="{DynamicResource PremiumShadow}">
+                            <StackPanel Spacing="15">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Identificacao da Tarefa" FontWeight="Bold" FontSize="13"/>
+                                    <TextBox Text="{Binding Job.Name}" Watermark="Ex: Backup Diario Financeiro" Height="40" CornerRadius="8"/>
+                                </StackPanel>
+
+                                <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" Margin="0,5">
+                                    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="6" Margin="0,0,0,15">
+                                        <TextBlock Text="Origem dos Dados" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBox Text="{Binding SourcePathText}" Height="38" CornerRadius="8,0,0,8" Background="{DynamicResource SidebarBackground}" ScrollViewer.HorizontalScrollBarVisibility="Hidden"/>
+                                            <Button Grid.Column="1" Content="Selecionar" Command="{Binding SelectSourcePathCommand}" Padding="15,0" Height="38" CornerRadius="0,8,8,0" Classes="Primary" Theme="{DynamicResource SolidButton}"/>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="6">
+                                        <TextBlock Text="Destino Local (Fallback)" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBox Text="{Binding TargetPathText}" Height="38" CornerRadius="8,0,0,8" Background="{DynamicResource SidebarBackground}" ScrollViewer.HorizontalScrollBarVisibility="Hidden"/>
+                                            <Button Grid.Column="1" Content="Selecionar" Command="{Binding SelectTargetPathCommand}" Padding="15,0" Height="38" CornerRadius="0,8,8,0" Classes="Primary" Theme="{DynamicResource SolidButton}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
+                        </Border>
+
+                        <Grid ColumnDefinitions="*, *">
+                            <Border Grid.Column="0" Margin="0,0,8,0" Background="{DynamicResource CardBackground}" CornerRadius="10" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Modo de Operacao" FontWeight="Bold" FontSize="12"/>
+                                    <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding Job.Mode}" HorizontalAlignment="Stretch" Height="36" CornerRadius="6"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Margin="8,0,0,0" Background="{DynamicResource CardBackground}" CornerRadius="10" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Resolucao de Conflitos" FontWeight="Bold" FontSize="12"/>
+                                    <ComboBox ItemsSource="{Binding ConflictModes}" SelectedItem="{Binding Job.ConflictMode}" HorizontalAlignment="Stretch" Height="36" CornerRadius="6"/>
+                                </StackPanel>
+                            </Border>
                         </Grid>
 
-                        <UniformGrid Columns="2">
-                            <StackPanel Spacing="8" Margin="0,0,10,0">
-                                <TextBlock Text="Modo de Operação" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                                <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding Job.Mode}" HorizontalAlignment="Stretch" Height="36" CornerRadius="8"/>
+                        <Border Background="{DynamicResource CardBackground}" CornerRadius="10" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,20">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <material:MaterialIcon Kind="ShieldCheckOutline" Foreground="{DynamicResource SuccessColor}" Width="20" Height="20"/>
+                                <TextBlock Text="Verificar Integridade (SHA256)" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+                                <ToggleSwitch IsChecked="{Binding Job.VerifyHash}" OnContent="" OffContent="" Margin="15,0,0,0"/>
                             </StackPanel>
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="Política de Conflito" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                                <ComboBox ItemsSource="{Binding ConflictModes}" SelectedItem="{Binding Job.ConflictMode}" HorizontalAlignment="Stretch" Height="36" CornerRadius="8"/>
-                            </StackPanel>
-                        </UniformGrid>
-
-                        <Border Background="{DynamicResource CardBackground}" CornerRadius="8" Padding="15">
-                            <CheckBox IsChecked="{Binding Job.Recursive}" Content="Processar subdiretórios recursivamente" FontWeight="Medium"/>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
-            <!-- ABA FILTROS -->
-            <TabItem Header="Filtros &amp; Regras">
-                <ScrollViewer>
-                    <StackPanel Spacing="20" Margin="15">
-                        <TextBlock Text="Controle de Inclusão e Exclusão" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
-                        
-                        <Grid ColumnDefinitions="*,*">
-                            <StackPanel Grid.Column="0" Margin="0,0,10,0" Spacing="8">
-                                <TextBlock Text="Extensões Permitidas" Foreground="{DynamicResource TextSecondary}"/>
-                                <TextBox Text="{Binding ExtensionsText}" Watermark="ex: .pdf, .docx" Height="36" CornerRadius="8"/>
+            <!-- ABA 1: FILTROS -->
+            <TabItem>
+                <ScrollViewer Padding="25,5,25,25" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="20">
+                        <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BoxShadow="{DynamicResource PremiumShadow}">
+                            <StackPanel Spacing="15">
+                                <TextBlock Text="Regras de Incluso e Excluso" FontWeight="Bold" Foreground="{DynamicResource AccentColor}" FontSize="13"/>
+                                <Grid ColumnDefinitions="*, *">
+                                    <StackPanel Grid.Column="0" Margin="0,0,12,0" Spacing="6">
+                                        <TextBlock Text="Extenses Permitidas" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                        <TextBox Text="{Binding ExtensionsText}" Watermark=".zip, .pdf, .docx" Height="38" CornerRadius="8"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Spacing="6">
+                                        <TextBlock Text="Padres a Ignorar" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                        <TextBox Text="{Binding ExcludePatternsText}" Watermark="node_modules, temp" Height="38" CornerRadius="8"/>
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Expresso Regular (Regex)" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                    <TextBox Text="{Binding Job.NameRegex}" Watermark="Ex: ^[0-9]{4}_.*" FontFamily="Consolas" Height="38" CornerRadius="8"/>
+                                </StackPanel>
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="8">
-                                <TextBlock Text="Padrões para Ignorar" Foreground="{DynamicResource TextSecondary}"/>
-                                <TextBox Text="{Binding ExcludePatternsText}" Watermark="ex: temp, cache" Height="36" CornerRadius="8"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Validação por Regex (Nome do Arquivo)" Foreground="{DynamicResource TextSecondary}"/>
-                            <TextBox Text="{Binding Job.NameRegex}" Watermark="Expressão regular opcional" Height="36" CornerRadius="8" FontFamily="Consolas"/>
-                        </StackPanel>
-
-                        <Separator Opacity="0.5"/>
-
-                        <TextBlock Text="Restrições de Atributos" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
-                        
-                        <UniformGrid Columns="2">
-                            <StackPanel Spacing="8" Margin="0,0,10,0">
-                                <TextBlock Text="Tamanho Mínimo (KB)" Foreground="{DynamicResource TextSecondary}"/>
-                                <NumericUpDown Value="{Binding Job.MinSizeKB}" Minimum="0" Height="36" CornerRadius="8"/>
-                            </StackPanel>
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="Tamanho Máximo (KB)" Foreground="{DynamicResource TextSecondary}"/>
-                                <NumericUpDown Value="{Binding Job.MaxSizeKB}" Minimum="0" Height="36" CornerRadius="8"/>
-                            </StackPanel>
-                        </UniformGrid>
-
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Modificado recentemente (dias)" Foreground="{DynamicResource TextSecondary}"/>
-                            <NumericUpDown Value="{Binding Job.ModifiedWithinDays}" Minimum="0" Maximum="3650" Height="36" CornerRadius="8"/>
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- ABA AVANÇADO -->
-            <TabItem Header="Avançado &amp; Agendamento">
-                <ScrollViewer>
-                    <StackPanel Spacing="20" Margin="15">
-                        <TextBlock Text="FlowEngine Engine" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
-                        
-                        <UniformGrid Columns="2">
-                            <CheckBox IsChecked="{Binding Job.SmartSync}" Content="SmartSync (Delta)"/>
-                            <CheckBox IsChecked="{Binding Job.VerifyHash}" Content="Verificar Hash (DNA)"/>
-                            <CheckBox IsChecked="{Binding Job.EnableTrash}" Content="Safe Trash (Lixeira)"/>
-                            <CheckBox IsChecked="{Binding Job.WatchEnabled}" Content="Hotfolder (Real-time)"/>
-                        </UniformGrid>
-
-                        <StackPanel Spacing="8" IsVisible="{Binding Job.WatchEnabled}">
-                            <TextBlock Text="Tempo de Estabilização (Settle Time)" Foreground="{DynamicResource TextSecondary}"/>
-                            <NumericUpDown Value="{Binding Job.SettleTimeSeconds}" Minimum="1" Maximum="300" Height="36" CornerRadius="8"/>
-                        </StackPanel>
-
-                        <Separator Opacity="0.5"/>
-
-                        <TextBlock Text="Scheduler Automático" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
-                        <ComboBox ItemsSource="{Binding ScheduleTypes}" SelectedItem="{Binding Job.ScheduleType}" Width="250" Height="36" CornerRadius="8"/>
-                        
-                        <StackPanel IsVisible="{Binding Job.ScheduleType, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Static enums:ScheduleType.Interval}}" Spacing="8">
-                            <TextBlock Text="Repetir a cada (minutos)"/>
-                            <NumericUpDown Value="{Binding Job.IntervalMinutes}" Minimum="1" Maximum="1440" Height="36" CornerRadius="8"/>
-                        </StackPanel>
-
-                        <StackPanel IsVisible="{Binding Job.ScheduleType, Converter={StaticResource NotEqualsConverter}, ConverterParameter={x:Static enums:ScheduleType.None}}" Spacing="8">
-                            <TextBlock Text="Executar no horário (HH:mm)"/>
-                            <TextBox Text="{Binding Job.ScheduleTime}" Watermark="ex: 03:00" Height="36" CornerRadius="8"/>
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- ABA SHAREPOINT (Cloud Bridge) -->
-            <TabItem Header="Cloud Bridge (SharePoint)">
-                <ScrollViewer>
-                    <StackPanel Spacing="20" Margin="15">
-                        <StackPanel Orientation="Horizontal" Spacing="15">
-                            <material:MaterialIcon Kind="ShareVariant" Width="24" Height="24" Foreground="{DynamicResource AccentColor}"/>
-                            <TextBlock Text="Integração Direta SharePoint / OneDrive" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
-                        </StackPanel>
-
-                        <Border Background="{DynamicResource SuccessColor}" Opacity="0.1" CornerRadius="8" Padding="15">
-                            <TextBlock Text="Habilite esta aba se o destino ou origem for uma biblioteca do SharePoint Online." FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
                         </Border>
 
-                        <StackPanel Spacing="15">
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="Site URL (SharePoint Site)" Foreground="{DynamicResource TextSecondary}"/>
-                                <TextBox Watermark="https://tenant.sharepoint.com/sites/NomeDoSite" Height="36" CornerRadius="8"/>
+                        <Border Background="{DynamicResource SidebarBackground}" CornerRadius="12" Padding="20" Opacity="0.8" Margin="0,0,0,20">
+                            <StackPanel Spacing="15">
+                                <TextBlock Text="Restries Tcnicas" FontWeight="Bold" FontSize="13"/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Spacing="6" Margin="0,0,12,0">
+                                        <TextBlock Text="Tamanho Mn. (KB)" FontSize="11"/>
+                                        <NumericUpDown Value="{Binding Job.MinSizeKB}" Minimum="0" Height="36" CornerRadius="6"/>
+                                    </StackPanel>
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Modificado em (Dias)" FontSize="11"/>
+                                        <NumericUpDown Value="{Binding Job.ModifiedWithinDays}" Minimum="0" Height="36" CornerRadius="6"/>
+                                    </StackPanel>
+                                </UniformGrid>
                             </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-                            <Grid ColumnDefinitions="*,*">
-                                <StackPanel Grid.Column="0" Margin="0,0,10,0" Spacing="8">
-                                    <TextBlock Text="Tenant ID (Azure)" Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBox Watermark="00000000-0000-..." Height="36" CornerRadius="8"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="8">
-                                    <TextBlock Text="Client ID (App Registration)" Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBox Watermark="00000000-0000-..." Height="36" CornerRadius="8"/>
-                                </StackPanel>
-                            </Grid>
+            <!-- ABA 2: AGENDA OU HOTFOLDER (DINAMICA) -->
+            <TabItem>
+                <ScrollViewer Padding="25,5,25,25" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="20">
+                        
+                        <!-- CONTEUDO PARA WATCH FOLDER (HOTFOLDER) -->
+                        <StackPanel IsVisible="{Binding IsWatchMode}" Spacing="20">
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BoxShadow="{DynamicResource PremiumShadow}">
+                                <StackPanel Spacing="15">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <material:MaterialIcon Kind="Radar" Foreground="{DynamicResource SuccessColor}" Width="20" Height="20"/>
+                                        <TextBlock Text="Monitoramento Ativo" FontWeight="Bold" VerticalAlignment="Center" FontSize="13"/>
+                                    </StackPanel>
+                                    
+                                    <Grid ColumnDefinitions="*, *">
+                                        <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,10,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="5" Background="Transparent" 
+                                                        ToolTip.Tip="RealTime: Reage instantaneamente a mudancas (ideal p/ discos locais).&#x0a;Polling: Verifica a pasta periodicamente (ideal p/ discos de rede/NAS).">
+                                                <TextBlock Text="Modo de Gatilho" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                                <material:MaterialIcon Kind="HelpCircleOutline" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
+                                            </StackPanel>
+                                            <ComboBox ItemsSource="{Binding MonitoringModes}" SelectedItem="{Binding Job.MonitoringMode}" HorizontalAlignment="Stretch" Height="36" CornerRadius="6"/>
+                                        </StackPanel>
 
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="Document Library Name" Foreground="{DynamicResource TextSecondary}"/>
-                                <TextBox Watermark="ex: Documentos Compartilhados" Height="36" CornerRadius="8"/>
-                            </StackPanel>
+                                        
+                                        <StackPanel Grid.Column="1" Spacing="6">
+                                            <TextBlock Text="Estabilizacao (Settle Time)" FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                                      ToolTip.Tip="Aguardar X segundos apos a detecao para garantir que o arquivo terminou de ser gravado."/>
+                                            <Grid ColumnDefinitions="*, Auto">
+                                                <Slider Value="{Binding Job.SettleTimeSeconds}" Minimum="1" Maximum="60" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Job.SettleTimeSeconds, StringFormat='{}{0}s'}" FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource AccentColor}"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- OPCAO DE POLLING (S visvel se MonitoringMode for Polling) -->
+                                    <StackPanel IsVisible="{Binding Job.MonitoringMode, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Static enums:MonitoringMode.Polling}}" Spacing="6">
+                                        <TextBlock Text="Intervalo de Varredura (Polling)" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <Slider Value="{Binding Job.ScanIntervalSeconds}" Minimum="10" Maximum="3600" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Job.ScanIntervalSeconds, StringFormat='{}{0}s'}" FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource AccentColor}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
 
-                        <Button Content="Testar Conexão Cloud" Classes="accent" HorizontalAlignment="Left" Padding="20,10" CornerRadius="8"/>
+                        <!-- CONTEUDO PARA COPIA DIRETA (AGENDAMENTO AVANCADO) -->
+                        <StackPanel IsVisible="{Binding !IsWatchMode}" Spacing="20">
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="15">
+                                    <TextBlock Text="Agendador de Tarefas" FontWeight="Bold" Foreground="{DynamicResource AccentColor}" FontSize="13"/>
+                                    <ComboBox ItemsSource="{Binding ScheduleTypes}" SelectedItem="{Binding Job.ScheduleType}" HorizontalAlignment="Stretch" Height="40" CornerRadius="8"/>
+                                    
+                                    <StackPanel IsVisible="{Binding Job.ScheduleType, Converter={StaticResource NotEqualsConverter}, ConverterParameter={x:Static enums:ScheduleType.None}}" Spacing="15" Margin="0,10,0,0">
+                                        <Separator Opacity="0.3"/>
+                                        
+                                        <!-- Opes de Intervalo -->
+                                        <StackPanel IsVisible="{Binding Job.ScheduleType, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Static enums:ScheduleType.Interval}}" Spacing="6">
+                                            <TextBlock Text="Executar a cada (Minutos)" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                            <NumericUpDown Value="{Binding Job.IntervalMinutes}" Minimum="1" Maximum="1440" Height="36"/>
+                                        </StackPanel>
+
+                                        <!-- Opes de Dias da Semana (Weekly) -->
+                                        <StackPanel IsVisible="{Binding Job.ScheduleType, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Static enums:ScheduleType.Weekly}}" Spacing="8">
+                                            <TextBlock Text="Dias da Semana" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                            <UniformGrid Columns="7">
+                                                <ToggleButton Content="DOM" IsChecked="{Binding IsSun}" Height="34" Margin="0,0,4,0" FontSize="10" HorizontalContentAlignment="Center"/>
+                                                <ToggleButton Content="SEG" IsChecked="{Binding IsMon}" Height="34" Margin="0,0,4,0" FontSize="10" HorizontalContentAlignment="Center"/>
+                                                <ToggleButton Content="TER" IsChecked="{Binding IsTue}" Height="34" Margin="0,0,4,0" FontSize="10" HorizontalContentAlignment="Center"/>
+                                                <ToggleButton Content="QUA" IsChecked="{Binding IsWed}" Height="34" Margin="0,0,4,0" FontSize="10" HorizontalContentAlignment="Center"/>
+                                                <ToggleButton Content="QUI" IsChecked="{Binding IsThu}" Height="34" Margin="0,0,4,0" FontSize="10" HorizontalContentAlignment="Center"/>
+                                                <ToggleButton Content="SEX" IsChecked="{Binding IsFri}" Height="34" Margin="0,0,4,0" FontSize="10" HorizontalContentAlignment="Center"/>
+                                                <ToggleButton Content="SAB" IsChecked="{Binding IsSat}" Height="34" FontSize="10" HorizontalContentAlignment="Center"/>
+                                            </UniformGrid>
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Text="Data Especifica (Opcional)" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                            <DatePicker SelectedDate="{Binding SelectedDateOffset}" Height="38" HorizontalAlignment="Stretch"/>
+                                        </StackPanel>
+
+                                        <TextBlock Text="Horario de Disparo" FontWeight="SemiBold" FontSize="12"/>
+                                        <Grid ColumnDefinitions="*, *, *">
+                                            <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                                <TextBlock Text="Horas" FontSize="10" Foreground="{DynamicResource TextSecondary}"/>
+                                                <NumericUpDown Value="{Binding ScheduleHour}" Minimum="0" Maximum="23" FormatString="00" Height="36"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,8,0">
+                                                <TextBlock Text="Minutos" FontSize="10" Foreground="{DynamicResource TextSecondary}"/>
+                                                <NumericUpDown Value="{Binding ScheduleMinute}" Minimum="0" Maximum="59" FormatString="00" Height="36"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Spacing="4">
+                                                <TextBlock Text="Segundos" FontSize="10" Foreground="{DynamicResource TextSecondary}"/>
+                                                <NumericUpDown Value="{Binding ScheduleSecond}" Minimum="0" Maximum="59" FormatString="00" Height="36"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <Border Background="{DynamicResource SidebarBackground}" CornerRadius="10" Padding="15" Margin="0,0,0,20">
+                             <TextBlock Text="Dica: Watch Folders reagem a mudancas em tempo real. Agendamentos rodam em horarios programados." FontSize="11" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Opacity="0.7"/>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ABA 3: CLOUD -->
+            <TabItem>
+                <ScrollViewer Padding="25,5,25,25" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="20">
+                        <Border Background="{DynamicResource SidebarBackground}" CornerRadius="12" BorderBrush="{DynamicResource SuccessColor}" BorderThickness="1" Padding="20">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <material:MaterialIcon Kind="MicrosoftAzure" Foreground="{DynamicResource SuccessColor}" Width="24" Height="24"/>
+                                    <TextBlock Text="Conexao Cloud Bridge" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
+                                </StackPanel>
+                                <TextBlock Text="Integre esta tarefa diretamente com o SharePoint Online." FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BoxShadow="{DynamicResource PremiumShadow}" Margin="0,0,0,20">
+                            <StackPanel Spacing="15">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="URL do Site SharePoint" FontWeight="SemiBold" FontSize="12"/>
+                                    <TextBox Watermark="https://empresa.sharepoint.com/sites/Backup" Height="40" CornerRadius="8" ScrollViewer.HorizontalScrollBarVisibility="Hidden"/>
+                                </StackPanel>
+
+                                <Grid ColumnDefinitions="*, *">
+                                    <StackPanel Grid.Column="0" Margin="0,0,12,0" Spacing="6">
+                                        <TextBlock Text="Tenant ID" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                        <TextBox PasswordChar="●" Height="38" CornerRadius="8"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Spacing="6">
+                                        <TextBlock Text="Client ID" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                        <TextBox PasswordChar="●" Height="38" CornerRadius="8"/>
+                                    </StackPanel>
+                                </Grid>
+                                
+                                <Button Content="Validar Conexao Cloud" HorizontalAlignment="Stretch" Height="42" CornerRadius="8" Classes="Primary" Theme="{DynamicResource SolidButton}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
         </TabControl>
 
-        <!-- Botões de Ação Fixos -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="15" HorizontalAlignment="Right" Margin="15">
-            <Button Command="{Binding CancelCommand}" Content="Descartar" Padding="25,10" CornerRadius="10" Background="Transparent" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"/>
-            <Button Command="{Binding SaveCommand}" Content="Salvar Tarefa" Padding="25,10" CornerRadius="10" Classes="accent" FontWeight="Bold"/>
-        </StackPanel>
+        <!-- Footer de Ações -->
+        <Border Grid.Row="3" Padding="25,15" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource SidebarBorderBrush}" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16">
+            <Grid ColumnDefinitions="*, Auto, Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                    <material:MaterialIcon Kind="InformationOutline" Foreground="{DynamicResource TextMuted}" Width="14" Height="14"/>
+                    <TextBlock Text="Lembre-se de salvar suas alteracoes." VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                </StackPanel>
+                
+                <Button Grid.Column="1" Command="{Binding CancelCommand}" Content="Descartar" Padding="20,8" CornerRadius="8" Background="Transparent" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,12,0"/>
+                
+                <Button Grid.Column="2" Command="{Binding SaveCommand}" Content="Salvar Tarefa" Padding="30,10" CornerRadius="8" Classes="Primary" Theme="{DynamicResource SolidButton}" FontWeight="Bold" FontSize="14"/>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

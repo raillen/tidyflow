@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
@@ -30,41 +31,70 @@ public partial class App : Avalonia.Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        var services = new ServiceCollection();
-        ConfigureServices(services);
-        Services = services.BuildServiceProvider();
-
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        try
         {
-            DisableAvaloniaDataAnnotationValidation();
-            
-            var mainWindowViewModel = Services.GetRequiredService<MainWindowViewModel>();
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = mainWindowViewModel,
-            };
+            System.IO.File.AppendAllText("trace.txt", "1. Starting DI configuration...\n");
+            var services = new ServiceCollection();
+            ConfigureServices(services);
+            Services = services.BuildServiceProvider();
 
-            // Inicialização assíncrona para evitar deadlock na UI
-            _ = InitializeServicesAsync();
+            System.IO.File.AppendAllText("trace.txt", "2. DI configured.\n");
+
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                DisableAvaloniaDataAnnotationValidation();
+                
+                System.IO.File.AppendAllText("trace.txt", "3. Creating MainWindow...\n");
+                var mainWindowViewModel = Services.GetRequiredService<MainWindowViewModel>();
+                desktop.MainWindow = new MainWindow
+                {
+                    DataContext = mainWindowViewModel,
+                };
+                
+                desktop.MainWindow.Opened += (s, e) => System.IO.File.AppendAllText("trace.txt", "   -> MainWindow Opened.\n");
+                desktop.MainWindow.Closed += (s, e) => System.IO.File.AppendAllText("trace.txt", "   -> MainWindow Closed.\n");
+
+                System.IO.File.AppendAllText("trace.txt", "4. Starting InitializeServicesAsync...\n");
+                // Inicialização assíncrona para evitar deadlock na UI
+                _ = InitializeServicesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.IO.File.WriteAllText("init_error.txt", ex.ToString());
+            throw;
         }
 
         base.OnFrameworkInitializationCompleted();
+        System.IO.File.AppendAllText("trace.txt", "5. OnFrameworkInitializationCompleted done.\n");
     }
 
     public void OnOpenClick(object? sender, EventArgs e)
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow is Window window)
         {
-            desktop.MainWindow.Show();
-            desktop.MainWindow.Activate();
+            // Força a exibição e restauração do estado correto da janela
+            window.Show();
+            
+            if (window.WindowState == WindowState.Minimized)
+            {
+                window.WindowState = WindowState.Normal;
+            }
+
+            // Hack para trazer a janela para frente em alguns SOs
+            window.Topmost = true;
+            window.Topmost = false;
+
+            window.Activate();
+            window.Focus();
         }
     }
 
     public void OnExitClick(object? sender, EventArgs e)
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow is MainWindow window)
         {
-            desktop.Shutdown();
+            window.ForceClose();
         }
     }
 
@@ -106,6 +136,8 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IHashService, Sha256HashService>();
         services.AddSingleton<ICloudHydrationService, WindowsCloudHydrationService>();
         services.AddSingleton<ILocalizationService, JsonLocalizationService>();
+        services.AddSingleton<ISystemActivityService, SystemActivityService>();
+        services.AddSingleton<GlobalProgressService>();
 
         // Application Services
         services.AddSingleton<JobAppService>();

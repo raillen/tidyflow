@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using FolderFlow.Application.Interfaces;
 using FolderFlow.Domain.Entities;
 using FolderFlow.Domain.Enums;
@@ -20,6 +21,8 @@ public class ExecutionEngine
     private readonly ICloudHydrationService _cloudHydrationService;
     private readonly IAuditService _auditService;
     private readonly IFailureStore _failureStore;
+    private readonly ISystemActivityService _activityService;
+    private readonly GlobalProgressService _globalProgressService;
 
     public ExecutionEngine(
         IFileOperator fileOperator, 
@@ -28,7 +31,9 @@ public class ExecutionEngine
         INotificationService notificationService,
         ICloudHydrationService cloudHydrationService,
         IAuditService auditService,
-        IFailureStore failureStore)
+        IFailureStore failureStore,
+        ISystemActivityService activityService,
+        GlobalProgressService globalProgressService)
     {
         _fileOperator = fileOperator;
         _logger = logger;
@@ -37,6 +42,8 @@ public class ExecutionEngine
         _cloudHydrationService = cloudHydrationService;
         _auditService = auditService;
         _failureStore = failureStore;
+        _activityService = activityService;
+        _globalProgressService = globalProgressService;
     }
 
     public async Task RunJobAsync(Job job, CancellationToken cancellationToken = default, bool isRetry = false, IProgress<JobProgressInfo>? progress = null)
@@ -44,9 +51,21 @@ public class ExecutionEngine
         var auditEntries = new System.Collections.Generic.List<AuditEntry>();
         var failedPaths = new System.Collections.Generic.List<string>();
         var progressInfo = new JobProgressInfo { JobId = job.Id, JobName = job.Name };
+        var lastReportTime = DateTime.MinValue;
+
+        void ReportProgress(bool force = false)
+        {
+            if (force || (DateTime.Now - lastReportTime).TotalMilliseconds > 200)
+            {
+                progress?.Report(progressInfo);
+                _globalProgressService.ReportProgress(progressInfo);
+                lastReportTime = DateTime.Now;
+            }
+        }
 
         try
         {
+            await _activityService.LogActivityAsync($"Tarefa '{job.Name}' iniciada.");
             await _logger.LogAsync($"Iniciando Job: {job.Name}" + (isRetry ? " [MODO RETRY]" : ""));
 
             if (!_fileOperator.Exists(job.SourcePath) && !isRetry)
@@ -56,6 +75,7 @@ public class ExecutionEngine
                 _notificationService.Show("Erro no Job", msg, true);
                 auditEntries.Add(new AuditEntry { JobName = job.Name, Status = "FALHA", Details = msg });
                 await _auditService.SaveReportAsync(job.Name, auditEntries);
+                await _activityService.LogActivityAsync($"Tarefa '{job.Name}' falhou: Origem no encontrada.", "ERROR");
                 return;
             }
 
@@ -80,16 +100,18 @@ public class ExecutionEngine
                 if (cancellationToken.IsCancellationRequested) break;
 
                 progressInfo.CurrentFile = Path.GetFileName(file);
-                progress?.Report(progressInfo);
+                ReportProgress();
 
                 if (ShouldProcessFile(file, job))
                 {
-                    // RETRY AUTOMÁTICO (3 vezes)
+                    // RETRY AUTOMTICO (3 vezes)
                     AuditEntry? entry = null;
                     int attempts = 0;
                     while (attempts < 3)
                     {
-                        entry = await ProcessFileAsync(file, job, cancellationToken);
+                        progressInfo.CurrentFilePercentage = 0;
+                        progressInfo.TransferSpeed = 0;
+                        entry = await ProcessFileAsync(file, job, cancellationToken, (p) => ReportProgress(), progressInfo);
                         if (entry != null && entry.Status != "FALHA") break;
                         
                         attempts++;
@@ -101,16 +123,25 @@ public class ExecutionEngine
                         auditEntries.Add(entry);
                         if (entry.Status == "FALHA") failedPaths.Add(file);
                         else if (entry.Status != "IGNORADO") processedCount++;
+
+                        progressInfo.Status = entry.Status;
+                        progressInfo.Details = entry.Details ?? "";
                     }
                 }
                 else
                 {
-                    auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, Status = "IGNORADO", Details = "Filtro de exclusão ou critérios de data/tamanho." });
+                    var details = "Filtro de excluso ou critrios de data/tamanho.";
+                    auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, Status = "IGNORADO", Details = details });
+                    progressInfo.Status = "IGNORADO";
+                    progressInfo.Details = details;
                 }
 
                 progressInfo.ProcessedFiles++;
-                progress?.Report(progressInfo);
+                progressInfo.Timestamp = DateTime.Now;
+                ReportProgress();
             }
+
+            ReportProgress(true); // Final report
 
             if (failedPaths.Any()) await _failureStore.SaveFailuresAsync(job.Id, failedPaths);
             else await _failureStore.ClearFailuresAsync(job.Id);
@@ -118,55 +149,64 @@ public class ExecutionEngine
             await _auditService.SaveReportAsync(job.Name, auditEntries);
             await _logger.LogAsync($"Job Finalizado: {job.Name}. {processedCount} processados.");
             _notificationService.Show("Job Concluído", $"{job.Name}: {processedCount} processados.");
+            await _activityService.LogActivityAsync($"Tarefa '{job.Name}' concluda. {processedCount} arquivos processados.");
+        }
+        catch (OperationCanceledException)
+        {
+            await _activityService.LogActivityAsync($"Tarefa '{job.Name}' cancelada pelo usurio.", "WARNING");
         }
         catch (Exception ex)
         {
             await _logger.LogAsync($"ERRO CRÍTICO: {ex.Message}", "ERROR");
             _notificationService.Show("Erro Crítico", ex.Message, true);
+            await _activityService.LogActivityAsync($"Erro crtico na tarefa '{job.Name}': {ex.Message}", "ERROR");
         }
     }
 
     private bool ShouldProcessFile(string file, Job job)
     {
-        var info = new FileInfo(file);
+        var meta = _fileOperator.GetFileMetadata(file);
+        if (meta == null) return false;
         
         // Extensões
         if (job.IncludeExtensions.Any())
         {
-            var ext = info.Extension.ToLower();
+            var ext = Path.GetExtension(file).ToLower();
             if (!job.IncludeExtensions.Any(e => e.Trim().ToLower() == ext)) return false;
         }
 
         // Regex
         if (!string.IsNullOrWhiteSpace(job.NameRegex))
         {
-            if (!Regex.IsMatch(info.Name, job.NameRegex, RegexOptions.IgnoreCase)) return false;
+            if (!Regex.IsMatch(Path.GetFileName(file), job.NameRegex, RegexOptions.IgnoreCase)) return false;
         }
 
         // Exclusão
         if (job.ExcludePatterns.Any(p => file.Contains(p, StringComparison.OrdinalIgnoreCase))) return false;
 
         // Tamanho
-        if (job.MinSizeKB.HasValue && info.Length < job.MinSizeKB * 1024) return false;
-        if (job.MaxSizeKB.HasValue && info.Length > job.MaxSizeKB * 1024) return false;
+        if (job.MinSizeKB.HasValue && meta.Size < job.MinSizeKB * 1024) return false;
+        if (job.MaxSizeKB.HasValue && meta.Size > job.MaxSizeKB * 1024) return false;
 
         // Data
         if (job.ModifiedWithinDays.HasValue)
         {
-            if (DateTime.Now - info.LastWriteTime > TimeSpan.FromDays(job.ModifiedWithinDays.Value)) return false;
+            if (DateTime.UtcNow - meta.LastWriteTimeUtc > TimeSpan.FromDays(job.ModifiedWithinDays.Value)) return false;
         }
 
         return true;
     }
 
-    private async Task<AuditEntry?> ProcessFileAsync(string sourceFile, Job job, CancellationToken cancellationToken)
+    private async Task<AuditEntry?> ProcessFileAsync(string sourceFile, Job job, CancellationToken cancellationToken, Action<JobProgressInfo>? reportAction = null, JobProgressInfo? progressInfo = null)
     {
         var entry = new AuditEntry { JobName = job.Name, SourcePath = sourceFile };
+        string? targetFile = null;
+
         try
         {
-            _cloudHydrationService.EnsureFileIsLocal(sourceFile);
+            await _cloudHydrationService.EnsureFileIsLocalAsync(sourceFile, cancellationToken);
             var relativePath = Path.GetRelativePath(job.SourcePath, sourceFile);
-            var targetFile = Path.Combine(job.TargetPath, relativePath);
+            targetFile = Path.Combine(job.TargetPath, relativePath);
             entry.TargetPath = targetFile;
 
             _fileOperator.CreateDirectory(Path.GetDirectoryName(targetFile)!);
@@ -191,13 +231,77 @@ public class ExecutionEngine
                 }
             }
 
-            if (job.Mode == JobMode.Copy) await _fileOperator.CopyAsync(sourceFile, targetFile, cancellationToken);
-            else await _fileOperator.MoveAsync(sourceFile, targetFile, cancellationToken);
+            if (job.Mode == JobMode.Copy || job.VerifyHash) 
+            {
+                var meta = _fileOperator.GetFileMetadata(sourceFile);
+                var totalBytes = meta?.Size ?? 0;
+                var sw = Stopwatch.StartNew();
+
+                var fileProgress = new Progress<double>(p => 
+                {
+                    if (progressInfo != null)
+                    {
+                        progressInfo.CurrentFilePercentage = p;
+                        var elapsed = sw.Elapsed.TotalSeconds;
+                        if (elapsed > 0)
+                        {
+                            progressInfo.TransferSpeed = (totalBytes * (p / 100)) / elapsed;
+                        }
+                        reportAction?.Invoke(progressInfo);
+                    }
+                });
+                await _fileOperator.CopyAsync(sourceFile, targetFile, cancellationToken, fileProgress);
+                sw.Stop();
+            }
+            else 
+            {
+                await _fileOperator.MoveAsync(sourceFile, targetFile, cancellationToken);
+            }
+
+            // Verificao de Integridade
+            if (job.VerifyHash)
+            {
+                var sourceHash = await _hashService.ComputeHashAsync(sourceFile);
+                var targetHash = await _hashService.ComputeHashAsync(targetFile);
+
+                if (sourceHash != targetHash)
+                {
+                    await _fileOperator.DeleteAsync(targetFile, CancellationToken.None); // Sem token para garantir deleo
+                    entry.Status = "FALHA";
+                    entry.Details = "Falha na verificao de integridade (Hash mismatch).";
+                    return entry;
+                }
+
+                // Se era MOVE, deleta a origem agora que o hash bateu
+                if (job.Mode == JobMode.Move)
+                {
+                    await _fileOperator.DeleteAsync(sourceFile, CancellationToken.None);
+                }
+            }
 
             entry.Status = (job.Mode == JobMode.Copy) ? "COPIADO" : "MOVIDO";
             return entry;
         }
-        catch (Exception ex) { entry.Status = "FALHA"; entry.Details = ex.Message; return entry; }
+        catch (OperationCanceledException)
+        {
+            // LIMPEZA SEGURA: Se cancelado, remove arquivo de destino parcial para evitar corrupo
+            if (targetFile != null && _fileOperator.Exists(targetFile))
+            {
+                await _fileOperator.DeleteAsync(targetFile, CancellationToken.None);
+            }
+            throw; // Repropagar para o RunJobAsync tratar
+        }
+        catch (Exception ex) 
+        { 
+            // Limpeza em caso de erro genrico se o arquivo destino existe
+            if (targetFile != null && _fileOperator.Exists(targetFile))
+            {
+                await _fileOperator.DeleteAsync(targetFile, CancellationToken.None);
+            }
+            entry.Status = "FALHA"; 
+            entry.Details = ex.Message; 
+            return entry; 
+        }
     }
 
     private async Task MoveToTrashAsync(string filePath, Job job, CancellationToken cancellationToken)

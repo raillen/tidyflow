@@ -42,6 +42,7 @@ public partial class JobEditorViewModel : ViewModelBase
     public ObservableCollection<JobMode> Modes { get; } = new(new[] { JobMode.Copy, JobMode.Move });
     public ObservableCollection<ConflictMode> ConflictModes { get; } = new(new[] { ConflictMode.Skip, ConflictMode.Overwrite, ConflictMode.Rename });
     public ObservableCollection<ScheduleType> ScheduleTypes { get; } = new(new[] { ScheduleType.None, ScheduleType.Interval, ScheduleType.Daily, ScheduleType.Weekly });
+    public ObservableCollection<MonitoringMode> MonitoringModes { get; } = new(new[] { MonitoringMode.RealTime, MonitoringMode.Polling });
 
     public event Action? Saved;
     public event Action? Cancelled;
@@ -52,6 +53,24 @@ public partial class JobEditorViewModel : ViewModelBase
         _storageService = storageService;
         _previewEngine = previewEngine;
     }
+
+    [ObservableProperty]
+    private bool _isWatchMode;
+
+    [ObservableProperty]
+    private int _scheduleHour;
+
+    [ObservableProperty]
+    private int _scheduleMinute;
+
+    [ObservableProperty]
+    private int _scheduleSecond;
+
+    [ObservableProperty]
+    private bool _isSun, _isMon, _isTue, _isWed, _isThu, _isFri, _isSat;
+
+    [ObservableProperty]
+    private DateTimeOffset? _selectedDateOffset;
 
     public void SetJob(Job job)
     {
@@ -69,6 +88,8 @@ public partial class JobEditorViewModel : ViewModelBase
             VerifyHash = job.VerifyHash,
             EnableTrash = job.EnableTrash,
             SettleTimeSeconds = job.SettleTimeSeconds,
+            MonitoringMode = job.MonitoringMode,
+            ScanIntervalSeconds = job.ScanIntervalSeconds,
             NameRegex = job.NameRegex,
             MinSizeKB = job.MinSizeKB,
             MaxSizeKB = job.MaxSizeKB,
@@ -76,6 +97,8 @@ public partial class JobEditorViewModel : ViewModelBase
             ScheduleType = job.ScheduleType,
             IntervalMinutes = job.IntervalMinutes,
             ScheduleTime = job.ScheduleTime,
+            SpecificDate = job.SpecificDate,
+            DaysOfWeek = new System.Collections.Generic.List<DayOfWeek>(job.DaysOfWeek ?? new()),
             IncludeExtensions = new System.Collections.Generic.List<string>(job.IncludeExtensions),
             ExcludePatterns = new System.Collections.Generic.List<string>(job.ExcludePatterns)
         };
@@ -83,6 +106,28 @@ public partial class JobEditorViewModel : ViewModelBase
         TargetPathText = Job.TargetPath;
         ExtensionsText = string.Join(", ", Job.IncludeExtensions);
         ExcludePatternsText = string.Join(", ", Job.ExcludePatterns);
+        SelectedDateOffset = Job.SpecificDate.HasValue ? new DateTimeOffset(Job.SpecificDate.Value) : null;
+        
+        var days = Job.DaysOfWeek ?? new();
+        IsSun = days.Contains(DayOfWeek.Sunday);
+        IsMon = days.Contains(DayOfWeek.Monday);
+        IsTue = days.Contains(DayOfWeek.Tuesday);
+        IsWed = days.Contains(DayOfWeek.Wednesday);
+        IsThu = days.Contains(DayOfWeek.Thursday);
+        IsFri = days.Contains(DayOfWeek.Friday);
+        IsSat = days.Contains(DayOfWeek.Saturday);
+
+        if (TimeSpan.TryParse(Job.ScheduleTime, out var ts))
+        {
+            ScheduleHour = ts.Hours;
+            ScheduleMinute = ts.Minutes;
+            ScheduleSecond = ts.Seconds;
+        }
+        else
+        {
+            ScheduleHour = 3; ScheduleMinute = 0; ScheduleSecond = 0;
+        }
+
         CurrentPreview = null;
     }
 
@@ -90,6 +135,19 @@ public partial class JobEditorViewModel : ViewModelBase
     {
         Job.SourcePath = SourcePathText;
         Job.TargetPath = TargetPathText;
+        Job.SpecificDate = SelectedDateOffset.HasValue ? SelectedDateOffset.Value.DateTime : null;
+        Job.ScheduleTime = $"{ScheduleHour:D2}:{ScheduleMinute:D2}:{ScheduleSecond:D2}";
+        
+        var days = new System.Collections.Generic.List<DayOfWeek>();
+        if (IsSun) days.Add(DayOfWeek.Sunday);
+        if (IsMon) days.Add(DayOfWeek.Monday);
+        if (IsTue) days.Add(DayOfWeek.Tuesday);
+        if (IsWed) days.Add(DayOfWeek.Wednesday);
+        if (IsThu) days.Add(DayOfWeek.Thursday);
+        if (IsFri) days.Add(DayOfWeek.Friday);
+        if (IsSat) days.Add(DayOfWeek.Saturday);
+        Job.DaysOfWeek = days;
+
         Job.IncludeExtensions = ExtensionsText.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
         Job.ExcludePatterns = ExcludePatternsText.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
     }
@@ -133,6 +191,22 @@ public partial class JobEditorViewModel : ViewModelBase
         try
         {
             SyncJobFields();
+
+            // Validao de Segurana e Compliance
+            if (!FolderFlow.Application.Helpers.PathValidator.IsValidPath(Job.SourcePath, out var errorSource))
+            {
+                var ns = App.Services?.GetService(typeof(INotificationService)) as INotificationService;
+                ns?.Show("Caminho Invlido", $"Origem: {errorSource}", true);
+                return;
+            }
+
+            if (!FolderFlow.Application.Helpers.PathValidator.IsValidPath(Job.TargetPath, out var errorTarget))
+            {
+                var ns = App.Services?.GetService(typeof(INotificationService)) as INotificationService;
+                ns?.Show("Caminho Invlido", $"Destino: {errorTarget}", true);
+                return;
+            }
+
             await _jobAppService.SaveJobAsync(Job);
             Saved?.Invoke();
         }

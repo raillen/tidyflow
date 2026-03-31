@@ -12,7 +12,7 @@ public class QueueProcessor
 {
     private readonly IJobQueue _jobQueue;
     private readonly ExecutionEngine _executionEngine;
-    private readonly ConcurrentDictionary<Guid, bool> _activeJobs = new();
+    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _activeJobs = new();
     private CancellationTokenSource? _cts;
 
     public int ActiveCount => _activeJobs.Count;
@@ -23,10 +23,20 @@ public class QueueProcessor
         _executionEngine = executionEngine;
     }
 
+    public bool IsJobActive(Guid jobId) => _activeJobs.ContainsKey(jobId);
+
     public void Start(CancellationToken cancellationToken)
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         Task.Run(async () => await ProcessQueueAsync(_cts.Token));
+    }
+
+    public void StopJob(Guid jobId)
+    {
+        if (_activeJobs.TryGetValue(jobId, out var cts))
+        {
+            cts.Cancel();
+        }
     }
 
     private async Task ProcessQueueAsync(CancellationToken cancellationToken)
@@ -38,13 +48,14 @@ public class QueueProcessor
                 var job = await _jobQueue.DequeueAsync();
 
                 // Evitar rodar o mesmo Job em paralelo
-                if (_activeJobs.TryAdd(job.Id, true))
+                var jobCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                if (_activeJobs.TryAdd(job.Id, jobCts))
                 {
                     _ = Task.Run(async () =>
                     {
                         try
                         {
-                            await _executionEngine.RunJobAsync(job, cancellationToken);
+                            await _executionEngine.RunJobAsync(job, jobCts.Token);
                         }
                         finally
                         {

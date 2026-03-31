@@ -27,14 +27,32 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void NavigateToDashboard() => CurrentPage = Dashboard;
+    public void NavigateToDashboard() => CurrentPage = Dashboard;
 
     [RelayCommand]
-    private void NavigateToJobs() => CurrentPage = Jobs;
+    public void NavigateToJobs() => CurrentPage = Jobs;
 
     [RelayCommand]
-    private void NavigateToHistory() => CurrentPage = History;
+    public void NavigateToHistory() => CurrentPage = History;
 
     [RelayCommand]
-    private void NavigateToSettings() => CurrentPage = Settings;
+    public void NavigateToSettings() => CurrentPage = Settings;
+
+    public void NavigateToPage(string pageName)
+    {
+        switch (pageName)
+        {
+            case "Dashboard": NavigateToDashboard(); break;
+            case "Jobs": NavigateToJobs(); break;
+            case "History": NavigateToHistory(); break;
+            case "Settings": NavigateToSettings(); break;
+        }
+    }
+
+    public void NavigateToJobs(string mode)
+    {
+        CurrentPage = Jobs;
+        if (mode == "DirectCopy") Jobs.CreateDirectCopyJobCommand.Execute(null);
+        else if (mode == "WatchFolder") Jobs.CreateWatchFolderJobCommand.Execute(null);
+    }
 }

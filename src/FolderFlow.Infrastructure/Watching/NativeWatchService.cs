@@ -1,73 +1,126 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.Threading;
 using FolderFlow.Application.Interfaces;
 using FolderFlow.Domain.Entities;
+using FolderFlow.Domain.Enums;
 
 namespace FolderFlow.Infrastructure.Watching;
 
 public class NativeWatchService : IWatchService
 {
-    private readonly Dictionary<Guid, FileSystemWatcher> _watchers = new();
-    private readonly Dictionary<Guid, DateTime> _lastEventTimes = new();
-    private readonly TimeSpan _debounceTime = TimeSpan.FromSeconds(2);
+    private class WatchContext : IDisposable
+    {
+        public FileSystemWatcher? Watcher { get; set; }
+        public Timer? Timer { get; set; }
+        public Job Job { get; set; } = null!;
+        public Action<Job> OnFileChanged { get; set; } = null!;
+        public object LockObj { get; } = new object();
+        public bool IsPending { get; set; }
+
+        public void Dispose()
+        {
+            Watcher?.Dispose();
+            Timer?.Dispose();
+        }
+    }
+
+    private readonly ConcurrentDictionary<Guid, WatchContext> _contexts = new();
 
     public void StartWatching(Job job, Action<Job> onFileChanged)
     {
-        if (_watchers.ContainsKey(job.Id)) return;
+        if (_contexts.ContainsKey(job.Id)) return;
         if (!Directory.Exists(job.SourcePath)) return;
 
-        var watcher = new FileSystemWatcher(job.SourcePath)
+        var context = new WatchContext
         {
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName,
-            IncludeSubdirectories = true,
-            EnableRaisingEvents = true
+            Job = job,
+            OnFileChanged = onFileChanged
         };
 
-        FileSystemEventHandler handler = (s, e) =>
+        if (job.MonitoringMode == MonitoringMode.RealTime)
         {
-            if (IsDebounced(job.Id)) return;
-            onFileChanged(job);
-        };
+            context.Timer = new Timer(OnRealTimeTimerElapsed, context, Timeout.Infinite, Timeout.Infinite);
+            
+            var watcher = new FileSystemWatcher(job.SourcePath)
+            {
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName,
+                IncludeSubdirectories = true,
+                EnableRaisingEvents = true
+            };
 
-        watcher.Created += handler;
-        watcher.Changed += handler;
-        watcher.Renamed += (s, e) => handler(s, e);
+            FileSystemEventHandler handler = (s, e) =>
+            {
+                lock (context.LockObj)
+                {
+                    context.IsPending = true;
+                    // Reset the timer to wait for SettleTimeSeconds
+                    context.Timer.Change(TimeSpan.FromSeconds(context.Job.SettleTimeSeconds), Timeout.InfiniteTimeSpan);
+                }
+            };
 
-        _watchers[job.Id] = watcher;
+            watcher.Created += handler;
+            watcher.Changed += handler;
+            watcher.Renamed += (s, e) => handler(s, e);
+            watcher.Deleted += handler;
+
+            context.Watcher = watcher;
+        }
+        else if (job.MonitoringMode == MonitoringMode.Polling)
+        {
+            var interval = TimeSpan.FromSeconds(job.ScanIntervalSeconds);
+            context.Timer = new Timer(OnPollingTimerElapsed, context, interval, interval);
+        }
+
+        _contexts[job.Id] = context;
+    }
+
+    private void OnRealTimeTimerElapsed(object? state)
+    {
+        if (state is WatchContext context)
+        {
+            bool shouldFire = false;
+            lock (context.LockObj)
+            {
+                if (context.IsPending)
+                {
+                    context.IsPending = false;
+                    shouldFire = true;
+                }
+            }
+            if (shouldFire)
+            {
+                context.OnFileChanged(context.Job);
+            }
+        }
+    }
+
+    private void OnPollingTimerElapsed(object? state)
+    {
+        if (state is WatchContext context)
+        {
+            context.OnFileChanged(context.Job);
+        }
     }
 
     public void StopWatching(Job job)
     {
-        if (_watchers.TryGetValue(job.Id, out var watcher))
+        if (_contexts.TryRemove(job.Id, out var context))
         {
-            watcher.EnableRaisingEvents = false;
-            watcher.Dispose();
-            _watchers.Remove(job.Id);
-            _lastEventTimes.Remove(job.Id);
+            context.Dispose();
         }
     }
 
-    public bool IsWatching(Job job) => _watchers.ContainsKey(job.Id);
-
-    private bool IsDebounced(Guid jobId)
-    {
-        var now = DateTime.UtcNow;
-        if (_lastEventTimes.TryGetValue(jobId, out var lastTime))
-        {
-            if (now - lastTime < _debounceTime) return true;
-        }
-        _lastEventTimes[jobId] = now;
-        return false;
-    }
+    public bool IsWatching(Job job) => _contexts.ContainsKey(job.Id);
 
     public void Dispose()
     {
-        foreach (var watcher in _watchers.Values)
+        foreach (var context in _contexts.Values)
         {
-            watcher.Dispose();
+            context.Dispose();
         }
-        _watchers.Clear();
+        _contexts.Clear();
     }
 }

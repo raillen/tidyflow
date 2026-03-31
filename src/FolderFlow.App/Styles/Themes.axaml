@@ -4,45 +4,45 @@
     <ResourceDictionary.ThemeDictionaries>
         <!-- LIGHT THEME (Default) -->
         <ResourceDictionary x:Key="Default">
-            <SolidColorBrush x:Key="AppBackground">#F1F5F9</SolidColorBrush>
-            <SolidColorBrush x:Key="SidebarBackground">#E2E8F0</SolidColorBrush>
-            <SolidColorBrush x:Key="SidebarBorderBrush">#CBD5E1</SolidColorBrush>
+            <SolidColorBrush x:Key="AppBackground">#F4F5F7</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBackground">#FFFFFF</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBorderBrush">#E6E8EB</SolidColorBrush>
             
             <SolidColorBrush x:Key="CardBackground">#FFFFFF</SolidColorBrush>
-            <SolidColorBrush x:Key="CardBorderBrush">#E2E8F0</SolidColorBrush>
+            <SolidColorBrush x:Key="CardBorderBrush">#E6E8EB</SolidColorBrush>
             
-            <SolidColorBrush x:Key="TextPrimary">#0F172A</SolidColorBrush>
-            <SolidColorBrush x:Key="TextSecondary">#475569</SolidColorBrush>
-            <SolidColorBrush x:Key="TextMuted">#94A3B8</SolidColorBrush>
+            <SolidColorBrush x:Key="TextPrimary">#1D2129</SolidColorBrush>
+            <SolidColorBrush x:Key="TextSecondary">#4E5969</SolidColorBrush>
+            <SolidColorBrush x:Key="TextMuted">#86909C</SolidColorBrush>
             
-            <SolidColorBrush x:Key="AccentColor">#2563EB</SolidColorBrush>
-            <SolidColorBrush x:Key="SuccessColor">#16A34A</SolidColorBrush>
-            <SolidColorBrush x:Key="DangerColor">#DC2626</SolidColorBrush>
-            <SolidColorBrush x:Key="WarningColor">#D97706</SolidColorBrush>
+            <SolidColorBrush x:Key="AccentColor">#0064FF</SolidColorBrush>
+            <SolidColorBrush x:Key="SuccessColor">#00B42A</SolidColorBrush>
+            <SolidColorBrush x:Key="DangerColor">#F53F3F</SolidColorBrush>
+            <SolidColorBrush x:Key="WarningColor">#FF7D00</SolidColorBrush>
             
-            <SolidColorBrush x:Key="ButtonHoverBackground">#F1F5F9</SolidColorBrush>
+            <SolidColorBrush x:Key="ButtonHoverBackground">#F2F3F5</SolidColorBrush>
             <BoxShadows x:Key="PremiumShadow">0 4 12 0 #15000000</BoxShadows>
         </ResourceDictionary>
 
         <!-- DARK THEME -->
         <ResourceDictionary x:Key="Dark">
-            <SolidColorBrush x:Key="AppBackground">#0F172A</SolidColorBrush>
-            <SolidColorBrush x:Key="SidebarBackground">#1E293B</SolidColorBrush>
-            <SolidColorBrush x:Key="SidebarBorderBrush">#334155</SolidColorBrush>
+            <SolidColorBrush x:Key="AppBackground">#17171A</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBackground">#232324</SolidColorBrush>
+            <SolidColorBrush x:Key="SidebarBorderBrush">#2E2E30</SolidColorBrush>
             
-            <SolidColorBrush x:Key="CardBackground">#1E293B</SolidColorBrush>
-            <SolidColorBrush x:Key="CardBorderBrush">#334155</SolidColorBrush>
+            <SolidColorBrush x:Key="CardBackground">#232324</SolidColorBrush>
+            <SolidColorBrush x:Key="CardBorderBrush">#2E2E30</SolidColorBrush>
             
-            <SolidColorBrush x:Key="TextPrimary">#F8FAFC</SolidColorBrush>
-            <SolidColorBrush x:Key="TextSecondary">#94A3B8</SolidColorBrush>
-            <SolidColorBrush x:Key="TextMuted">#64748B</SolidColorBrush>
+            <SolidColorBrush x:Key="TextPrimary">#F9F9F9</SolidColorBrush>
+            <SolidColorBrush x:Key="TextSecondary">#A9AEB8</SolidColorBrush>
+            <SolidColorBrush x:Key="TextMuted">#4E5969</SolidColorBrush>
             
-            <SolidColorBrush x:Key="AccentColor">#3B82F6</SolidColorBrush>
-            <SolidColorBrush x:Key="SuccessColor">#10B981</SolidColorBrush>
-            <SolidColorBrush x:Key="DangerColor">#EF4444</SolidColorBrush>
-            <SolidColorBrush x:Key="WarningColor">#F59E0B</SolidColorBrush>
+            <SolidColorBrush x:Key="AccentColor">#3381FF</SolidColorBrush>
+            <SolidColorBrush x:Key="SuccessColor">#27C346</SolidColorBrush>
+            <SolidColorBrush x:Key="DangerColor">#F76560</SolidColorBrush>
+            <SolidColorBrush x:Key="WarningColor">#FF9A2E</SolidColorBrush>
             
-            <SolidColorBrush x:Key="ButtonHoverBackground">#334155</SolidColorBrush>
+            <SolidColorBrush x:Key="ButtonHoverBackground">#2E2E30</SolidColorBrush>
             <BoxShadows x:Key="PremiumShadow">0 10 30 0 #40000000</BoxShadows>
         </ResourceDictionary>
 

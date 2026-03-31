@@ -22,7 +22,7 @@ public class ExecutionEngineTests
         public List<string> DeletedFiles = new();
         public List<string> Files = new();
 
-        public Task CopyAsync(string source, string target, CancellationToken cancellationToken = default)
+        public Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null)
         {
             CopiedFiles.Add((source, target));
             return Task.CompletedTask;
@@ -57,7 +57,7 @@ public class ExecutionEngineTests
 
     private class MockCloudHydrationService : ICloudHydrationService
     {
-        public void EnsureFileIsLocal(string filePath) { }
+        public Task EnsureFileIsLocalAsync(string filePath, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private class MockAuditService : IAuditService
@@ -70,6 +70,12 @@ public class ExecutionEngineTests
         public Task SaveFailuresAsync(Guid jobId, IEnumerable<string> failedPaths) => Task.CompletedTask;
         public Task<IEnumerable<string>> GetFailuresAsync(Guid jobId) => Task.FromResult(Enumerable.Empty<string>());
         public Task ClearFailuresAsync(Guid jobId) => Task.CompletedTask;
+    }
+
+    private class MockActivityService : ISystemActivityService
+    {
+        public Task LogActivityAsync(string message, string level = "INFO") => Task.CompletedTask;
+        public Task<IEnumerable<SystemActivity>> GetRecentActivitiesAsync(int count = 50) => Task.FromResult(Enumerable.Empty<SystemActivity>());
     }
 
     [Fact]
@@ -92,8 +98,10 @@ public class ExecutionEngineTests
         var cloudService = new MockCloudHydrationService();
         var auditService = new MockAuditService();
         var failureStore = new MockFailureStore();
+        var activityService = new MockActivityService();
+        var globalProgressService = new GlobalProgressService();
         
-        var engine = new ExecutionEngine(fileOp, logger, hashService, notificationService, cloudService, auditService, failureStore);
+        var engine = new ExecutionEngine(fileOp, logger, hashService, notificationService, cloudService, auditService, failureStore, activityService, globalProgressService);
 
         var job = new Job
         {

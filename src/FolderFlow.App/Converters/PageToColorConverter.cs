@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
-using Avalonia.Media;
+using Material.Icons;
 
 namespace FolderFlow.App.Converters;
 
@@ -9,12 +9,21 @@ public class PageToColorConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        bool isActive = value is bool b && b;
-        return isActive ? Brush.Parse("#A8558D") : Brush.Parse("#64748B");
+        bool isWatchMode = value is bool b && b;
+        string? param = parameter as string;
+
+        if (param == "Icon")
+        {
+            return isWatchMode ? MaterialIconKind.Radar : MaterialIconKind.CalendarClockOutline;
+        }
+        
+        if (param == "Text")
+        {
+            return isWatchMode ? "Hotfolder" : "Agenda";
+        }
+
+        return null;
     }
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotImplementedException();
 }

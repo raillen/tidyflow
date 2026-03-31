@@ -8,7 +8,7 @@ namespace FolderFlow.Infrastructure.Filesystem;
 
 public class WindowsCloudHydrationService : ICloudHydrationService
 {
-    public void EnsureFileIsLocal(string filePath)
+    public async Task EnsureFileIsLocalAsync(string filePath, CancellationToken cancellationToken = default)
     {
         if (!OperatingSystem.IsWindows())
             return; // Suportado principalmente no Windows para OneDrive/SharePoint
@@ -29,13 +29,24 @@ public class WindowsCloudHydrationService : ICloudHydrationService
                 // Força o sistema operacional a baixar o arquivo da nuvem (hidratação).
                 // Ao abrir o arquivo para leitura, o driver do OneDrive/SharePoint intercepta
                 // e faz o download. Lemos o primeiro byte para garantir.
-                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                await using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, true))
                 {
-                    fs.ReadByte();
+                    var buffer = new byte[1];
+                    await fs.ReadExactlyAsync(buffer, 0, 1, cancellationToken);
                 }
 
-                // Damos um tempo mínimo para o SO atualizar o status (opcional, mas recomendado)
-                Thread.Sleep(500);
+                // Damos um tempo para o SO atualizar os atributos e sincronizar o arquivo
+                // Loop de polling para garantir que o arquivo não está mais "Offline"
+                int attempts = 0;
+                while (attempts < 10) // Timeout de ~5 segundos
+                {
+                    await Task.Delay(500, cancellationToken);
+                    attributes = File.GetAttributes(filePath);
+                    isOffline = (attributes & FileAttributes.Offline) == FileAttributes.Offline;
+                    
+                    if (!isOffline) break;
+                    attempts++;
+                }
             }
         }
         catch (Exception)
