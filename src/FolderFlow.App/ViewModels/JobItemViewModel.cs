@@ -29,6 +29,16 @@ public partial class JobItemViewModel : ViewModelBase
 
     public Job Job { get; }
 
+    public string ShortSource => SummarizePath(Job.SourcePath);
+    public string ShortTarget => SummarizePath(Job.TargetPath);
+
+    private string SummarizePath(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return string.Empty;
+        if (path.Length <= 45) return path;
+        return path.Substring(0, 15) + "..." + path.Substring(path.Length - 25);
+    }
+
     public JobItemViewModel(Job job, JobAppService jobAppService, INotificationService notificationService)
     {
         Job = job;
@@ -52,7 +62,6 @@ public partial class JobItemViewModel : ViewModelBase
         if (p.RecentFilesLog.Any())
         {
             Dispatcher.UIThread.Post(() => {
-                // Atualizao inteligente: s altera se o log for novo
                 if (RecentFilesLog.Count == 0 || RecentFilesLog[0] != p.RecentFilesLog[0])
                 {
                     RecentFilesLog.Clear();
@@ -82,7 +91,8 @@ public partial class JobItemViewModel : ViewModelBase
     [RelayCommand]
     public void Edit()
     {
-        (App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel)?.NavigateToJobs("Edit");
+        var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
+        mainVm?.ShowEditor(Job);
     }
 
     [RelayCommand]

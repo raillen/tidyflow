@@ -1,0 +1,20 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="using:FolderFlow.App.Views"
+        xmlns:vm="using:FolderFlow.App.ViewModels"
+        x:Class="FolderFlow.App.Views.JobEditorWindow"
+        x:DataType="vm:JobEditorViewModel"
+        Title="Configurar Tarefa"
+        Width="800" Height="700"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{DynamicResource AppBackground}">
+    
+    <Panel>
+        <!-- Background Layer with Opacity -->
+        <Border Background="{DynamicResource AppBackground}" Opacity="0.95"/>
+        
+        <v:JobEditorView Margin="0,30,0,0"/>
+    </Panel>
+</Window>

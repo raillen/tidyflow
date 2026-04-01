@@ -74,14 +74,12 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         HasSelection = SelectedCount > 0;
         
         var shouldBeAll = AllJobs.Any() && SelectedCount == AllJobs.Count;
-        if (_isSelectedAll != shouldBeAll)
+        if (IsSelectedAll != shouldBeAll)
         {
-            _isSelectedAll = shouldBeAll;
-            OnPropertyChanged(nameof(IsSelectedAll));
+            IsSelectedAll = shouldBeAll;
         }
     }
 
-    // ... dentro do RefreshAutomationState ...
     private void RefreshAutomationState()
     {
         var active = _globalProgressService.GetActiveJobs().ToList();
@@ -134,9 +132,20 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         foreach (var jobVm in selected) _queueProcessor.StopJob(jobVm.Job.Id);
     }
 
-    // Comandos de Gesto
-    [RelayCommand] private void CreateDirectCopy() => (App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel)?.NavigateToJobs("DirectCopy");
-    [RelayCommand] private void CreateWatchFolder() => (App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel)?.NavigateToJobs("WatchFolder");
+    // Comandos de Gesto - Corrigidos para evitar loop
+    [RelayCommand] 
+    private void CreateDirectCopy() 
+    {
+        var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
+        mainVm?.ShowEditor(new Job { WatchEnabled = false, Name = "Nova Cpia Direta" });
+    }
+
+    [RelayCommand] 
+    private void CreateWatchFolder() 
+    {
+        var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
+        mainVm?.ShowEditor(new Job { WatchEnabled = true, Name = "Nova Watch Folder" });
+    }
 
     // Comandos de Orquestrao
     [RelayCommand] private void TogglePauseQueue() { _queueProcessor.TogglePause(); IsQueuePaused = _jobQueue.IsPaused; }
@@ -152,7 +161,6 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         if (jobVm != null)
         {
             _jobQueue.PushToTop(jobId);
-            // Se no estiver ativo, fora a entrada na fila
             if (!_queueProcessor.IsJobActive(jobId)) jobVm.RunNowCommand.Execute(null);
         }
     }
