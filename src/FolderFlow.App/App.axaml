@@ -21,6 +21,8 @@
             <conv:StatusToProgressColorConverter x:Key="StatusToProgressColorConverter"/>
             <conv:BoolToIconConverter x:Key="BoolToIconConverter"/>
             <conv:StatusToPercentageConverter x:Key="StatusToPercentageConverter"/>
+            <conv:SpeedToHeightConverter x:Key="SpeedToHeightConverter"/>
+            <conv:FileSizeConverter x:Key="FileSizeConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 

@@ -39,12 +39,31 @@ public class QueueProcessor
         }
     }
 
+    public bool IsPaused => _jobQueue.IsPaused;
+
+    public void TogglePause() => _jobQueue.IsPaused = !_jobQueue.IsPaused;
+
+    public void StopAll()
+    {
+        foreach (var jobId in _activeJobs.Keys)
+        {
+            StopJob(jobId);
+        }
+    }
+
     private async Task ProcessQueueAsync(CancellationToken cancellationToken)
     {
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
+                // Se estiver pausado, aguarda um pouco antes de tentar pegar o prximo job
+                if (_jobQueue.IsPaused)
+                {
+                    await Task.Delay(1000, cancellationToken);
+                    continue;
+                }
+
                 var job = await _jobQueue.DequeueAsync();
 
                 // Evitar rodar o mesmo Job em paralelo
@@ -56,6 +75,10 @@ public class QueueProcessor
                         try
                         {
                             await _executionEngine.RunJobAsync(job, jobCts.Token);
+                        }
+                        catch (Exception)
+                        {
+                            // Erros j so logados pelo ExecutionEngine
                         }
                         finally
                         {

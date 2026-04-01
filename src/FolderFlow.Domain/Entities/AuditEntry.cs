@@ -10,4 +10,6 @@ public class AuditEntry
     public string TargetPath { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string Details { get; set; } = string.Empty;
+    public long FileSize { get; set; } // Tamanho em bytes
+    public double DurationMs { get; set; } // Durao em milissegundos
 }

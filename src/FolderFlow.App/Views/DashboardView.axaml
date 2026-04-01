@@ -31,80 +31,69 @@
             </Grid>
 
             <!-- Metrics Cards Row -->
-            <Grid ColumnDefinitions="*, *, *">
-                <!-- Cpia Direta -->
-                <Border Grid.Column="0" Margin="0,0,10,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                    <StackPanel Spacing="15">
+            <Grid ColumnDefinitions="*, *, *, *">
+                <!-- Health Score Card -->
+                <Border Grid.Column="0" Margin="0,0,10,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
-                            <Border Grid.Column="0" Background="{DynamicResource AccentColor}" Opacity="0.1" CornerRadius="8" Width="40" Height="40">
-                                <material:MaterialIcon Kind="FileMoveOutline" Foreground="{DynamicResource AccentColor}" Width="24" Height="24"/>
-                            </Border>
-                            <TextBlock Grid.Column="1" Text="CPIA DIRETA" VerticalAlignment="Center" Margin="12,0" FontSize="12" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                            <material:MaterialIcon Grid.Column="0" Kind="HeartPulse" Foreground="{DynamicResource SuccessColor}" Width="20" Height="20"/>
+                            <TextBlock Grid.Column="1" Text="SADE DO SISTEMA" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
                         </Grid>
-                        <Grid ColumnDefinitions="*, *, *">
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="{Binding DirectActive}" FontSize="24" FontWeight="Bold"/>
-                                <TextBlock Text="Ativas" FontSize="11" Opacity="0.6"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Text="{Binding DirectPaused}" FontSize="24" FontWeight="Bold"/>
-                                <TextBlock Text="Pausadas" FontSize="11" Opacity="0.6"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="{Binding DirectCompleted}" FontSize="24" FontWeight="Bold"/>
-                                <TextBlock Text="Concludas" FontSize="11" Opacity="0.6"/>
-                            </StackPanel>
-                        </Grid>
+                        <StackPanel HorizontalAlignment="Center" Margin="0,5">
+                            <TextBlock Text="{Binding HealthStatus}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding HealthScore, StringFormat='{}{0:F1}%'}" FontSize="12" Opacity="0.6" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                        <ProgressBar Value="{Binding HealthScore}" Height="4" CornerRadius="2" Foreground="{DynamicResource SuccessColor}"/>
                     </StackPanel>
                 </Border>
 
-                <!-- Watch Folder -->
-                <Border Grid.Column="1" Margin="10,0,10,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                    <StackPanel Spacing="15">
+                <!-- Data Volume Card -->
+                <Border Grid.Column="1" Margin="5,0,5,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
-                            <Border Grid.Column="0" Background="{DynamicResource SuccessColor}" Opacity="0.1" CornerRadius="8" Width="40" Height="40">
-                                <material:MaterialIcon Kind="Radar" Foreground="{DynamicResource SuccessColor}" Width="24" Height="24"/>
-                            </Border>
-                            <TextBlock Grid.Column="1" Text="WATCH FOLDER" VerticalAlignment="Center" Margin="12,0" FontSize="12" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                            <material:MaterialIcon Grid.Column="0" Kind="DatabaseOutline" Foreground="{DynamicResource AccentColor}" Width="20" Height="20"/>
+                            <TextBlock Grid.Column="1" Text="VOLUME TOTAL" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
                         </Grid>
-                        <Grid ColumnDefinitions="*, *, *">
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="{Binding WatchActive}" FontSize="24" FontWeight="Bold"/>
-                                <TextBlock Text="Ativas" FontSize="11" Opacity="0.6"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Text="{Binding WatchPaused}" FontSize="24" FontWeight="Bold"/>
-                                <TextBlock Text="Pausadas" FontSize="11" Opacity="0.6"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="{Binding WatchCompleted}" FontSize="24" FontWeight="Bold"/>
-                                <TextBlock Text="Concludas" FontSize="11" Opacity="0.6"/>
-                            </StackPanel>
-                        </Grid>
+                        <StackPanel HorizontalAlignment="Center" Margin="0,5">
+                            <TextBlock Text="{Binding TotalDataVolume}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Dados processados" FontSize="11" Opacity="0.6" HorizontalAlignment="Center"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- Processed Files -->
-                <Border Grid.Column="2" Margin="10,0,0,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                    <StackPanel Spacing="15">
+                <!-- Time Saved Card -->
+                <Border Grid.Column="2" Margin="5,0,5,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
-                            <Border Grid.Column="0" Background="{DynamicResource AccentColor}" Opacity="0.1" CornerRadius="8" Width="40" Height="40">
-                                <material:MaterialIcon Kind="Files" Foreground="{DynamicResource AccentColor}" Width="24" Height="24"/>
-                            </Border>
-                            <TextBlock Grid.Column="1" Text="ARQUIVOS PROCESSADOS" VerticalAlignment="Center" Margin="12,0" FontSize="12" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                            <material:MaterialIcon Grid.Column="0" Kind="TimerOutline" Foreground="{DynamicResource WarningColor}" Width="20" Height="20"/>
+                            <TextBlock Grid.Column="1" Text="TEMPO ECONOMIZADO" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+                        </Grid>
+                        <StackPanel HorizontalAlignment="Center" Margin="0,5">
+                            <TextBlock Text="{Binding TimeSaved}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Trabalho automatizado" FontSize="11" Opacity="0.6" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Processed Files Summary -->
+                <Border Grid.Column="3" Margin="10,0,0,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnDefinitions="Auto, *">
+                            <material:MaterialIcon Grid.Column="0" Kind="Files" Foreground="{DynamicResource AccentColor}" Width="20" Height="20"/>
+                            <TextBlock Grid.Column="1" Text="ARQUIVOS" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
                         </Grid>
                         <Grid ColumnDefinitions="*, *, *">
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="{Binding TotalProcessed}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource SuccessColor}"/>
-                                <TextBlock Text="Sucesso" FontSize="11" Opacity="0.6"/>
+                            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding TotalProcessed}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource SuccessColor}"/>
+                                <TextBlock Text="OK" FontSize="9" Opacity="0.6"/>
                             </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Text="{Binding TotalIgnored}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
-                                <TextBlock Text="Ignorados" FontSize="11" Opacity="0.6"/>
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding TotalIgnored}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
+                                <TextBlock Text="IGN" FontSize="9" Opacity="0.6"/>
                             </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="{Binding TotalErrors}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource DangerColor}"/>
-                                <TextBlock Text="Erros" FontSize="11" Opacity="0.6"/>
+                            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding TotalErrors}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DangerColor}"/>
+                                <TextBlock Text="ERR" FontSize="9" Opacity="0.6"/>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -113,67 +102,98 @@
 
             <!-- Quick Actions -->
             <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="15">
-                    <Button Command="{Binding NewDirectCopyCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="15,10">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <material:MaterialIcon Kind="PlusThick" Width="18" Height="18"/>
-                            <TextBlock Text="Cpia Direta"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding NewWatchFolderCommand}" Classes="Success" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="15,10">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <material:MaterialIcon Kind="Radar" Width="18" Height="18"/>
-                            <TextBlock Text="Watch Folder"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding ViewHistoryCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="15,10">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <material:MaterialIcon Kind="History" Width="18" Height="18"/>
-                            <TextBlock Text="Ver Histrico"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding AccessSettingsCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="15,10">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <material:MaterialIcon Kind="CogOutline" Width="18" Height="18"/>
-                            <TextBlock Text="Configuraes"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding OpenLogFolderCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="15,10">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <material:MaterialIcon Kind="FolderOpenOutline" Width="18" Height="18"/>
-                            <TextBlock Text="Pasta de Logs"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                        <Button Command="{Binding NewDirectCopyCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="12,8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="PlusThick" Width="16" Height="16"/>
+                                <TextBlock Text="Cpia Direta" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding NewWatchFolderCommand}" Classes="Success" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="12,8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="Radar" Width="16" Height="16"/>
+                                <TextBlock Text="Watch Folder" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ViewHistoryCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="12,8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="History" Width="16" Height="16"/>
+                                <TextBlock Text="Histrico" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                         <Button Command="{Binding ToggleAllJobsCommand}" Classes="Danger" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="12,8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="PauseOctagon" Width="16" Height="16"/>
+                                <TextBlock Text="Pausar Tudo" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding OpenLogFolderCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="12,8">
+                            <material:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
             </Border>
 
             <!-- Lower Section: Activity & System Monitor -->
-            <Grid ColumnDefinitions="*, 350" Height="400">
-                <!-- Recent Activities -->
-                <Border Grid.Column="0" Margin="0,0,10,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                    <Grid RowDefinitions="Auto, *">
-                        <Border Grid.Row="0" Padding="20,15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <material:MaterialIcon Kind="History" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
-                                <TextBlock Text="ATIVIDADES RECENTES" FontSize="13" FontWeight="Bold" LetterSpacing="1"/>
-                            </StackPanel>
-                        </Border>
-                        <ScrollViewer Grid.Row="1">
-                            <ItemsControl ItemsSource="{Binding RecentActivities}" Margin="15">
+            <Grid ColumnDefinitions="*, 350" Height="450">
+                <Grid Grid.Column="0" RowDefinitions="*, *">
+                    <!-- Recent Activities -->
+                    <Border Grid.Row="0" Margin="0,0,10,10" Background="{DynamicResource SidebarBackground}" CornerRadius="16" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                        <Grid RowDefinitions="Auto, *">
+                            <Border Grid.Row="0" Padding="15,10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <material:MaterialIcon Kind="History" Width="18" Height="18" Foreground="{DynamicResource AccentColor}"/>
+                                    <TextBlock Text="ATIVIDADES RECENTES" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
+                                </StackPanel>
+                            </Border>
+                            <ScrollViewer Grid.Row="1">
+                                <ItemsControl ItemsSource="{Binding RecentActivities}" Margin="10">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="interfaces:SystemActivity">
+                                            <Border Margin="0,0,0,5" Padding="8" Background="{DynamicResource CardBackground}" CornerRadius="6">
+                                                <Grid ColumnDefinitions="70, *">
+                                                    <TextBlock Grid.Column="0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" FontSize="10" Opacity="0.5" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Message}" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+
+                    <!-- Radar de Agendamentos (NOVO) -->
+                    <Border Grid.Row="1" Margin="0,10,10,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                        <Grid RowDefinitions="Auto, *">
+                            <Border Grid.Row="0" Padding="15,10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <material:MaterialIcon Kind="Radar" Width="18" Height="18" Foreground="{DynamicResource SuccessColor}"/>
+                                    <TextBlock Text="RADAR DE AGENDAMENTOS" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
+                                </StackPanel>
+                            </Border>
+                            <ItemsControl Grid.Row="1" ItemsSource="{Binding UpcomingJobs}" Margin="15">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="interfaces:SystemActivity">
-                                        <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource CardBackground}" CornerRadius="8">
-                                            <Grid ColumnDefinitions="80, *">
-                                                <TextBlock Grid.Column="0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
-                                                <TextBlock Grid.Column="1" Text="{Binding Message}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                                            </Grid>
-                                        </Border>
+                                    <DataTemplate x:DataType="interfaces:UpcomingJobInfo">
+                                        <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,12">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="{Binding JobName}" FontSize="13" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding NextRun, StringFormat='{}{0:dd/MM HH:mm}'}" FontSize="10" Opacity="0.5"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="{DynamicResource SuccessColor}" Opacity="0.1" CornerRadius="12" Padding="10,4">
+                                                <TextBlock Text="{Binding TimeRemaining}" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </ScrollViewer>
-                    </Grid>
-                </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
 
                 <!-- System Monitor -->
                 <Border Grid.Column="1" Margin="10,0,0,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
@@ -185,11 +205,32 @@
                             </StackPanel>
                         </Border>
                         <StackPanel Grid.Row="1" Margin="20" Spacing="25">
-                            <!-- Transfer Speed -->
+                            <!-- Transfer Speed with Graph (NOVO) -->
                             <StackPanel Spacing="10">
-                                <TextBlock Text="Velocidade de Cpia" FontSize="12" Opacity="0.7"/>
-                                <TextBlock Text="{Binding TransferSpeed}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
-                                <ProgressBar Value="45" Height="4" CornerRadius="2" IsIndeterminate="{Binding TransferSpeed, Converter={StaticResource NotEqualsConverter}, ConverterParameter='0 KB/s'}"/>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Grid.Column="0" Text="Velocidade de Cpia" FontSize="12" Opacity="0.7"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding TransferSpeed}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
+                                </Grid>
+                                
+                                <!-- Sparkline Graph -->
+                                <Border Height="60" Background="{DynamicResource CardBackground}" CornerRadius="8" Padding="2" ClipToBounds="True">
+                                    <ItemsControl ItemsSource="{Binding PerformancePoints}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Width="3" Margin="1,0" VerticalAlignment="Bottom" Background="{DynamicResource AccentColor}" CornerRadius="1">
+                                                    <Border.Height>
+                                                        <Binding Converter="{StaticResource SpeedToHeightConverter}"/> 
+                                                    </Border.Height>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Border>
                             </StackPanel>
 
                             <!-- CPU -->

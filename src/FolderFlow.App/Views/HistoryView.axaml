@@ -7,78 +7,130 @@
              mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
              x:Class="FolderFlow.App.Views.HistoryView"
              x:DataType="vm:HistoryViewModel">
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,*">
         
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="20,20,20,10" Spacing="20">
-            <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-                <TextBlock Text="Histórico de Automação" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-            </StackPanel>
+        <!-- Header & Filters Area -->
+        <Border Grid.Row="0" Background="{DynamicResource SidebarBackground}" Padding="25,20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+            <StackPanel Spacing="20">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Spacing="5">
+                        <TextBlock Text="Auditoria e Histrico" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock Text="Rastreamento forense de todas as operaes de arquivos" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Button Command="{Binding ExportToCsvCommand}" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="15,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <material:MaterialIcon Kind="FileExportOutline" Width="18" Height="18"/>
+                                <TextBlock Text="Exportar CSV" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding LoadLogsCommand}" Background="{DynamicResource AccentColor}" Foreground="White" CornerRadius="8" Padding="15,8">
+                            <material:MaterialIcon Kind="Refresh" Width="18" Height="18"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
 
-            <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
-                <!-- Search and Filters (Responsive) -->
-                <WrapPanel Grid.Column="0" Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-                    <TextBox Text="{Binding SearchText}" Watermark="Pesquisar..." Width="200" Margin="0,0,15,10" VerticalAlignment="Center">
+                <WrapPanel Orientation="Horizontal">
+                    <TextBox Text="{Binding SearchText}" Watermark="Buscar arquivo ou detalhe..." Width="250" Margin="0,0,15,0" VerticalAlignment="Center" CornerRadius="8">
                         <TextBox.InnerLeftContent>
                             <material:MaterialIcon Kind="Magnify" Margin="10,0" Foreground="{DynamicResource TextSecondary}"/>
                         </TextBox.InnerLeftContent>
                     </TextBox>
 
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,15,10" VerticalAlignment="Center">
-                        <TextBlock Text="Job:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                        <ComboBox ItemsSource="{Binding AvailableJobs}" SelectedItem="{Binding SelectedJobFilter}" Width="150" Height="36" CornerRadius="8"/>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,15,10" VerticalAlignment="Center">
-                        <TextBlock Text="Status:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                        <ComboBox ItemsSource="{Binding AvailableStatuses}" SelectedItem="{Binding SelectedStatusFilter}" Width="120" Height="36" CornerRadius="8"/>
+                    <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                        <ComboBox ItemsSource="{Binding AvailableJobs}" SelectedItem="{Binding SelectedJobFilter}" Width="180" Height="36" CornerRadius="8"/>
+                        <ComboBox ItemsSource="{Binding AvailableStatuses}" SelectedItem="{Binding SelectedStatusFilter}" Width="140" Height="36" CornerRadius="8"/>
                     </StackPanel>
                 </WrapPanel>
+            </StackPanel>
+        </Border>
 
-                <!-- Actions -->
-                <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top">
-                    <Button Command="{Binding LoadLogsCommand}" Background="{DynamicResource AccentColor}" Foreground="White" CornerRadius="8" Padding="15,8" Height="36">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <material:MaterialIcon Kind="Refresh" Width="18" Height="18"/>
-                            <TextBlock Text="Atualizar" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding ClearLogsCommand}" Background="Transparent" BorderBrush="{DynamicResource DangerColor}" BorderThickness="1" CornerRadius="8" Padding="15,8" Height="36">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <material:MaterialIcon Kind="TrashCanOutline" Width="18" Height="18" Foreground="{DynamicResource DangerColor}"/>
-                            <TextBlock Text="Limpar" VerticalAlignment="Center" Foreground="{DynamicResource DangerColor}"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </StackPanel>
-
-        <!-- DataGrid -->
-        <DataGrid Grid.Row="2" Margin="20" ItemsSource="{Binding Logs}" 
-                  AutoGenerateColumns="False" 
-                  CanUserReorderColumns="True" 
-                  CanUserResizeColumns="True"
-                  CanUserSortColumns="True"
-                  GridLinesVisibility="All"
-                  BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
-            <DataGrid.Columns>
-                <DataGridTextColumn Binding="{Binding Entry.Timestamp, StringFormat={}{0:dd/MM/yyyy HH:mm:ss}}" Header="Data/Hora" />
-                <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="Tarefa (Job)" />
-                
-                <DataGridTemplateColumn Header="Status">
-                    <DataGridTemplateColumn.CellTemplate>
+        <!-- Main Content: Grid + Details Panel -->
+        <Grid Grid.Row="1" ColumnDefinitions="*, 380">
+            <!-- Logs DataGrid -->
+            <DataGrid Grid.Column="0" ItemsSource="{Binding Logs}" 
+                      SelectedItem="{Binding SelectedLog}"
+                      AutoGenerateColumns="False" 
+                      IsReadOnly="True"
+                      CanUserResizeColumns="True"
+                      BorderThickness="0"
+                      Background="Transparent">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Binding="{Binding Entry.Timestamp, StringFormat={}{0:HH:mm:ss}}" Header="Hora" Width="80"/>
+                    <DataGridTemplateColumn Header="Status" Width="110">
                         <DataTemplate>
-                            <Border Background="{Binding StatusColor}" CornerRadius="4" Padding="6,2" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Entry.Status}" FontSize="12" FontWeight="Bold" Foreground="White"/>
+                            <Border Background="{Binding StatusColor}" CornerRadius="12" Padding="8,2" HorizontalAlignment="Left" Margin="5">
+                                <TextBlock Text="{Binding Entry.Status}" FontSize="10" FontWeight="Bold" Foreground="White"/>
                             </Border>
                         </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="Tarefa" Width="120"/>
+                    <DataGridTextColumn Binding="{Binding Entry.SourcePath}" Header="Origem" Width="*"/>
+                </DataGrid.Columns>
+                
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Abrir Pasta de Origem" Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding SelectedLog.Entry.SourcePath}"/>
+                        <MenuItem Header="Abrir Pasta de Destino" Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding SelectedLog.Entry.TargetPath}"/>
+                        <Separator/>
+                        <MenuItem Header="Limpar Todo o Histrico" Command="{Binding ClearLogsCommand}" Foreground="{DynamicResource DangerColor}"/>
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
+            </DataGrid>
 
-                <DataGridTextColumn Binding="{Binding Entry.SourcePath}" Header="Origem" Width="*" />
-                <DataGridTextColumn Binding="{Binding Entry.TargetPath}" Header="Destino" Width="*" />
-                <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Detalhes" Width="1.5*" />
-            </DataGrid.Columns>
-        </DataGrid>
+            <!-- Side Details Panel -->
+            <Border Grid.Column="1" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
+                <ScrollViewer>
+                    <StackPanel Margin="20" Spacing="25">
+                        <TextBlock Text="DETALHES DA OPERAO" FontSize="12" FontWeight="Bold" Opacity="0.6" LetterSpacing="1"/>
+                        
+                        <StackPanel IsVisible="{Binding SelectedLog, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <!-- Info Cards -->
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15" Margin="0,0,0,15">
+                                <StackPanel Spacing="15">
+                                    <StackPanel>
+                                        <TextBlock Text="Arquivo" FontSize="11" Opacity="0.5"/>
+                                        <TextBlock Text="{Binding SelectedLog.Entry.SourcePath}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Destino" FontSize="11" Opacity="0.5"/>
+                                        <TextBlock Text="{Binding SelectedLog.Entry.TargetPath}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Grid ColumnDefinitions="*, *" Margin="0,0,0,15">
+                                <Border Grid.Column="0" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="12" Margin="0,0,5,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Tamanho" FontSize="10" Opacity="0.5"/>
+                                        <TextBlock Text="{Binding SelectedLog.Entry.FileSize, Converter={StaticResource FileSizeConverter}}" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="12" Margin="5,0,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Durao" FontSize="10" Opacity="0.5"/>
+                                        <TextBlock Text="{Binding SelectedLog.Entry.DurationMs, StringFormat={}{0:F0}ms}" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Logs do Engine" FontSize="11" Opacity="0.5"/>
+                                    <TextBlock Text="{Binding SelectedLog.Entry.Details}" FontSize="12" TextWrapping="Wrap" FontStyle="Italic"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Empty State -->
+                        <StackPanel IsVisible="{Binding SelectedLog, Converter={x:Static ObjectConverters.IsNull}}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,100">
+                            <material:MaterialIcon Kind="CursorPointer" Width="48" Height="48" Opacity="0.2"/>
+                            <TextBlock Text="Selecione uma entrada para ver os detalhes" Opacity="0.4" FontSize="12" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,10"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

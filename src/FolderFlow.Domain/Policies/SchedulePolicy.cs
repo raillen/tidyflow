@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using FolderFlow.Domain.Entities;
 using FolderFlow.Domain.Enums;
 
@@ -49,5 +50,47 @@ public static class SchedulePolicy
         }
 
         return false;
+    }
+
+    public static DateTime? GetNextRun(Job job, DateTime now)
+    {
+        if (job.ScheduleType == ScheduleType.None) return null;
+
+        if (job.ScheduleType == ScheduleType.Interval)
+        {
+            if (job.LastRun == null) return now;
+            var next = job.LastRun.Value.AddMinutes(job.IntervalMinutes);
+            return next < now ? now : next;
+        }
+
+        if (TimeSpan.TryParse(job.ScheduleTime, out var scheduledTime))
+        {
+            DateTime next;
+            if (job.ScheduleType == ScheduleType.Daily)
+            {
+                next = now.Date.Add(scheduledTime);
+                if (next < now || (job.LastRun != null && job.LastRun.Value.Date == now.Date)) 
+                    next = next.AddDays(1);
+                return next;
+            }
+
+            if (job.ScheduleType == ScheduleType.Weekly && job.DaysOfWeek != null && job.DaysOfWeek.Any())
+            {
+                next = now.Date.Add(scheduledTime);
+                // Busca o prximo dia da semana permitido
+                for (int i = 0; i < 8; i++)
+                {
+                    var checkDay = next.AddDays(i);
+                    if (job.DaysOfWeek.Contains(checkDay.DayOfWeek))
+                    {
+                        var scheduledOnCheckDay = checkDay.Date.Add(scheduledTime);
+                        if (scheduledOnCheckDay > now && !(job.LastRun != null && job.LastRun.Value.Date == scheduledOnCheckDay.Date))
+                            return scheduledOnCheckDay;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 }

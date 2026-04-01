@@ -142,7 +142,7 @@ public partial class App : Avalonia.Application
 
         services.AddSingleton<IWatchService, NativeWatchService>();
         services.AddSingleton<IAppLogger, FileLogger>();
-        services.AddSingleton<IAuditService, CsvAuditService>();
+        services.AddSingleton<IAuditService, SqliteAuditService>();
         services.AddSingleton<IFailureStore, JsonFailureStore>();
         services.AddSingleton<IJobQueue, ChannelJobQueue>();
         services.AddSingleton<IHashService, Sha256HashService>();

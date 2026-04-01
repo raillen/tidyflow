@@ -334,11 +334,12 @@ public class ExecutionEngine
                 }
             }
 
+            var sw = Stopwatch.StartNew();
             if (job.Mode == JobMode.Copy || job.VerifyHash) 
             {
                 var meta = fileOperator.GetFileMetadata(sourceFile);
                 var totalBytes = meta?.Size ?? 0;
-                var sw = Stopwatch.StartNew();
+                entry.FileSize = totalBytes;
 
                 var fileProgress = new Progress<double>(p => 
                 {
@@ -354,12 +355,15 @@ public class ExecutionEngine
                     }
                 });
                 await fileOperator.CopyAsync(sourceFile, targetFile, cancellationToken, fileProgress, job.EncryptionKey, job.DeltaSync);
-                sw.Stop();
             }
             else 
             {
+                var meta = fileOperator.GetFileMetadata(sourceFile);
+                entry.FileSize = meta?.Size ?? 0;
                 await fileOperator.MoveAsync(sourceFile, targetFile, cancellationToken);
             }
+            sw.Stop();
+            entry.DurationMs = sw.Elapsed.TotalMilliseconds;
 
             // Verificao de Integridade
             if (job.VerifyHash)

@@ -8,14 +8,21 @@ namespace FolderFlow.Infrastructure.Persistence.Json; // Ou mover para .Infrastr
 public class ChannelJobQueue : IJobQueue
 {
     private readonly Channel<Job> _channel = Channel.CreateUnbounded<Job>();
+    private int _count;
 
-    public ValueTask EnqueueAsync(Job job)
+    public bool IsPaused { get; set; }
+    public int Count => _count;
+
+    public async ValueTask EnqueueAsync(Job job)
     {
-        return _channel.Writer.WriteAsync(job);
+        await _channel.Writer.WriteAsync(job);
+        System.Threading.Interlocked.Increment(ref _count);
     }
 
-    public ValueTask<Job> DequeueAsync()
+    public async ValueTask<Job> DequeueAsync()
     {
-        return _channel.Reader.ReadAsync();
+        var job = await _channel.Reader.ReadAsync();
+        System.Threading.Interlocked.Decrement(ref _count);
+        return job;
     }
 }

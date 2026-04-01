@@ -13,6 +13,8 @@ using FolderFlow.Application.Services;
 using FolderFlow.Domain.Entities;
 using FolderFlow.Domain.ValueObjects;
 
+using FolderFlow.Infrastructure.Logging;
+
 namespace FolderFlow.App.ViewModels;
 
 public partial class DashboardViewModel : ViewModelBase, IDisposable
@@ -58,23 +60,34 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
     private bool _isUpdating;
     private int _auditUpdateCounter;
 
-    // Session-based real-time stats to add to historical data
-    private int _historicalProcessed;
-    private int _historicalIgnored;
-    private int _historicalErrors;
+    // Estatsticas histricas do SQLite para soma em tempo real
+    private int _sqliteProcessed;
+    private int _sqliteIgnored;
+    private int _sqliteErrors;
+
+    private readonly IAuditService _auditService;
+    private readonly ISchedulerService _schedulerService;
+    [ObservableProperty] private ObservableCollection<UpcomingJobInfo> _upcomingJobs = new();
+    [ObservableProperty] private ObservableCollection<double> _performancePoints = new(); // ltimos 60 segundos
 
     public DashboardViewModel(
         JobAppService jobAppService, 
+        IAuditService auditService,
         ISystemActivityService activityService,
         QueueProcessor queueProcessor,
         GlobalProgressService globalProgressService,
-        ISettingsStore settingsStore)
+        ISettingsStore settingsStore,
+        ISchedulerService schedulerService)
     {
         _jobAppService = jobAppService;
+        _auditService = auditService;
         _activityService = activityService;
         _queueProcessor = queueProcessor;
         _globalProgressService = globalProgressService;
         _settingsStore = settingsStore;
+        _schedulerService = schedulerService;
+        
+        for (int i = 0; i < 60; i++) PerformancePoints.Add(0);
         
         var dataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
         _reportsFolder = Path.Combine(dataFolder, "Reports");
@@ -154,7 +167,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
 
     private void UpdateFilesStatsFromLive()
     {
-        TotalProcessed = _historicalProcessed + _globalProgressService.GetActiveJobs().Sum(j => j.ProcessedFiles);
+        TotalProcessed = _sqliteProcessed + _globalProgressService.GetActiveJobs().Sum(j => j.ProcessedFiles);
     }
 
     private string FormatSpeed(double bytesPerSecond)
@@ -231,6 +244,11 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
 
             await CalculateAuditStats(jobsList.Select(j => j.Name).ToList());
 
+            // Radar de Agendamentos
+            var upcoming = await _schedulerService.GetUpcomingJobsAsync(5);
+            UpcomingJobs.Clear();
+            foreach (var up in upcoming) UpcomingJobs.Add(up);
+
             var activities = await _activityService.GetRecentActivitiesAsync(15);
             RecentActivities.Clear();
             foreach (var act in activities) RecentActivities.Add(act);
@@ -245,9 +263,19 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            _currentProcess.Refresh();
-            RamUsage = $"{_currentProcess.WorkingSet64 / 1024 / 1024} MB";
-            CpuUsage = 2.0 + (new Random().NextDouble() * 3.0); 
+            // Monitoramento Real via P/Invoke e PerformanceCounter
+            var ram = FolderFlow.Infrastructure.Helpers.SystemMonitor.GetRamStatus();
+            CpuUsage = FolderFlow.Infrastructure.Helpers.SystemMonitor.GetCpuUsage();
+            RamUsage = $"{ram.used / 1024 / 1024 / 1024} GB / {ram.total / 1024 / 1024 / 1024} GB";
+
+            // Grfico de Performance
+            var activeJobs = _globalProgressService.GetActiveJobs();
+            double currentSpeed = activeJobs.Sum(j => j.TransferSpeed);
+            
+            Dispatcher.UIThread.Post(() => {
+                PerformancePoints.Add(currentSpeed);
+                if (PerformancePoints.Count > 60) PerformancePoints.RemoveAt(0);
+            });
 
             if (_queueProcessor.ActiveCount == 0)
             {
@@ -258,61 +286,88 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
         catch { }
     }
 
+    // Premium Metrics
+    [ObservableProperty] private string _totalDataVolume = "0 B";
+    [ObservableProperty] private string _timeSaved = "0h 0m";
+    [ObservableProperty] private double _healthScore = 100.0;
+    [ObservableProperty] private string _healthStatus = "Excelente";
+
     private async Task CalculateAuditStats(List<string> jobNames)
     {
-        if (!Directory.Exists(_reportsFolder)) return;
+        if (_activityService is null) return; // Safety check
 
-        await Task.Run(async () => {
-            int processed = 0;
-            int ignored = 0;
-            int errors = 0;
+        try
+        {
+            var sqliteAudit = _auditService as SqliteAuditService;
+            if (sqliteAudit == null) return;
 
-            try
-            {
-                var dirInfo = new DirectoryInfo(_reportsFolder);
-                var files = dirInfo.GetFiles("*.csv").OrderByDescending(f => f.CreationTime).Take(50).ToList();
+            string? jobFilter = SelectedTaskFilter == "Todos" ? null : SelectedTaskFilter;
+            
+            var stats = await sqliteAudit.GetStatsAsync(jobFilter);
+            var bytes = await sqliteAudit.GetTotalBytesProcessedAsync(jobFilter);
 
-                foreach (var file in files)
+            _sqliteProcessed = stats.success;
+            _sqliteIgnored = stats.ignored;
+            _sqliteErrors = stats.errors;
+
+            Dispatcher.UIThread.Post(() => {
+                TotalProcessed = stats.success + _globalProgressService.GetActiveJobs().Sum(j => j.ProcessedFiles);
+                TotalIgnored = stats.ignored;
+                TotalErrors = stats.errors;
+                TotalDataVolume = FormatSize(bytes);
+                
+                // Clculo de Economia de Tempo (Ex: 3 segundos por arquivo processado)
+                var totalSecondsSaved = stats.success * 3; 
+                var hours = totalSecondsSaved / 3600;
+                var minutes = (totalSecondsSaved % 3600) / 60;
+                TimeSaved = $"{hours}h {minutes}m";
+
+                // Clculo de Health Score
+                int total = stats.success + stats.errors;
+                if (total > 0)
                 {
-                    var lines = await File.ReadAllLinesAsync(file.FullName);
-                    if (lines.Length <= 1) continue;
-
-                    var firstLineParts = lines[1].Split(';');
-                    if (firstLineParts.Length < 2) continue;
-                    var jobNameInFile = firstLineParts[1].Trim('"');
-
-                    if (jobNames.Contains(jobNameInFile) || (jobNames.Count == _allJobs.Count && SelectedTaskFilter == "Todos"))
-                    {
-                        for (int i = 1; i < lines.Length; i++)
-                        {
-                            var parts = lines[i].Split(';');
-                            if (parts.Length >= 3)
-                            {
-                                var status = parts[2].Trim('"');
-                                if (status == "COPIADO" || status == "MOVIDO") processed++;
-                                else if (status == "IGNORADO") ignored++;
-                                else if (status.Contains("FALHA")) errors++;
-                            }
-                        }
-                    }
+                    HealthScore = (double)stats.success / total * 100.0;
+                    if (HealthScore > 95) HealthStatus = "Excelente";
+                    else if (HealthScore > 80) HealthStatus = "Bom";
+                    else if (HealthScore > 60) HealthStatus = "Ateno";
+                    else HealthStatus = "Crtico";
                 }
+                else
+                {
+                    HealthScore = 100;
+                    HealthStatus = "Sem dados";
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Erro ao calcular stats: {ex.Message}");
+        }
+    }
 
-                _historicalProcessed = processed;
-                _historicalIgnored = ignored;
-                _historicalErrors = errors;
-
-                Dispatcher.UIThread.Post(() => {
-                    TotalProcessed = processed + _globalProgressService.GetActiveJobs().Sum(j => j.ProcessedFiles);
-                    TotalIgnored = ignored;
-                    TotalErrors = errors;
-                });
-            }
-            catch { }
-        });
+    private string FormatSize(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB", "TB" };
+        double size = bytes;
+        int unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.Length - 1)
+        {
+            size /= 1024;
+            unitIndex++;
+        }
+        return $"{size:F1} {units[unitIndex]}";
     }
 
     [RelayCommand] private void NewDirectCopy() => (App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel)?.NavigateToJobs("DirectCopy");
     [RelayCommand] private void NewWatchFolder() => (App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel)?.NavigateToJobs("WatchFolder");
+    
+    [RelayCommand] 
+    private void ToggleAllJobs()
+    {
+        _queueProcessor.TogglePause();
+        _activityService.LogActivityAsync(_queueProcessor.IsPaused ? "Processamento global pausado." : "Processamento global retomado.");
+        _ = UpdateStatsAsync();
+    }
     [RelayCommand] private void ViewHistory() => (App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel)?.NavigateToPage("History");
     [RelayCommand] private void AccessSettings() => (App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel)?.NavigateToPage("Settings");
     [RelayCommand] private void OpenLogFolder() => Process.Start("explorer.exe", _reportsFolder);

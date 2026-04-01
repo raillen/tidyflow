@@ -6,164 +6,105 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using FolderFlow.Domain.Entities;
+using FolderFlow.Application.Interfaces;
+using FolderFlow.Application.Services;
+using FolderFlow.Infrastructure.Logging;
+using System.Diagnostics;
+using System.Text;
 
 namespace FolderFlow.App.ViewModels;
 
 public partial class HistoryViewModel : ViewModelBase
 {
-    private readonly string _reportsFolder;
+    private readonly IAuditService _auditService;
+    private readonly JobAppService _jobAppService;
 
-    private List<AuditEntryViewModel> _allEntries = new();
-
-    [ObservableProperty]
-    private ObservableCollection<AuditEntryViewModel> _logs = new();
-
-    [ObservableProperty]
-    private string _searchText = string.Empty;
-
-    [ObservableProperty]
-    private string _selectedJobFilter = "Todos";
-
-    [ObservableProperty]
-    private string _selectedStatusFilter = "Todos";
+    [ObservableProperty] private ObservableCollection<AuditEntryViewModel> _logs = new();
+    [ObservableProperty] private AuditEntryViewModel? _selectedLog;
+    [ObservableProperty] private string _searchText = string.Empty;
+    [ObservableProperty] private string _selectedJobFilter = "Todos";
+    [ObservableProperty] private string _selectedStatusFilter = "Todos";
 
     public ObservableCollection<string> AvailableJobs { get; } = new();
-    public ObservableCollection<string> AvailableStatuses { get; } = new();
+    public ObservableCollection<string> AvailableStatuses { get; } = new(new[] { "Todos", "COPIADO", "MOVIDO", "IGNORADO", "FALHA" });
 
-    public HistoryViewModel()
+    public HistoryViewModel(IAuditService auditService, JobAppService jobAppService)
     {
-        var dataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
-        _reportsFolder = Path.Combine(dataFolder, "Reports");
+        _auditService = auditService;
+        _jobAppService = jobAppService;
         
-        AvailableStatuses.Add("Todos");
-        AvailableStatuses.Add("COPIADO");
-        AvailableStatuses.Add("MOVIDO");
-        AvailableStatuses.Add("IGNORADO");
-        AvailableStatuses.Add("FALHA");
-
         AvailableJobs.Add("Todos");
+        _ = InitialLoad();
+    }
 
-        LoadLogsCommand.Execute(null);
+    private async Task InitialLoad()
+    {
+        var jobs = await _jobAppService.GetAllJobsAsync();
+        foreach (var job in jobs.OrderBy(j => j.Name)) AvailableJobs.Add(job.Name);
+        await LoadLogs();
     }
 
     [RelayCommand]
     private async Task LoadLogs()
     {
-        if (!Directory.Exists(_reportsFolder)) return;
-
-        await Task.Run(async () =>
+        try
         {
-            var allEntries = new List<AuditEntryViewModel>();
-            var tempJobs = new HashSet<string>();
+            var sqliteAudit = _auditService as SqliteAuditService;
+            if (sqliteAudit == null) return;
 
-            try
+            var entries = await sqliteAudit.GetLogsAsync(SelectedJobFilter, SelectedStatusFilter, SearchText);
+            
+            Logs.Clear();
+            foreach (var entry in entries)
             {
-                var dirInfo = new DirectoryInfo(_reportsFolder);
-                var files = dirInfo.GetFiles("*.csv").OrderByDescending(f => f.CreationTime);
-
-                foreach (var file in files)
-                {
-                    var lines = await File.ReadAllLinesAsync(file.FullName);
-                    // Ignora o cabeçalho (linha 0)
-                    for (int i = 1; i < lines.Length; i++)
-                    {
-                        var line = lines[i];
-                        var parts = line.Split(';');
-                        if (parts.Length >= 6)
-                        {
-                            var entry = new AuditEntry
-                            {
-                                Timestamp = DateTime.TryParse(parts[0], out var dt) ? dt : DateTime.Now,
-                                JobName = parts[1].Trim('"'),
-                                Status = parts[2].Trim('"'),
-                                SourcePath = parts[3].Trim('"'),
-                                TargetPath = parts[4].Trim('"'),
-                                Details = parts[5].Trim('"')
-                            };
-
-                            allEntries.Add(new AuditEntryViewModel(entry));
-                            tempJobs.Add(entry.JobName);
-                        }
-                    }
-                }
-
-                allEntries = allEntries.OrderByDescending(e => e.Entry.Timestamp).ToList();
-
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    _allEntries = allEntries;
-                    
-                    var currentJob = SelectedJobFilter;
-                    AvailableJobs.Clear();
-                    AvailableJobs.Add("Todos");
-                    foreach (var job in tempJobs.OrderBy(j => j)) AvailableJobs.Add(job);
-
-                    if (AvailableJobs.Contains(currentJob)) SelectedJobFilter = currentJob;
-                    else SelectedJobFilter = "Todos";
-
-                    ApplyFilters();
-                });
+                Logs.Add(new AuditEntryViewModel(entry));
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao carregar logs CSV: {ex.Message}");
-            }
-        });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Erro ao carregar logs SQLite: {ex.Message}");
+        }
     }
 
-    partial void OnSearchTextChanged(string value) => ApplyFilters();
-    partial void OnSelectedJobFilterChanged(string value) => ApplyFilters();
-    partial void OnSelectedStatusFilterChanged(string value) => ApplyFilters();
+    partial void OnSearchTextChanged(string value) => _ = LoadLogs();
+    partial void OnSelectedJobFilterChanged(string value) => _ = LoadLogs();
+    partial void OnSelectedStatusFilterChanged(string value) => _ = LoadLogs();
 
-    private void ApplyFilters()
+    [RelayCommand]
+    private async Task ClearLogs()
     {
-        var filtered = _allEntries.AsEnumerable();
-
-        if (SelectedJobFilter != "Todos")
+        if (_auditService is SqliteAuditService sqliteAudit)
         {
-            filtered = filtered.Where(e => e.Entry.JobName == SelectedJobFilter);
-        }
-
-        if (SelectedStatusFilter != "Todos")
-        {
-            filtered = filtered.Where(e => e.Entry.Status.Contains(SelectedStatusFilter, StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (!string.IsNullOrWhiteSpace(SearchText))
-        {
-            filtered = filtered.Where(e => 
-                e.Entry.SourcePath.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                e.Entry.TargetPath.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                e.Entry.Details.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
-            );
-        }
-
-        Logs.Clear();
-        foreach (var item in filtered)
-        {
-            Logs.Add(item);
+            await sqliteAudit.ClearAllLogsAsync();
+            Logs.Clear();
+            SelectedLog = null;
         }
     }
 
     [RelayCommand]
-    private void ClearLogs()
+    private void OpenInExplorer(string? path)
     {
-        try
+        if (string.IsNullOrEmpty(path)) return;
+        try 
         {
-            if (Directory.Exists(_reportsFolder))
-            {
-                var files = Directory.GetFiles(_reportsFolder, "*.csv");
-                foreach (var file in files) File.Delete(file);
-            }
-            
-            // Também apaga o log de texto antigo por garantia
-            var oldLog = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "app.log");
-            if (File.Exists(oldLog)) File.Delete(oldLog);
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) 
+                Process.Start("explorer.exe", dir);
+        } catch { }
+    }
 
-            _allEntries.Clear();
-            Logs.Clear();
+    [RelayCommand]
+    private async Task ExportToCsv()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Timestamp;Job;Status;Origem;Destino;Tamanho;Duracao;Detalhes");
+        foreach (var log in Logs)
+        {
+            var e = log.Entry;
+            sb.AppendLine($"{e.Timestamp:yyyy-MM-dd HH:mm:ss};{e.JobName};{e.Status};{e.SourcePath};{e.TargetPath};{e.FileSize};{e.DurationMs};{e.Details}");
         }
-        catch { }
+
+        var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Export_FolderFlow_{DateTime.Now:yyyyMMdd_HHmm}.csv");
+        await File.WriteAllTextAsync(path, sb.ToString(), Encoding.UTF8);
     }
 }
