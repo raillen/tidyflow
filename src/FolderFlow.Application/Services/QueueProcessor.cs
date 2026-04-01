@@ -12,15 +12,18 @@ public class QueueProcessor
 {
     private readonly IJobQueue _jobQueue;
     private readonly ExecutionEngine _executionEngine;
+    private readonly ISettingsStore _settingsStore;
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _activeJobs = new();
     private CancellationTokenSource? _cts;
+    private SemaphoreSlim? _semaphore;
 
     public int ActiveCount => _activeJobs.Count;
 
-    public QueueProcessor(IJobQueue jobQueue, ExecutionEngine executionEngine)
+    public QueueProcessor(IJobQueue jobQueue, ExecutionEngine executionEngine, ISettingsStore settingsStore)
     {
         _jobQueue = jobQueue;
         _executionEngine = executionEngine;
+        _settingsStore = settingsStore;
     }
 
     public bool IsJobActive(Guid jobId) => _activeJobs.ContainsKey(jobId);
@@ -55,14 +58,19 @@ public class QueueProcessor
     {
         try
         {
+            var settings = await _settingsStore.LoadAsync();
+            _semaphore = new SemaphoreSlim(settings.MaxDegreeOfParallelism);
+
             while (!cancellationToken.IsCancellationRequested)
             {
-                // Se estiver pausado, aguarda um pouco antes de tentar pegar o prximo job
                 if (_jobQueue.IsPaused)
                 {
                     await Task.Delay(1000, cancellationToken);
                     continue;
                 }
+
+                // Aguarda o semforo antes de pegar da fila
+                await _semaphore.WaitAsync(cancellationToken);
 
                 var job = await _jobQueue.DequeueAsync();
 
@@ -76,15 +84,17 @@ public class QueueProcessor
                         {
                             await _executionEngine.RunJobAsync(job, jobCts.Token);
                         }
-                        catch (Exception)
-                        {
-                            // Erros j so logados pelo ExecutionEngine
-                        }
+                        catch (Exception) { }
                         finally
                         {
                             _activeJobs.TryRemove(job.Id, out _);
+                            _semaphore?.Release();
                         }
                     }, cancellationToken);
+                }
+                else
+                {
+                    _semaphore?.Release();
                 }
             }
         }

@@ -5,113 +5,210 @@
              xmlns:lcl="using:FolderFlow.App.Localization"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="850" d:DesignHeight="700"
+             mc:Ignorable="d" d:DesignWidth="850" d:DesignHeight="1200"
              x:Class="FolderFlow.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
     <ScrollViewer>
-        <StackPanel Margin="25" Spacing="30">
+        <StackPanel Margin="25" Spacing="25">
             <StackPanel Spacing="5">
-                <TextBlock Text="Configurações do Ecossistema" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock Text="Personalize sua experiência visual e funcional no FolderFlow" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
-            </StackPanel>
-            
-            <!-- Cards de Configuração -->
-            <StackPanel Spacing="20">
-                
-                <!-- Aparência Premium -->
-                <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="25">
-                    <StackPanel Spacing="25">
-                        <StackPanel Orientation="Horizontal" Spacing="15">
-                            <material:MaterialIcon Kind="Palette" Width="24" Height="24" Foreground="{DynamicResource AccentColor}"/>
-                            <TextBlock Text="Visual Engine (Glass &amp; Themes)" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
-                        </StackPanel>
-
-                        <Grid ColumnDefinitions="250, *" RowDefinitions="Auto, Auto, Auto" Margin="0,10,0,0">
-                            <!-- Tema -->
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Esquema de Cores:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Themes}" SelectedItem="{Binding Settings.Theme}" Width="250" Margin="0,0,0,20"/>
-                            
-                            <!-- Opacidade -->
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Opacidade do Vidro (Glass):" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="15" Margin="0,0,0,20">
-                                <Slider Value="{Binding GlassOpacity}" Minimum="0.1" Maximum="1.0" Width="200" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding GlassOpacity, StringFormat='{}{0:P0}'}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource AccentColor}"/>
-                            </StackPanel>
-
-                            <!-- Idioma -->
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Cultura e Localização:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding Settings.Language}" Width="250"/>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Comportamento -->
-                <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="25">
-                    <StackPanel Spacing="20">
-                        <StackPanel Orientation="Horizontal" Spacing="15">
-                            <material:MaterialIcon Kind="AutoFix" Width="24" Height="24" Foreground="{DynamicResource SuccessColor}"/>
-                            <TextBlock Text="Sistema e Background" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
-                        </StackPanel>
-
-                        <StackPanel Spacing="15" Margin="0,10,0,0">
-                            <CheckBox IsChecked="{Binding Settings.StartAtStartup}" Content="{lcl:Lcl StartAtStartup}"/>
-                            <CheckBox IsChecked="{Binding Settings.ShowNotifications}" Content="{lcl:Lcl ShowNotifications}"/>
-                            <CheckBox IsChecked="{Binding Settings.CloseToTray}" Content="{lcl:Lcl CloseToTray}"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Monitoramento -->
-                <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="25">
-                    <StackPanel Spacing="20">
-                        <StackPanel Orientation="Horizontal" Spacing="15">
-                            <material:MaterialIcon Kind="Monitor" Width="24" Height="24" Foreground="{DynamicResource AccentColor}"/>
-                            <TextBlock Text="Monitoramento e Performance" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
-                        </StackPanel>
-
-                        <Grid ColumnDefinitions="250, *" Margin="0,10,0,0">
-                            <TextBlock Grid.Column="0" Text="Taxa de Atualização do Monitor (seg):" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="15">
-                                <Slider Value="{Binding Settings.SystemMonitorUpdateIntervalSeconds}" Minimum="1" Maximum="10" Width="200" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Settings.SystemMonitorUpdateIntervalSeconds}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource AccentColor}"/>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Suporte -->
-                <Border BorderBrush="{DynamicResource SuccessColor}" BorderThickness="1" CornerRadius="16">
-                    <Panel>
-                        <!-- Background Layer with low opacity -->
-                        <Border Background="{DynamicResource SuccessColor}" Opacity="0.1" CornerRadius="16"/>
-                        
-                        <!-- Content Layer fully opaque -->
-                        <Border Padding="25">
-                            <StackPanel Spacing="15">
-                                <StackPanel Orientation="Horizontal" Spacing="15">
-                                    <material:MaterialIcon Kind="HeartPulse" Width="24" Height="24" Foreground="{DynamicResource SuccessColor}"/>
-                                    <TextBlock Text="Apoie o Desenvolvimento" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
-                                </StackPanel>
-                                <TextBlock Text="O FolderFlow é gratuito e open-source. Se ele economiza seu tempo, considere uma doação via PIX." FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"/>
-                                <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,10,0,0">
-                                    <Border Background="{DynamicResource CardBackground}" CornerRadius="8" Padding="15,8">
-                                        <TextBlock Text="PIX: contato@raillen.site" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                                    </Border>
-                                    <Button Content="Buy Me a Coffee" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Height="36"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-                    </Panel>
-                </Border>
-
+                <TextBlock Text="Configuraes Avanadas" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="Controle total sobre performance, integrao e visual" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
             </StackPanel>
 
-            <Button Command="{Binding SaveSettingsCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" CornerRadius="10" Padding="30,15" HorizontalAlignment="Left">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <material:MaterialIcon Kind="ContentSaveCheck" Width="20" Height="20"/>
-                    <TextBlock Text="Salvar Alterações Premium" VerticalAlignment="Center" FontWeight="Bold" FontSize="16"/>
+            <!-- Engine & Performance -->
+            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <material:MaterialIcon Kind="Speedometer" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
+                        <TextBlock Text="MOTOR E PERFORMANCE" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" Margin="0,10,0,0">
+                        <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,15,15">
+                            <TextBlock Text="Paralelismo (Threads)" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ComboBox ItemsSource="{Binding Threads}" SelectedItem="{Binding Settings.MaxDegreeOfParallelism}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                            <TextBlock Text="Nmero de arquivos processados simultaneamente" FontSize="11" Opacity="0.5" Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Grid.Row="0" Margin="15,0,0,15">
+                            <TextBlock Text="Prioridade do Processo" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding Settings.ProcessPriority}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                            <TextBlock Text="Impacto do software no desempenho do Windows" FontSize="11" Opacity="0.5" Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Limite de Banda Global" FontSize="12" FontWeight="SemiBold"/>
+                        <Grid ColumnDefinitions="*, Auto">
+                            <Slider Grid.Column="0" Value="{Binding Settings.BandwidthLimitBytes}" Minimum="0" Maximum="104857600" SmallChange="1048576"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Settings.BandwidthLimitBytes, Converter={StaticResource FileSizeConverter}, StringFormat='{}{0}/s'}" Margin="15,0,0,0" VerticalAlignment="Center" Width="80" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
+                        </Grid>
+                        <TextBlock Text="Limite a velocidade de cpia para no saturar a rede (0 = Ilimitado)" FontSize="11" Opacity="0.5"/>
+                    </StackPanel>
                 </StackPanel>
-            </Button>
+            </Border>
+
+            <!-- Security & Privacy -->
+            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <material:MaterialIcon Kind="ShieldLockOutline" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
+                        <TextBlock Text="SEGURANA E PRIVACIDADE" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*, *">
+                        <StackPanel Grid.Column="0" Spacing="15">
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="PIN de Acesso" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding Settings.AppPin}" PasswordChar="*" Watermark="Defina um PIN numrico" CornerRadius="8"/>
+                                <TextBlock Text="Proteja a interface com uma senha" FontSize="11" Opacity="0.5"/>
+                            </StackPanel>
+                            <CheckBox IsChecked="{Binding Settings.LockOnMinimize}" Content="Bloquear ao minimizar"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="30,0,0,0" Spacing="5">
+                            <TextBlock Text="Chave de Criptografia Mestra" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding Settings.MasterEncryptionKey}" PasswordChar="*" Watermark="Sua chave global" CornerRadius="8"/>
+                            <TextBlock Text="Sugerida como padro para novos jobs seguros" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Notifications Pro -->
+            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <material:MaterialIcon Kind="BellBadgeOutline" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
+                        <TextBlock Text="NOTIFICAES EXTERNAS (WEBHOOKS &amp; SMTP)" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="15">
+                        <Grid ColumnDefinitions="*, 150" Margin="0,0,0,10">
+                            <StackPanel Grid.Column="0" Spacing="5">
+                                <TextBlock Text="Webhook URL" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding Settings.WebhookUrl}" Watermark="https://discord.com/api/webhooks/..." CornerRadius="8"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="15,0,0,0" Spacing="5">
+                                <TextBlock Text="Tipo" FontSize="12" FontWeight="SemiBold"/>
+                                <ComboBox ItemsSource="{Binding WebhookTypes}" SelectedItem="{Binding Settings.WebhookType}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="SMTP / E-mail" FontSize="12" FontWeight="Bold" Opacity="0.8" Margin="0,10,0,0"/>
+                        <Grid ColumnDefinitions="*, *, *">
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Servidor SMTP" FontSize="11" Opacity="0.6" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding Settings.SmtpHost}" Watermark="smtp.gmail.com" CornerRadius="8"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="10,0,10,0">
+                                <TextBlock Text="Porta" FontSize="11" Opacity="0.6" Margin="0,0,0,5"/>
+                                <NumericUpDown Value="{Binding Settings.SmtpPort}" Minimum="1" Maximum="65535" CornerRadius="8"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="10,0,0,0">
+                                <TextBlock Text="E-mail Destino" FontSize="11" Opacity="0.6" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding Settings.NotificationEmail}" Watermark="alertas@email.com" CornerRadius="8"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Spacing="25" Margin="0,10,0,0">
+                            <CheckBox IsChecked="{Binding Settings.EnableSmtp}" Content="Ativar E-mail"/>
+                            <CheckBox IsChecked="{Binding Settings.NotifyOnSuccess}" Content="Notificar Sucessos"/>
+                            <CheckBox IsChecked="{Binding Settings.NotifyOnError}" Content="Notificar Erros"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Automation & Windows -->
+            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <material:MaterialIcon Kind="MicrosoftWindows" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
+                        <TextBlock Text="AUTOMAO E SISTEMA" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="15">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Iniciar com o Windows" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock Text="Abrir automaticamente ao ligar o computador" FontSize="11" Opacity="0.5"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.StartAtStartup}" OnContent="" OffContent="" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*, Auto">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Fechar para a Bandeja (System Tray)" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock Text="Manter o FolderFlow rodando ao fechar a janela principal" FontSize="11" Opacity="0.5"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.CloseToTray}" OnContent="" OffContent="" />
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Database Maintenance -->
+            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <material:MaterialIcon Kind="DatabaseSettingsOutline" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
+                        <TextBlock Text="MANUTENO E DADOS" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*, Auto" Margin="0,10,0,0">
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Reteno de Logs" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ComboBox ItemsSource="{Binding RetentionOptions}" SelectedItem="{Binding Settings.LogRetentionDays}" Width="150" CornerRadius="8"/>
+                            <TextBlock Text="Dias para manter os registros no histrico" FontSize="11" Opacity="0.5" Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Bottom">
+                            <TextBlock Text="{Binding DatabaseSize, StringFormat='Tamanho: {0}'}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button Command="{Binding PurgeOldLogsCommand}" Theme="{DynamicResource OutlineButton}" Content="Limpar Agora" FontSize="11" Padding="15,5" CornerRadius="6"/>
+                                <Button Command="{Binding OptimizeDatabaseCommand}" Classes="Secondary" Theme="{DynamicResource SolidButton}" Content="Otimizar Banco" FontSize="11" Padding="15,5" CornerRadius="6"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Visual & UI -->
+            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <material:MaterialIcon Kind="Palette" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
+                        <TextBlock Text="VISUAL E IDIOMA" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*, *" Margin="0,10,0,0">
+                        <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                            <TextBlock Text="Tema da Interface" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Settings.Theme}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="15,0,0,0">
+                            <TextBlock Text="Idioma do Sistema" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Settings.Language}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Opacidade do Efeito Vidro (Mica/Acrylic)" FontSize="12" FontWeight="SemiBold"/>
+                        <Grid ColumnDefinitions="*, Auto">
+                            <Slider Grid.Column="0" Value="{Binding GlassOpacity}" Minimum="0.1" Maximum="1.0" SmallChange="0.05"/>
+                            <TextBlock Grid.Column="1" Text="{Binding GlassOpacity, StringFormat={}{0:P0}}" Margin="15,0,0,0" VerticalAlignment="Center" Width="40" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Footer Actions -->
+            <StackPanel Orientation="Horizontal" Spacing="15" HorizontalAlignment="Right" Margin="0,10,0,0">
+                <Button Command="{Binding LoadSettingsCommand}" Theme="{DynamicResource OutlineButton}" Content="Descartar Alteraes" Padding="20,10" CornerRadius="8"/>
+                <Button Command="{Binding SaveSettingsCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" Content="Salvar Configuraes" Padding="25,10" CornerRadius="8" FontWeight="Bold"/>
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

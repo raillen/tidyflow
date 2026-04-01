@@ -18,6 +18,8 @@ public class SftpFileOperator : IFileOperator
     private readonly string _username;
     private readonly string _password;
 
+    public long BandwidthLimit { get; set; }
+
     public SftpFileOperator(string host, int port, string username, string password)
     {
         _host = host;

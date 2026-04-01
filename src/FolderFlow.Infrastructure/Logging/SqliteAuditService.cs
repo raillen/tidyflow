@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using FolderFlow.Application.Interfaces;
 using FolderFlow.Domain.Entities;
@@ -85,13 +86,12 @@ public class SqliteAuditService : IAuditService
         await transaction.CommitAsync();
     }
 
-    // Novos mtodos para o Dashboard Premium
     public async Task<long> GetTotalBytesProcessedAsync(string? jobName = null)
     {
         using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT SUM(FileSize) FROM AuditEntries WHERE Status IN ('COPIADO', 'MOVIDO')";
+        command.CommandText = "SELECT SUM(FileSize) FROM AuditEntries WHERE Status IN ('COPIADO', 'MOVIDO', 'ZIPADO')";
         if (!string.IsNullOrEmpty(jobName))
         {
             command.CommandText += " AND JobName = $name";
@@ -108,7 +108,7 @@ public class SqliteAuditService : IAuditService
         var command = connection.CreateCommand();
         command.CommandText = @"
             SELECT 
-                COUNT(CASE WHEN Status IN ('COPIADO', 'MOVIDO') THEN 1 END),
+                COUNT(CASE WHEN Status IN ('COPIADO', 'MOVIDO', 'ZIPADO') THEN 1 END),
                 COUNT(CASE WHEN Status = 'IGNORADO' THEN 1 END),
                 COUNT(CASE WHEN Status LIKE 'FALHA%' THEN 1 END)
             FROM AuditEntries";
@@ -183,5 +183,66 @@ public class SqliteAuditService : IAuditService
         var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM AuditEntries";
         await command.ExecuteNonQueryAsync();
+        await VacuumAsync();
+    }
+
+    public long GetDatabaseSize() => new FileInfo(_dbPath).Length;
+
+    public async Task VacuumAsync()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+        var command = connection.CreateCommand();
+        command.CommandText = "VACUUM";
+        await command.ExecuteNonQueryAsync();
+    }
+
+    public async Task<int> PurgeOldLogsAsync(int days)
+    {
+        if (days <= 0) return 0;
+        
+        using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+        var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM AuditEntries WHERE Timestamp < $cutoff";
+        command.Parameters.AddWithValue("$cutoff", DateTime.Now.AddDays(-days).ToString("yyyy-MM-dd HH:mm:ss"));
+        
+        int affected = await command.ExecuteNonQueryAsync();
+        if (affected > 0) await VacuumAsync();
+        return affected;
+    }
+
+    public async Task<string> GetDailySummaryAsync()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT JobName, 
+                   COUNT(CASE WHEN Status IN ('COPIADO', 'MOVIDO', 'ZIPADO') THEN 1 END) as Success,
+                   COUNT(CASE WHEN Status LIKE 'FALHA%' THEN 1 END) as Fail,
+                   SUM(FileSize) as Bytes
+            FROM AuditEntries 
+            WHERE Timestamp >= $cutoff
+            GROUP BY JobName";
+        command.Parameters.AddWithValue("$cutoff", DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd HH:mm:ss"));
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Resumo de Atividades - ltimas 24 horas");
+        sb.AppendLine("---------------------------------------");
+        
+        using var reader = await command.ExecuteReaderAsync();
+        bool hasData = false;
+        while (await reader.ReadAsync())
+        {
+            hasData = true;
+            var name = reader.GetString(0);
+            var success = reader.GetInt32(1);
+            var fail = reader.GetInt32(2);
+            var bytes = reader.IsDBNull(3) ? 0 : reader.GetInt64(3);
+            sb.AppendLine($"Job: {name} | Sucessos: {success} | Falhas: {fail} | Volume: {bytes / 1024.0 / 1024.0:F2} MB");
+        }
+
+        return hasData ? sb.ToString() : "Nenhuma atividade registrada nas ltimas 24 horas.";
     }
 }

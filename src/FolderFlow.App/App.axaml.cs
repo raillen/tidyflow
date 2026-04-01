@@ -119,11 +119,18 @@ public partial class App : Avalonia.Application
             localizationService.SetLanguage(settings.Language);
         });
 
-        // Iniciar serviços de background
+        // Iniciar servios de background
         queueProcessor.Start(System.Threading.CancellationToken.None);
         schedulerService.Start(System.Threading.CancellationToken.None);
         await watchAppService.InitializeAsync();
-    }
+
+        // Manuteno Automtica (SQLite)
+        if (Services.GetService<IAuditService>() is SqliteAuditService sqliteAudit)
+        {
+            await sqliteAudit.PurgeOldLogsAsync(settings.LogRetentionDays);
+        }
+        }
+
 
     private void ConfigureServices(IServiceCollection services)
     {
@@ -151,7 +158,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ISystemActivityService, SystemActivityService>();
         services.AddSingleton<GlobalProgressService>();
 
-        services.AddSingleton<IExternalNotificationService, WebhookNotificationService>();
+        services.AddSingleton<IExternalNotificationService, CompositeNotificationService>();
         services.AddSingleton<IScriptRunner, LocalScriptRunner>();
         services.AddSingleton<IEncryptionService, EncryptionService>();
 

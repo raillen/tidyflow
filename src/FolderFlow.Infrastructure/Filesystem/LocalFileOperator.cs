@@ -9,6 +9,8 @@ namespace FolderFlow.Infrastructure.Filesystem;
 
 public class LocalFileOperator : IFileOperator
 {
+    public long BandwidthLimit { get; set; }
+
     public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null, string? encryptionKey = null, bool deltaSync = false)
     {
         if (deltaSync && string.IsNullOrWhiteSpace(encryptionKey) && File.Exists(target))
@@ -18,7 +20,13 @@ public class LocalFileOperator : IFileOperator
             return;
         }
 
-        await using var sourceStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+        await using var sourceFileStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+        
+        // Aplica Throttling se configurado
+        Stream sourceStream = BandwidthLimit > 0 
+            ? new ThrottledStream(sourceFileStream, BandwidthLimit) 
+            : sourceFileStream;
+
         await using var targetFileStream = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
         
         Stream targetStream = targetFileStream;

@@ -16,21 +16,13 @@ public class CsvAuditService : IAuditService
     {
         var dataFolder = basePath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
         _reportsFolder = Path.Combine(dataFolder, "Reports");
-        
-        if (!Directory.Exists(_reportsFolder))
-        {
-            Directory.CreateDirectory(_reportsFolder);
-        }
+        if (!Directory.Exists(_reportsFolder)) Directory.CreateDirectory(_reportsFolder);
     }
 
     public async Task SaveReportAsync(string jobName, IEnumerable<AuditEntry> entries)
     {
-        var safeJobName = string.Join("_", jobName.Split(Path.GetInvalidFileNameChars()));
-        var fileName = $"REPORT_{safeJobName}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
-        var filePath = Path.Combine(_reportsFolder, fileName);
-
+        var filePath = Path.Combine(_reportsFolder, $"{jobName}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
         var sb = new StringBuilder();
-        // Header
         sb.AppendLine("Timestamp;JobName;Status;SourcePath;TargetPath;Details");
 
         foreach (var entry in entries)
@@ -40,4 +32,23 @@ public class CsvAuditService : IAuditService
 
         await File.WriteAllTextAsync(filePath, sb.ToString(), Encoding.UTF8);
     }
+
+    public Task<int> PurgeOldLogsAsync(int days)
+    {
+        if (days <= 0 || !Directory.Exists(_reportsFolder)) return Task.FromResult(0);
+        
+        int count = 0;
+        var cutoff = DateTime.Now.AddDays(-days);
+        foreach (var file in Directory.GetFiles(_reportsFolder, "*.csv"))
+        {
+            if (File.GetCreationTime(file) < cutoff)
+            {
+                File.Delete(file);
+                count++;
+            }
+        }
+        return Task.FromResult(count);
+    }
+
+    public Task<string> GetDailySummaryAsync() => Task.FromResult("Resumo CSV no implementado. Use SQLite.");
 }

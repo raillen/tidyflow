@@ -15,13 +15,25 @@ public class SimpleScheduler : ISchedulerService
     private readonly IJobQueue _jobQueue;
     private readonly JobAppService _jobAppService;
     private readonly ISystemActivityService _activityService;
+    private readonly IAuditService _auditService;
+    private readonly ISettingsStore _settingsStore;
+    private readonly IExternalNotificationService _notificationService;
     private CancellationTokenSource? _cts;
 
-    public SimpleScheduler(IJobQueue jobQueue, JobAppService jobAppService, ISystemActivityService activityService)
+    public SimpleScheduler(
+        IJobQueue jobQueue, 
+        JobAppService jobAppService, 
+        ISystemActivityService activityService,
+        IAuditService auditService,
+        ISettingsStore settingsStore,
+        IExternalNotificationService notificationService)
     {
         _jobQueue = jobQueue;
         _jobAppService = jobAppService;
         _activityService = activityService;
+        _auditService = auditService;
+        _settingsStore = settingsStore;
+        _notificationService = notificationService;
     }
 
     public void Start(CancellationToken cancellationToken)
@@ -30,14 +42,24 @@ public class SimpleScheduler : ISchedulerService
         Task.Run(async () => await RunSchedulerLoopAsync(_cts.Token));
     }
 
+    private DateTime _lastMaintenanceDate = DateTime.MinValue;
+
     private async Task RunSchedulerLoopAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var jobs = await _jobAppService.GetAllJobsAsync();
                 var now = DateTime.Now;
+
+                // Tarefa de Manuteno Diria (Meia-noite)
+                if (now.Date > _lastMaintenanceDate.Date)
+                {
+                    await RunDailyMaintenanceAsync();
+                    _lastMaintenanceDate = now;
+                }
+
+                var jobs = await _jobAppService.GetAllJobsAsync();
 
                 foreach (var job in jobs)
                 {
@@ -52,10 +74,34 @@ public class SimpleScheduler : ISchedulerService
             catch (Exception ex)
             {
                 await _activityService.LogActivityAsync($"Erro no loop do agendador: {ex.Message}", "ERROR");
-                await Task.Delay(5000, cancellationToken); // Aguarda mais em caso de erro persistente
+                await Task.Delay(5000, cancellationToken);
             }
 
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+        }
+    }
+
+    private async Task RunDailyMaintenanceAsync()
+    {
+        try
+        {
+            // 1. Purge
+            var settings = await _settingsStore.LoadAsync();
+            await _auditService.PurgeOldLogsAsync(settings.LogRetentionDays);
+
+            // 2. Summary Email
+            if (settings.EnableSmtp && !string.IsNullOrEmpty(settings.NotificationEmail))
+            {
+                var summary = await _auditService.GetDailySummaryAsync();
+                await _notificationService.NotifyJobCompletionAsync(
+                    new Job { Name = "Resumo Dirio" }, true, 0, summary);
+            }
+
+            await _activityService.LogActivityAsync("Manuteno diria concluda com sucesso.");
+        }
+        catch (Exception ex)
+        {
+            await _activityService.LogActivityAsync($"Erro na manuteno diria: {ex.Message}", "WARNING");
         }
     }
 

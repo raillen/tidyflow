@@ -101,6 +101,13 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
         {
             UpdateSystemMonitor();
             
+            // Re-checar intervalo dinamicamente
+            var settings = await _settingsStore.LoadAsync();
+            if (_timer.Interval.TotalSeconds != settings.SystemMonitorUpdateIntervalSeconds)
+            {
+                _timer.Interval = TimeSpan.FromSeconds(Math.Max(1, settings.SystemMonitorUpdateIntervalSeconds));
+            }
+
             _auditUpdateCounter++;
             if (_auditUpdateCounter >= (30 / (int)_timer.Interval.TotalSeconds)) 
             {

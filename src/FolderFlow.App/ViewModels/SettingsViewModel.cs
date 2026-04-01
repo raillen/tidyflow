@@ -7,6 +7,7 @@ using FolderFlow.App.Services;
 using FolderFlow.Application.Interfaces;
 using FolderFlow.Domain.Entities;
 using FolderFlow.Domain.Enums;
+using FolderFlow.Infrastructure.Logging;
 
 namespace FolderFlow.App.ViewModels;
 
@@ -46,16 +47,57 @@ public partial class SettingsViewModel : ViewModelBase
         "pt-BR", "en-US", "es-ES", "ja-JP", "ru-RU" 
     });
 
+    public ObservableCollection<string> WebhookTypes { get; } = new(new[] { "Generic", "Discord", "Slack" });
+
+    private readonly IAuditService _auditService;
+
+    [ObservableProperty] private string _databaseSize = "0 KB";
+    public ObservableCollection<int> RetentionOptions { get; } = new(new[] { 0, 7, 15, 30, 60, 90 });
+
     public SettingsViewModel(
         ISettingsStore settingsStore, 
         ThemeService themeService,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        IAuditService auditService)
     {
         _settingsStore = settingsStore;
         _themeService = themeService;
         _localizationService = localizationService;
+        _auditService = auditService;
         
         LoadSettingsCommand.Execute(null);
+        RefreshDatabaseStats();
+    }
+
+    private void RefreshDatabaseStats()
+    {
+        if (_auditService is SqliteAuditService sqlite)
+        {
+            var bytes = sqlite.GetDatabaseSize();
+            if (bytes < 1024) DatabaseSize = $"{bytes} B";
+            else if (bytes < 1024 * 1024) DatabaseSize = $"{bytes / 1024.0:F1} KB";
+            else DatabaseSize = $"{bytes / (1024.0 * 1024.0):F1} MB";
+        }
+    }
+
+    [RelayCommand]
+    private async Task OptimizeDatabase()
+    {
+        if (_auditService is SqliteAuditService sqlite)
+        {
+            await sqlite.VacuumAsync();
+            RefreshDatabaseStats();
+        }
+    }
+
+    [RelayCommand]
+    private async Task PurgeOldLogs()
+    {
+        if (_auditService is SqliteAuditService sqlite)
+        {
+            await sqlite.PurgeOldLogsAsync(Settings.LogRetentionDays);
+            RefreshDatabaseStats();
+        }
     }
 
     [RelayCommand]
@@ -63,6 +105,9 @@ public partial class SettingsViewModel : ViewModelBase
     {
         Settings = await _settingsStore.LoadAsync();
     }
+
+    public ObservableCollection<string> Priorities { get; } = new(new[] { "BelowNormal", "Normal", "High" });
+    public ObservableCollection<int> Threads { get; } = new(new[] { 1, 2, 3, 4, 5, 8, 10 });
 
     [RelayCommand]
     private async Task SaveSettings()
@@ -77,5 +122,9 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _localizationService.SetLanguage(Settings.Language);
         }
+
+        // Integrao Windows
+        FolderFlow.Infrastructure.Helpers.WindowsStartupHelper.SetStartup(Settings.StartAtStartup);
+        FolderFlow.Infrastructure.Helpers.WindowsStartupHelper.SetProcessPriority(Settings.ProcessPriority);
     }
 }

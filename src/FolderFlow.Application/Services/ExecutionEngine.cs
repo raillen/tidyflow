@@ -26,6 +26,7 @@ public class ExecutionEngine
     private readonly IExternalNotificationService _externalNotificationService;
     private readonly IScriptRunner _scriptRunner;
     private readonly IEncryptionService _encryptionService;
+    private readonly ISettingsStore _settingsStore;
 
     public ExecutionEngine(
         FileOperatorFactory fileOperatorFactory, 
@@ -39,7 +40,8 @@ public class ExecutionEngine
         GlobalProgressService globalProgressService,
         IExternalNotificationService externalNotificationService,
         IScriptRunner scriptRunner,
-        IEncryptionService encryptionService)
+        IEncryptionService encryptionService,
+        ISettingsStore settingsStore)
     {
         _fileOperatorFactory = fileOperatorFactory;
         _logger = logger;
@@ -53,11 +55,16 @@ public class ExecutionEngine
         _externalNotificationService = externalNotificationService;
         _scriptRunner = scriptRunner;
         _encryptionService = encryptionService;
+        _settingsStore = settingsStore;
     }
 
     public async Task RunJobAsync(Job job, CancellationToken cancellationToken = default, bool isRetry = false, IProgress<JobProgressInfo>? progress = null)
     {
         var _fileOperator = _fileOperatorFactory.GetOperator(job.SourcePath, job.TargetPath);
+        
+        // Aplica limite de banda das configuraes
+        var settings = await _settingsStore.LoadAsync();
+        _fileOperator.BandwidthLimit = settings.BandwidthLimitBytes;
         
         var auditEntries = new System.Collections.Generic.List<AuditEntry>();
         var failedPaths = new System.Collections.Generic.List<string>();

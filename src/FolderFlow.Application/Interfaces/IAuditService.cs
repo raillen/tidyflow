@@ -7,4 +7,6 @@ namespace FolderFlow.Application.Interfaces;
 public interface IAuditService
 {
     Task SaveReportAsync(string jobName, IEnumerable<AuditEntry> entries);
+    Task<int> PurgeOldLogsAsync(int days);
+    Task<string> GetDailySummaryAsync();
 }
