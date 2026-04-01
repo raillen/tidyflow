@@ -130,7 +130,16 @@ public partial class App : Avalonia.Application
         // Infrastructure
         services.AddSingleton<ISettingsStore>(new SettingsJsonStore());
         services.AddSingleton<IJobStore>(new JobJsonStore());
-        services.AddSingleton<IFileOperator, LocalFileOperator>();
+        
+        // File Operators setup
+        services.AddSingleton<LocalFileOperator>();
+        services.AddSingleton<SftpFileOperator>(provider => new SftpFileOperator("localhost", 22, "root", "")); // Mock config
+        services.AddSingleton<IFileOperator, LocalFileOperator>(); // Default
+        services.AddSingleton(provider => new FileOperatorFactory(new IFileOperator[] { 
+            provider.GetRequiredService<LocalFileOperator>(),
+            provider.GetRequiredService<SftpFileOperator>()
+        }));
+
         services.AddSingleton<IWatchService, NativeWatchService>();
         services.AddSingleton<IAppLogger, FileLogger>();
         services.AddSingleton<IAuditService, CsvAuditService>();
