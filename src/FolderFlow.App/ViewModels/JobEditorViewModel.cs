@@ -44,6 +44,8 @@ public partial class JobEditorViewModel : ViewModelBase
     public ObservableCollection<ScheduleType> ScheduleTypes { get; } = new(new[] { ScheduleType.None, ScheduleType.Interval, ScheduleType.Daily, ScheduleType.Weekly });
     public ObservableCollection<MonitoringMode> MonitoringModes { get; } = new(new[] { MonitoringMode.RealTime, MonitoringMode.Polling });
     public ObservableCollection<FolderFlow.Domain.Enums.NotificationTrigger> NotificationTriggers { get; } = new(Enum.GetValues<FolderFlow.Domain.Enums.NotificationTrigger>());
+    public ObservableCollection<ArchiveFormat> ArchiveFormats { get; } = new(Enum.GetValues<ArchiveFormat>());
+    public ObservableCollection<RetentionPolicy> RetentionPolicies { get; } = new(Enum.GetValues<RetentionPolicy>());
 
     public event Action? Saved;
     public event Action? Cancelled;
@@ -86,6 +88,19 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty]
     private string _postScriptPath = string.Empty;
 
+    // Fase 2 - Segurana, Reteno e Otimizao
+    [ObservableProperty]
+    private ArchiveFormat _archiveFormat = ArchiveFormat.None;
+
+    [ObservableProperty]
+    private string _encryptionKey = string.Empty;
+
+    [ObservableProperty]
+    private RetentionPolicy _retentionPolicy = RetentionPolicy.None;
+
+    [ObservableProperty]
+    private int _retentionCount = 0;
+
     public void SetJob(Job job)
     {
         Job = new Job
@@ -116,6 +131,10 @@ public partial class JobEditorViewModel : ViewModelBase
             NotifyOn = job.NotifyOn,
             PreScriptPath = job.PreScriptPath,
             PostScriptPath = job.PostScriptPath,
+            ArchiveFormat = job.ArchiveFormat,
+            EncryptionKey = job.EncryptionKey,
+            RetentionPolicy = job.RetentionPolicy,
+            RetentionCount = job.RetentionCount,
             DaysOfWeek = new System.Collections.Generic.List<DayOfWeek>(job.DaysOfWeek ?? new()),
             IncludeExtensions = new System.Collections.Generic.List<string>(job.IncludeExtensions),
             ExcludePatterns = new System.Collections.Generic.List<string>(job.ExcludePatterns)
@@ -130,6 +149,10 @@ public partial class JobEditorViewModel : ViewModelBase
         NotifyOn = Job.NotifyOn;
         PreScriptPath = Job.PreScriptPath ?? string.Empty;
         PostScriptPath = Job.PostScriptPath ?? string.Empty;
+        ArchiveFormat = Job.ArchiveFormat;
+        EncryptionKey = Job.EncryptionKey ?? string.Empty;
+        RetentionPolicy = Job.RetentionPolicy;
+        RetentionCount = Job.RetentionCount;
 
         var days = Job.DaysOfWeek ?? new();
         IsSun = days.Contains(DayOfWeek.Sunday);
@@ -165,6 +188,11 @@ public partial class JobEditorViewModel : ViewModelBase
         Job.NotifyOn = NotifyOn;
         Job.PreScriptPath = string.IsNullOrWhiteSpace(PreScriptPath) ? null : PreScriptPath.Trim();
         Job.PostScriptPath = string.IsNullOrWhiteSpace(PostScriptPath) ? null : PostScriptPath.Trim();
+        
+        Job.ArchiveFormat = ArchiveFormat;
+        Job.EncryptionKey = string.IsNullOrWhiteSpace(EncryptionKey) ? null : EncryptionKey;
+        Job.RetentionPolicy = RetentionPolicy;
+        Job.RetentionCount = RetentionCount;
 
         var days = new System.Collections.Generic.List<DayOfWeek>();
         if (IsSun) days.Add(DayOfWeek.Sunday);

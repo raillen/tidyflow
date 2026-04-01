@@ -3,35 +3,52 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using FolderFlow.Application.Interfaces;
+using FolderFlow.Infrastructure.Security;
 
 namespace FolderFlow.Infrastructure.Filesystem;
 
 public class LocalFileOperator : IFileOperator
 {
-    public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null)
+    public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null, string? encryptionKey = null)
     {
         await using var sourceStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
-        await using var targetStream = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
+        await using var targetFileStream = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
         
-        if (progress == null)
+        Stream targetStream = targetFileStream;
+        if (!string.IsNullOrWhiteSpace(encryptionKey))
         {
-            await sourceStream.CopyToAsync(targetStream, cancellationToken);
-            return;
+            targetStream = EncryptionHelper.GetEncryptStream(targetFileStream, encryptionKey);
         }
 
-        var totalBytes = sourceStream.Length;
-        var buffer = new byte[1024 * 1024]; // 1MB buffer for better performance and speed tracking
-        long totalRead = 0;
-        int bytesRead;
-
-        while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+        try
         {
-            await targetStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
-            totalRead += bytesRead;
-            
-            if (totalBytes > 0)
+            if (progress == null)
             {
-                progress.Report((double)totalRead / totalBytes * 100);
+                await sourceStream.CopyToAsync(targetStream, 81920, cancellationToken);
+                return;
+            }
+
+            var totalBytes = sourceStream.Length;
+            var buffer = new byte[1024 * 1024]; // 1MB buffer for better performance and speed tracking
+            long totalRead = 0;
+            int bytesRead;
+
+            while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+            {
+                await targetStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                totalRead += bytesRead;
+                
+                if (totalBytes > 0)
+                {
+                    progress.Report((double)totalRead / totalBytes * 100);
+                }
+            }
+        }
+        finally
+        {
+            if (targetStream != targetFileStream)
+            {
+                await targetStream.DisposeAsync();
             }
         }
     }

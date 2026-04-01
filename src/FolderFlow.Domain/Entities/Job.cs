@@ -47,4 +47,10 @@ public class Job
     // Scripts e Hooks (Fase 1)
     public string? PreScriptPath { get; set; }
     public string? PostScriptPath { get; set; }
+
+    // Segurana, Reteno e Otimizao (Fase 2)
+    public ArchiveFormat ArchiveFormat { get; set; } = ArchiveFormat.None;
+    public string? EncryptionKey { get; set; }
+    public RetentionPolicy RetentionPolicy { get; set; } = RetentionPolicy.None;
+    public int RetentionCount { get; set; } = 0;
 }

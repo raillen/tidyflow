@@ -74,6 +74,12 @@
                         <TextBlock Text="Integraes" FontSize="13"/>
                     </StackPanel>
                 </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <material:MaterialIcon Kind="ShieldLockOutline" Width="16" Height="16"/>
+                        <TextBlock Text="Segurana" FontSize="13"/>
+                    </StackPanel>
+                </ListBoxItem>
             </ListBox>
         </Border>
 
@@ -376,6 +382,67 @@
                                     <TextBlock Text="Script Ps-Execuo (.bat, .ps1, .sh)" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
                                     <TextBox Text="{Binding PostScriptPath}" Watermark="C:\scripts\iniciar_servico.bat" Height="38" CornerRadius="8"/>
                                 </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <!-- ABA 5: SEGURANÇA E OTIMIZAÇÃO -->
+            <TabItem>
+                <ScrollViewer Padding="25,5,25,25" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="20">
+                        
+                        <!-- Criptografia -->
+                        <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                            <StackPanel Spacing="15">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <material:MaterialIcon Kind="ShieldLockOutline" Foreground="{DynamicResource SuccessColor}" Width="20" Height="20"/>
+                                    <TextBlock Text="Criptografia (AES-256)" FontWeight="Bold" FontSize="13"/>
+                                </StackPanel>
+                                
+                                <TextBlock Text="Criptografa os arquivos no destino. Essencial para backups em nuvem ou discos não confiveis." FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                                
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Chave de Criptografia (Deixe em branco para no criptografar)" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                    <TextBox Text="{Binding EncryptionKey}" PasswordChar="●" Watermark="SuaSenhaForte123!" Height="38" CornerRadius="8"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Compactação -->
+                        <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                            <StackPanel Spacing="15">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <material:MaterialIcon Kind="FolderZipOutline" Foreground="{DynamicResource AccentColor}" Width="20" Height="20"/>
+                                    <TextBlock Text="Compactação de Arquivos" FontWeight="Bold" FontSize="13"/>
+                                </StackPanel>
+                                
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Formato de Sada" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                    <ComboBox ItemsSource="{Binding ArchiveFormats}" SelectedItem="{Binding ArchiveFormat}" HorizontalAlignment="Stretch" Height="38" CornerRadius="8"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Retenção -->
+                        <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,20">
+                            <StackPanel Spacing="15">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <material:MaterialIcon Kind="History" Foreground="{DynamicResource WarningColor}" Width="20" Height="20"/>
+                                    <TextBlock Text="Poltica de Reteno (Backup Histrico)" FontWeight="Bold" FontSize="13"/>
+                                </StackPanel>
+                                
+                                <Grid ColumnDefinitions="*, *">
+                                    <StackPanel Grid.Column="0" Margin="0,0,12,0" Spacing="6">
+                                        <TextBlock Text="Estratgia de Limpeza" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                        <ComboBox ItemsSource="{Binding RetentionPolicies}" SelectedItem="{Binding RetentionPolicy}" HorizontalAlignment="Stretch" Height="38" CornerRadius="8"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Column="1" Spacing="6" IsVisible="{Binding RetentionPolicy, Converter={StaticResource NotEqualsConverter}, ConverterParameter={x:Static enums:RetentionPolicy.None}}">
+                                        <TextBlock Text="Quantidade (Dias ou Verses)" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                        <NumericUpDown Value="{Binding RetentionCount}" Minimum="0" Height="38" CornerRadius="8"/>
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
                         </Border>
                     </StackPanel>

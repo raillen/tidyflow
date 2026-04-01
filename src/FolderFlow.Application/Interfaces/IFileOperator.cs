@@ -9,7 +9,7 @@ public record FileMetadata(long Size, DateTime LastWriteTimeUtc);
 
 public interface IFileOperator
 {
-    Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null);
+    Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null, string? encryptionKey = null);
     Task MoveAsync(string source, string target, CancellationToken cancellationToken = default);
     Task DeleteAsync(string path, CancellationToken cancellationToken = default);
     bool Exists(string path);

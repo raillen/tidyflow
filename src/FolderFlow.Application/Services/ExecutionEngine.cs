@@ -25,6 +25,7 @@ public class ExecutionEngine
     private readonly GlobalProgressService _globalProgressService;
     private readonly IExternalNotificationService _externalNotificationService;
     private readonly IScriptRunner _scriptRunner;
+    private readonly IEncryptionService _encryptionService;
 
     public ExecutionEngine(
         IFileOperator fileOperator, 
@@ -37,7 +38,8 @@ public class ExecutionEngine
         ISystemActivityService activityService,
         GlobalProgressService globalProgressService,
         IExternalNotificationService externalNotificationService,
-        IScriptRunner scriptRunner)
+        IScriptRunner scriptRunner,
+        IEncryptionService encryptionService)
     {
         _fileOperator = fileOperator;
         _logger = logger;
@@ -50,6 +52,7 @@ public class ExecutionEngine
         _globalProgressService = globalProgressService;
         _externalNotificationService = externalNotificationService;
         _scriptRunner = scriptRunner;
+        _encryptionService = encryptionService;
     }
 
     public async Task RunJobAsync(Job job, CancellationToken cancellationToken = default, bool isRetry = false, IProgress<JobProgressInfo>? progress = null)
@@ -123,82 +126,90 @@ public class ExecutionEngine
             }
             progressInfo.TotalBytes = totalJobBytes;
 
-            foreach (var file in filesToProcess)
+            if (job.ArchiveFormat == ArchiveFormat.Zip)
             {
-                if (cancellationToken.IsCancellationRequested) break;
-
-                progressInfo.CurrentFile = Path.GetFileName(file);
-                ReportProgress();
-
-                var fileMeta = _fileOperator.GetFileMetadata(file);
-                long fileBytes = fileMeta?.Size ?? 0;
-
-                if (ShouldProcessFile(file, job))
+                await RunZipBackupAsync(job, filesToProcess, cancellationToken, progressInfo, ReportProgress, auditEntries, failedPaths);
+                processedCount = filesToProcess.Count - failedPaths.Count;
+            }
+            else
+            {
+                foreach (var file in filesToProcess)
                 {
-                    // RETRY AUTOMTICO (3 vezes)
-                    AuditEntry? entry = null;
-                    int attempts = 0;
-                    while (attempts < 3)
+                    if (cancellationToken.IsCancellationRequested) break;
+
+                    progressInfo.CurrentFile = Path.GetFileName(file);
+                    ReportProgress();
+
+                    var fileMeta = _fileOperator.GetFileMetadata(file);
+                    long fileBytes = fileMeta?.Size ?? 0;
+
+                    if (ShouldProcessFile(file, job))
                     {
-                        progressInfo.CurrentFilePercentage = 0;
-                        progressInfo.TransferSpeed = 0;
-                        
-                        long startProcessedBytes = progressInfo.ProcessedBytes; // Salva o estado antes do retry
-                        
-                        entry = await ProcessFileAsync(file, job, cancellationToken, (p) => 
+                        // RETRY AUTOMTICO (3 vezes)
+                        AuditEntry? entry = null;
+                        int attempts = 0;
+                        while (attempts < 3)
                         {
-                            // Atualiza ProcessedBytes durante a cópia baseando-se no %
-                            progressInfo.ProcessedBytes = startProcessedBytes + (long)(fileBytes * (p.CurrentFilePercentage / 100.0));
+                            progressInfo.CurrentFilePercentage = 0;
+                            progressInfo.TransferSpeed = 0;
                             
-                            // Calcula ETA simples
-                            if (p.TransferSpeed > 0)
+                            long startProcessedBytes = progressInfo.ProcessedBytes; // Salva o estado antes do retry
+                            
+                            entry = await ProcessFileAsync(file, job, cancellationToken, (p) => 
                             {
-                                var remainingBytes = p.TotalBytes - p.ProcessedBytes;
-                                var remainingSeconds = remainingBytes / p.TransferSpeed;
-                                p.EstimatedTimeRemaining = TimeSpan.FromSeconds(remainingSeconds);
+                                // Atualiza ProcessedBytes durante a cópia baseando-se no %
+                                progressInfo.ProcessedBytes = startProcessedBytes + (long)(fileBytes * (p.CurrentFilePercentage / 100.0));
+                                
+                                // Calcula ETA simples
+                                if (p.TransferSpeed > 0)
+                                {
+                                    var remainingBytes = p.TotalBytes - p.ProcessedBytes;
+                                    var remainingSeconds = remainingBytes / p.TransferSpeed;
+                                    p.EstimatedTimeRemaining = TimeSpan.FromSeconds(remainingSeconds);
+                                }
+                                
+                                ReportProgress();
+                            }, progressInfo);
+                            
+                            if (entry != null && entry.Status != "FALHA") 
+                            {
+                                // Garante que o total do arquivo foi somado ao final do sucesso
+                                progressInfo.ProcessedBytes = startProcessedBytes + fileBytes;
+                                break;
+                            }
+                            else
+                            {
+                                // Restaura ProcessedBytes em caso de falha para tentar de novo
+                                progressInfo.ProcessedBytes = startProcessedBytes;
                             }
                             
-                            ReportProgress();
-                        }, progressInfo);
-                        
-                        if (entry != null && entry.Status != "FALHA") 
-                        {
-                            // Garante que o total do arquivo foi somado ao final do sucesso
-                            progressInfo.ProcessedBytes = startProcessedBytes + fileBytes;
-                            break;
+                            attempts++;
+                            if (attempts < 3) await Task.Delay(1000, cancellationToken);
                         }
-                        else
-                        {
-                            // Restaura ProcessedBytes em caso de falha para tentar de novo
-                            progressInfo.ProcessedBytes = startProcessedBytes;
-                        }
-                        
-                        attempts++;
-                        if (attempts < 3) await Task.Delay(1000, cancellationToken);
-                    }
 
-                    if (entry != null)
+                        if (entry != null)
+                        {
+                            auditEntries.Add(entry);
+                            if (entry.Status == "FALHA") failedPaths.Add(file);
+                            else if (entry.Status != "IGNORADO") processedCount++;
+
+                            progressInfo.Status = entry.Status;
+                            progressInfo.Details = entry.Details ?? "";
+                        }
+                    }
+                    else
                     {
-                        auditEntries.Add(entry);
-                        if (entry.Status == "FALHA") failedPaths.Add(file);
-                        else if (entry.Status != "IGNORADO") processedCount++;
-
-                        progressInfo.Status = entry.Status;
-                        progressInfo.Details = entry.Details ?? "";
+                        progressInfo.ProcessedBytes += fileBytes; // Mesmo ignorado, conta como processado no total
+                        var details = "Filtro de excluso ou critrios de data/tamanho.";
+                        auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, Status = "IGNORADO", Details = details });
+                        progressInfo.Status = "IGNORADO";
+                        progressInfo.Details = details;
                     }
-                }
-                else
-                {
-                    progressInfo.ProcessedBytes += fileBytes; // Mesmo ignorado, conta como processado no total
-                    var details = "Filtro de excluso ou critrios de data/tamanho.";
-                    auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, Status = "IGNORADO", Details = details });
-                    progressInfo.Status = "IGNORADO";
-                    progressInfo.Details = details;
-                }
 
-                progressInfo.ProcessedFiles++;
-                progressInfo.Timestamp = DateTime.Now;
-                ReportProgress();
+                    progressInfo.ProcessedFiles++;
+                    progressInfo.Timestamp = DateTime.Now;
+                    ReportProgress();
+                }
             }
 
             ReportProgress(true); // Final report
@@ -211,6 +222,12 @@ public class ExecutionEngine
             _notificationService.Show("Job Concluído", $"{job.Name}: {processedCount} processados.");
             await _activityService.LogActivityAsync($"Tarefa '{job.Name}' concluda. {processedCount} arquivos processados.");
             
+            // Applica Retenção
+            if (job.RetentionPolicy != RetentionPolicy.None)
+            {
+                await ApplyRetentionPolicyAsync(job);
+            }
+
             if (failedPaths.Any())
             {
                 hasCriticalError = true;
@@ -334,7 +351,7 @@ public class ExecutionEngine
                         reportAction?.Invoke(progressInfo);
                     }
                 });
-                await _fileOperator.CopyAsync(sourceFile, targetFile, cancellationToken, fileProgress);
+                await _fileOperator.CopyAsync(sourceFile, targetFile, cancellationToken, fileProgress, job.EncryptionKey);
                 sw.Stop();
             }
             else 
@@ -385,6 +402,136 @@ public class ExecutionEngine
             entry.Status = "FALHA"; 
             entry.Details = ex.Message; 
             return entry; 
+        }
+    }
+
+    private async Task RunZipBackupAsync(Job job, System.Collections.Generic.List<string> filesToProcess, CancellationToken cancellationToken, JobProgressInfo progressInfo, Action<bool> reportProgress, System.Collections.Generic.List<AuditEntry> auditEntries, System.Collections.Generic.List<string> failedPaths)
+    {
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var zipFileName = $"{job.Name.Replace(" ", "_")}_{timestamp}.zip";
+        var targetZipPath = Path.Combine(job.TargetPath, zipFileName);
+
+        try
+        {
+            await using var zipFileStream = new FileStream(targetZipPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
+            Stream baseStream = zipFileStream;
+            
+            // Envolve em CryptoStream se tiver chave (ateno: isso encripta o arquivo zip inteiro, no os arquivos dentro do zip padrão)
+            // Uma abordagem de criptografar o contêiner final para backups.
+            if (!string.IsNullOrWhiteSpace(job.EncryptionKey))
+            {
+                baseStream = _encryptionService.GetEncryptStream(zipFileStream, job.EncryptionKey);
+            }
+
+            using var archive = new System.IO.Compression.ZipArchive(baseStream, System.IO.Compression.ZipArchiveMode.Create);
+            
+            var sw = Stopwatch.StartNew();
+
+            foreach (var file in filesToProcess)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                progressInfo.CurrentFile = Path.GetFileName(file);
+                reportProgress(false);
+
+                if (ShouldProcessFile(file, job))
+                {
+                    try
+                    {
+                        var entryName = Path.GetRelativePath(job.SourcePath, file);
+                        var entry = archive.CreateEntry(entryName, System.IO.Compression.CompressionLevel.Optimal);
+                        
+                        await using var entryStream = entry.Open();
+                        await using var sourceStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+
+                        var totalBytes = sourceStream.Length;
+                        var buffer = new byte[1024 * 1024];
+                        long totalRead = 0;
+                        int bytesRead;
+
+                        while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+                        {
+                            await entryStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                            totalRead += bytesRead;
+                            progressInfo.ProcessedBytes += bytesRead;
+
+                            var elapsed = sw.Elapsed.TotalSeconds;
+                            if (elapsed > 0)
+                            {
+                                progressInfo.TransferSpeed = progressInfo.ProcessedBytes / elapsed;
+                                var remainingBytes = progressInfo.TotalBytes - progressInfo.ProcessedBytes;
+                                progressInfo.EstimatedTimeRemaining = TimeSpan.FromSeconds(remainingBytes / progressInfo.TransferSpeed);
+                            }
+
+                            progressInfo.CurrentFilePercentage = totalBytes > 0 ? (double)totalRead / totalBytes * 100 : 100;
+                            reportProgress(false);
+                        }
+
+                        auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, TargetPath = $"{zipFileName}/{entryName}", Status = "ZIPADO" });
+                    }
+                    catch (Exception ex)
+                    {
+                        failedPaths.Add(file);
+                        auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, Status = "FALHA", Details = ex.Message });
+                    }
+                }
+                else
+                {
+                    var fileMeta = _fileOperator.GetFileMetadata(file);
+                    progressInfo.ProcessedBytes += fileMeta?.Size ?? 0;
+                    auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, Status = "IGNORADO", Details = "Filtro" });
+                }
+
+                progressInfo.ProcessedFiles++;
+                reportProgress(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            if (_fileOperator.Exists(targetZipPath)) await _fileOperator.DeleteAsync(targetZipPath, CancellationToken.None);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            if (_fileOperator.Exists(targetZipPath)) await _fileOperator.DeleteAsync(targetZipPath, CancellationToken.None);
+            throw new Exception($"Falha ao criar arquivo ZIP: {ex.Message}", ex);
+        }
+    }
+
+    private async Task ApplyRetentionPolicyAsync(Job job)
+    {
+        try
+        {
+            // Pega arquivos no diretrio alvo (apenas no root onde os zips ficam, ou todos baseados no nome do job)
+            var targetFiles = _fileOperator.EnumerateFiles(job.TargetPath, "*.*", false).ToList();
+            var filesInfo = targetFiles.Select(f => new { Path = f, Meta = _fileOperator.GetFileMetadata(f) })
+                                       .Where(f => f.Meta != null)
+                                       .OrderByDescending(f => f.Meta!.LastWriteTimeUtc)
+                                       .ToList();
+
+            if (job.RetentionPolicy == RetentionPolicy.KeepLastXVersions && job.RetentionCount > 0)
+            {
+                var toDelete = filesInfo.Skip(job.RetentionCount).ToList();
+                foreach (var file in toDelete)
+                {
+                    await _fileOperator.DeleteAsync(file.Path);
+                    await _activityService.LogActivityAsync($"Reteno: Arquivo antigo excludo '{Path.GetFileName(file.Path)}'.", "INFO");
+                }
+            }
+            else if (job.RetentionPolicy == RetentionPolicy.KeepDays && job.RetentionCount > 0)
+            {
+                var cutoffDate = DateTime.UtcNow.AddDays(-job.RetentionCount);
+                var toDelete = filesInfo.Where(f => f.Meta!.LastWriteTimeUtc < cutoffDate).ToList();
+                foreach (var file in toDelete)
+                {
+                    await _fileOperator.DeleteAsync(file.Path);
+                    await _activityService.LogActivityAsync($"Reteno: Arquivo expirado excludo '{Path.GetFileName(file.Path)}'.", "INFO");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await _logger.LogAsync($"Falha ao aplicar poltica de reteno: {ex.Message}", "WARNING");
         }
     }
 

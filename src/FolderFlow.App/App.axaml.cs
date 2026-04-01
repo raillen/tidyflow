@@ -16,6 +16,7 @@ using FolderFlow.Infrastructure.Localization;
 using FolderFlow.Infrastructure.Logging;
 using FolderFlow.Infrastructure.Notifications;
 using FolderFlow.Infrastructure.Execution;
+using FolderFlow.Infrastructure.Security;
 using FolderFlow.Infrastructure.Persistence.Json;
 using FolderFlow.Infrastructure.Watching;
 using Microsoft.Extensions.DependencyInjection;
@@ -140,6 +141,10 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ILocalizationService, JsonLocalizationService>();
         services.AddSingleton<ISystemActivityService, SystemActivityService>();
         services.AddSingleton<GlobalProgressService>();
+
+        services.AddSingleton<IExternalNotificationService, WebhookNotificationService>();
+        services.AddSingleton<IScriptRunner, LocalScriptRunner>();
+        services.AddSingleton<IEncryptionService, EncryptionService>();
 
         // Application Services
         services.AddSingleton<JobAppService>();
