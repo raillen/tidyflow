@@ -22,7 +22,7 @@ public class ExecutionEngineTests
         public List<string> DeletedFiles = new();
         public List<string> Files = new();
 
-        public Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null)
+        public Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null, string? encryptionKey = null, bool deltaSync = false)
         {
             CopiedFiles.Add((source, target));
             return Task.CompletedTask;
@@ -78,6 +78,21 @@ public class ExecutionEngineTests
         public Task<IEnumerable<SystemActivity>> GetRecentActivitiesAsync(int count = 50) => Task.FromResult(Enumerable.Empty<SystemActivity>());
     }
 
+    private class MockExternalNotificationService : IExternalNotificationService
+    {
+        public Task NotifyJobCompletionAsync(Job job, bool success, int processedFiles, string? errorMessage = null) => Task.CompletedTask;
+    }
+
+    private class MockScriptRunner : IScriptRunner
+    {
+        public Task<bool> RunScriptAsync(string scriptPath, CancellationToken cancellationToken = default) => Task.FromResult(true);
+    }
+
+    private class MockEncryptionService : IEncryptionService
+    {
+        public Stream GetEncryptStream(Stream targetStream, string password) => targetStream;
+    }
+
     [Fact]
     public async Task RunJobAsync_ShouldCopyFiles_WhenFiltersMatch()
     {
@@ -92,6 +107,8 @@ public class ExecutionEngineTests
         fileOp.Files.Add(Path.Combine(sourceDir, "file2.pdf"));
         fileOp.CreatedDirectories.Add(sourceDir);
 
+        var fileOperatorFactory = new FileOperatorFactory(new IFileOperator[] { fileOp });
+
         var logger = new MockLogger();
         var hashService = new MockHashService();
         var notificationService = new MockNotificationService();
@@ -100,8 +117,11 @@ public class ExecutionEngineTests
         var failureStore = new MockFailureStore();
         var activityService = new MockActivityService();
         var globalProgressService = new GlobalProgressService();
+        var extNotificationService = new MockExternalNotificationService();
+        var scriptRunner = new MockScriptRunner();
+        var encryptionService = new MockEncryptionService();
         
-        var engine = new ExecutionEngine(fileOp, logger, hashService, notificationService, cloudService, auditService, failureStore, activityService, globalProgressService);
+        var engine = new ExecutionEngine(fileOperatorFactory, logger, hashService, notificationService, cloudService, auditService, failureStore, activityService, globalProgressService, extNotificationService, scriptRunner, encryptionService);
 
         var job = new Job
         {

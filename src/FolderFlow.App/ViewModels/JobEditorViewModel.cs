@@ -101,6 +101,9 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty]
     private int _retentionCount = 0;
 
+    [ObservableProperty]
+    private bool _deltaSync = false;
+
     public void SetJob(Job job)
     {
         Job = new Job
@@ -113,6 +116,7 @@ public partial class JobEditorViewModel : ViewModelBase
             Recursive = job.Recursive,
             ConflictMode = job.ConflictMode,
             SmartSync = job.SmartSync,
+            DeltaSync = job.DeltaSync,
             WatchEnabled = job.WatchEnabled,
             VerifyHash = job.VerifyHash,
             EnableTrash = job.EnableTrash,
@@ -153,6 +157,7 @@ public partial class JobEditorViewModel : ViewModelBase
         EncryptionKey = Job.EncryptionKey ?? string.Empty;
         RetentionPolicy = Job.RetentionPolicy;
         RetentionCount = Job.RetentionCount;
+        DeltaSync = Job.DeltaSync;
 
         var days = Job.DaysOfWeek ?? new();
         IsSun = days.Contains(DayOfWeek.Sunday);
@@ -193,6 +198,7 @@ public partial class JobEditorViewModel : ViewModelBase
         Job.EncryptionKey = string.IsNullOrWhiteSpace(EncryptionKey) ? null : EncryptionKey;
         Job.RetentionPolicy = RetentionPolicy;
         Job.RetentionCount = RetentionCount;
+        Job.DeltaSync = DeltaSync;
 
         var days = new System.Collections.Generic.List<DayOfWeek>();
         if (IsSun) days.Add(DayOfWeek.Sunday);

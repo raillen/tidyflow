@@ -409,18 +409,25 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Compactação -->
+                        <!-- Compactação e Otimização -->
                         <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                             <StackPanel Spacing="15">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <material:MaterialIcon Kind="FolderZipOutline" Foreground="{DynamicResource AccentColor}" Width="20" Height="20"/>
-                                    <TextBlock Text="Compactação de Arquivos" FontWeight="Bold" FontSize="13"/>
+                                    <TextBlock Text="Compactação e Otimização" FontWeight="Bold" FontSize="13"/>
                                 </StackPanel>
                                 
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="Formato de Sada" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
-                                    <ComboBox ItemsSource="{Binding ArchiveFormats}" SelectedItem="{Binding ArchiveFormat}" HorizontalAlignment="Stretch" Height="38" CornerRadius="8"/>
-                                </StackPanel>
+                                <Grid ColumnDefinitions="*, *">
+                                    <StackPanel Grid.Column="0" Margin="0,0,12,0" Spacing="6">
+                                        <TextBlock Text="Formato de Sada" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                        <ComboBox ItemsSource="{Binding ArchiveFormats}" SelectedItem="{Binding ArchiveFormat}" HorizontalAlignment="Stretch" Height="38" CornerRadius="8"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+                                        <CheckBox IsChecked="{Binding DeltaSync}" Content="Sincronizao Delta (Nvel de Bloco)"/>
+                                        <TextBlock Text="Copia apenas as partes modificadas do arquivo. Economiza banda em arquivos grandes." FontSize="10" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="25,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
                         </Border>
 

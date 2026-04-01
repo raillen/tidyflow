@@ -14,8 +14,9 @@ public class Job
     public bool Recursive { get; set; } = true;
     public ConflictMode ConflictMode { get; set; } = ConflictMode.Skip;
 
-    // Automa��o e Seguran�a
+    // Automao e Segurana
     public bool SmartSync { get; set; } = true;
+    public bool DeltaSync { get; set; } = false;
     public bool WatchEnabled { get; set; } = false;
     public bool VerifyHash { get; set; } = false;
     public bool EnableTrash { get; set; } = true;

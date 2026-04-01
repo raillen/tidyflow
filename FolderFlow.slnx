@@ -4,6 +4,7 @@
     <Project Path="src/FolderFlow.Application/FolderFlow.Application.csproj" />
     <Project Path="src/FolderFlow.Domain/FolderFlow.Domain.csproj" />
     <Project Path="src/FolderFlow.Infrastructure/FolderFlow.Infrastructure.csproj" />
+    <Project Path="src/FolderFlow.Service/FolderFlow.Service.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FolderFlow.Tests.Unit/FolderFlow.Tests.Unit.csproj" />

@@ -33,7 +33,7 @@ public class SftpFileOperator : IFileOperator
         return client;
     }
 
-    public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null, string? encryptionKey = null)
+    public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null, string? encryptionKey = null, bool deltaSync = false)
     {
         bool sourceIsSftp = source.StartsWith("sftp://");
         bool targetIsSftp = target.StartsWith("sftp://");

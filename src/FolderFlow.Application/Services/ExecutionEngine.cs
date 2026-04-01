@@ -353,7 +353,7 @@ public class ExecutionEngine
                         reportAction?.Invoke(progressInfo);
                     }
                 });
-                await fileOperator.CopyAsync(sourceFile, targetFile, cancellationToken, fileProgress, job.EncryptionKey);
+                await fileOperator.CopyAsync(sourceFile, targetFile, cancellationToken, fileProgress, job.EncryptionKey, job.DeltaSync);
                 sw.Stop();
             }
             else 

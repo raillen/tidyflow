@@ -9,8 +9,15 @@ namespace FolderFlow.Infrastructure.Filesystem;
 
 public class LocalFileOperator : IFileOperator
 {
-    public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null, string? encryptionKey = null)
+    public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null, string? encryptionKey = null, bool deltaSync = false)
     {
+        if (deltaSync && string.IsNullOrWhiteSpace(encryptionKey) && File.Exists(target))
+        {
+            // Simple Block-Level Delta Sync (No encryption support for delta yet)
+            await DeltaCopyAsync(source, target, cancellationToken, progress);
+            return;
+        }
+
         await using var sourceStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
         await using var targetFileStream = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
         
@@ -49,6 +56,57 @@ public class LocalFileOperator : IFileOperator
             if (targetStream != targetFileStream)
             {
                 await targetStream.DisposeAsync();
+            }
+        }
+    }
+
+    private async Task DeltaCopyAsync(string source, string target, CancellationToken cancellationToken, IProgress<double>? progress)
+    {
+        var totalBytes = new FileInfo(source).Length;
+        long totalRead = 0;
+
+        await using var sourceStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+        await using var targetStream = new FileStream(target, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 4096, true);
+
+        // If target is larger, truncate it to match source size
+        if (targetStream.Length > totalBytes)
+        {
+            targetStream.SetLength(totalBytes);
+        }
+
+        var sourceBuffer = new byte[1024 * 1024]; // 1MB block
+        var targetBuffer = new byte[1024 * 1024];
+
+        int sourceBytesRead;
+        while ((sourceBytesRead = await sourceStream.ReadAsync(sourceBuffer, 0, sourceBuffer.Length, cancellationToken)) > 0)
+        {
+            long currentPosition = targetStream.Position;
+            int targetBytesRead = await targetStream.ReadAsync(targetBuffer, 0, sourceBytesRead, cancellationToken);
+
+            bool isMatch = targetBytesRead == sourceBytesRead;
+            if (isMatch)
+            {
+                for (int i = 0; i < sourceBytesRead; i++)
+                {
+                    if (sourceBuffer[i] != targetBuffer[i])
+                    {
+                        isMatch = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!isMatch)
+            {
+                targetStream.Position = currentPosition;
+                await targetStream.WriteAsync(sourceBuffer, 0, sourceBytesRead, cancellationToken);
+            }
+
+            totalRead += sourceBytesRead;
+
+            if (totalBytes > 0)
+            {
+                progress?.Report((double)totalRead / totalBytes * 100);
             }
         }
     }
