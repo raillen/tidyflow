@@ -1,0 +1,152 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FolderFlow.App.ViewModels"
+             xmlns:models="using:FolderFlow.Domain.Entities"
+             xmlns:vo="using:FolderFlow.Domain.ValueObjects"
+             xmlns:material="using:Material.Icons.Avalonia"
+             x:Class="FolderFlow.App.Views.AutomationView"
+             x:DataType="vm:AutomationViewModel">
+    <Grid RowDefinitions="Auto,*">
+        
+        <!-- Header & Action Bar -->
+        <Border Grid.Row="0" Background="{DynamicResource SidebarBackground}" Padding="25,20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+            <StackPanel Spacing="20">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Spacing="5">
+                        <TextBlock Text="Central de Automao" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock Text="Controle total sobre suas tarefas e fila de processamento" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Button Command="{Binding CreateDirectCopyCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="15,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <material:MaterialIcon Kind="PlusThick" Width="18" Height="18"/>
+                                <TextBlock Text="Cpia Direta" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding CreateWatchFolderCommand}" Classes="Success" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="15,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <material:MaterialIcon Kind="Radar" Width="18" Height="18"/>
+                                <TextBlock Text="Watch Folder" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Separator Width="1" Height="24" Background="{DynamicResource CardBorderBrush}" Margin="10,0"/>
+                        <Button Command="{Binding TogglePauseQueueCommand}" 
+                                Background="{Binding IsQueuePaused, Converter={StaticResource PageToColorConverter}, ConverterParameter='PauseColor'}"
+                                Foreground="White" CornerRadius="8" Padding="12,8">
+                            <material:MaterialIcon Kind="{Binding IsQueuePaused, Converter={StaticResource EqualsConverter}, ConverterParameter='True:Play;False:Pause'}" Width="18" Height="18"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15">
+                        <TextBox Text="{Binding SearchText}" Watermark="Filtrar tarefas..." Width="250" CornerRadius="8">
+                            <TextBox.InnerLeftContent>
+                                <material:MaterialIcon Kind="Magnify" Margin="10,0" Foreground="{DynamicResource TextSecondary}"/>
+                            </TextBox.InnerLeftContent>
+                        </TextBox>
+                        <ComboBox ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Width="150" CornerRadius="8"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="Threads Ativas:" FontSize="12" Opacity="0.6"/>
+                        <TextBlock Text="{Binding ActiveExecutions.Count}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Margin="25" Spacing="30">
+                
+                <!-- THE STAGE: Active Executions -->
+                <StackPanel IsVisible="{Binding ActiveExecutions.Count}" Spacing="15">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <material:MaterialIcon Kind="LightningBolt" Foreground="{DynamicResource SuccessColor}" Width="18" Height="18"/>
+                        <TextBlock Text="PROCESSANDO AGORA" FontSize="11" FontWeight="Bold" LetterSpacing="1" Opacity="0.6"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding ActiveExecutions}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vo:JobProgressInfo">
+                                <Border Width="350" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15" Margin="0,0,15,15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="10">
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBlock Text="{Binding JobName}" FontWeight="Bold" FontSize="14"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="9" FontWeight="Bold" Opacity="0.5"/>
+                                        </Grid>
+                                        <TextBlock Text="{Binding CurrentFile}" FontSize="10" Opacity="0.5" TextWrapping="NoWrap" MaxLines="1"/>
+                                        <ProgressBar Value="{Binding CurrentFilePercentage}" Height="4" CornerRadius="2" Foreground="{DynamicResource AccentColor}"/>
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBlock Text="{Binding TransferSpeed, StringFormat={}{0:F1} MB/s}" FontSize="10" FontWeight="SemiBold"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding CurrentFilePercentage, StringFormat={}{0:F0}%}" FontSize="10"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- THE LIBRARY: All Jobs List -->
+                <StackPanel Spacing="15">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <material:MaterialIcon Kind="FormatListBulleted" Foreground="{DynamicResource AccentColor}" Width="18" Height="18"/>
+                        <TextBlock Text="TODAS AS TAREFAS" FontSize="11" FontWeight="Bold" LetterSpacing="1" Opacity="0.6"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding AllJobs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:JobItemViewModel">
+                                <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15,10" Margin="0,0,0,10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                    <Grid ColumnDefinitions="Auto, *, Auto, Auto">
+                                        <!-- Type Icon -->
+                                        <Border Grid.Column="0" Width="40" Height="40" Background="{DynamicResource SidebarBackground}" CornerRadius="8" Margin="0,0,15,0">
+                                            <material:MaterialIcon Kind="{Binding Job.WatchEnabled, Converter={StaticResource BoolToIconConverter}, ConverterParameter='Radar:FileMoveOutline'}" 
+                                                                  Foreground="{DynamicResource AccentColor}" Width="20" Height="20"/>
+                                        </Border>
+
+                                        <!-- Info -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Job.Name}" FontWeight="SemiBold" FontSize="14"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="10" Opacity="0.5">
+                                                <TextBlock Text="{Binding Job.Mode}" FontSize="10"/>
+                                                <TextBlock Text="|" FontSize="10"/>
+                                                <TextBlock Text="{Binding Job.SourcePath}" FontSize="10" MaxWidth="300" TextWrapping="NoWrap"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Status Badge -->
+                                        <Border Grid.Column="2" VerticalAlignment="Center" Margin="20,0" Padding="10,4" CornerRadius="12" Background="{Binding Status, Converter={StaticResource StatusToProgressColorConverter}}">
+                                            <TextBlock Text="{Binding Status}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                        </Border>
+
+                                        <!-- Actions -->
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <Button Command="{Binding RunNowCommand}" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="8" ToolTip.Tip="Executar Agora">
+                                                <material:MaterialIcon Kind="Play" Width="18" Height="18" Foreground="{DynamicResource SuccessColor}"/>
+                                            </Button>
+                                            <Button Command="{Binding EditCommand}" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="8" ToolTip.Tip="Editar">
+                                                <material:MaterialIcon Kind="PencilOutline" Width="18" Height="18"/>
+                                            </Button>
+                                            <Button Command="{Binding $parent[UserControl].((vm:AutomationViewModel)DataContext).DeleteJobCommand}" CommandParameter="{Binding Job.Id}" Classes="Danger" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="8" ToolTip.Tip="Excluir">
+                                                <material:MaterialIcon Kind="TrashCanOutline" Width="18" Height="18"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

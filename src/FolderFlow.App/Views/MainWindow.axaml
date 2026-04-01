@@ -25,8 +25,8 @@
         <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
             <v:DashboardView/>
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:JobsViewModel}">
-            <v:JobsView/>
+        <DataTemplate DataType="{x:Type vm:AutomationViewModel}">
+            <v:AutomationView/>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
             <v:HistoryView/>
@@ -85,21 +85,21 @@
                             <Button Command="{Binding NavigateToDashboardCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="16">
                                     <material:MaterialIcon Kind="ViewDashboardOutline" Width="22" Height="22" Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBlock Text="{lcl:Lcl Dashboard}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                                    <TextBlock Text="Dashboard" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
                                 </StackPanel>
                             </Button>
 
-                            <Button Command="{Binding NavigateToJobsCommand}">
+                            <Button Command="{Binding NavigateToAutomationCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="16">
-                                    <material:MaterialIcon Kind="FormatListBulleted" Width="22" Height="22" Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBlock Text="{lcl:Lcl Jobs}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                                    <material:MaterialIcon Kind="AutoFix" Width="22" Height="22" Foreground="{DynamicResource TextSecondary}"/>
+                                    <TextBlock Text="Automao" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
                                 </StackPanel>
                             </Button>
 
                             <Button Command="{Binding NavigateToHistoryCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="16">
                                     <material:MaterialIcon Kind="History" Width="22" Height="22" Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBlock Text="{lcl:Lcl History}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                                    <TextBlock Text="Auditoria" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
                                 </StackPanel>
                             </Button>
                         </ListBox>
@@ -112,7 +112,7 @@
                                 Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12,10">
                             <StackPanel Orientation="Horizontal" Spacing="16">
                                 <material:MaterialIcon Kind="SettingsOutline" Width="22" Height="22" Foreground="{DynamicResource TextSecondary}"/>
-                                <TextBlock Text="{lcl:Lcl Settings}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                                <TextBlock Text="Configuraes" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>

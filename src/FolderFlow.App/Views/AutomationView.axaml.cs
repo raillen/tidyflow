@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace FolderFlow.App.Views;
 
-public partial class JobsView : UserControl
+public partial class AutomationView : UserControl
 {
-    public JobsView()
+    public AutomationView()
     {
         InitializeComponent();
     }

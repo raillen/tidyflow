@@ -10,10 +10,12 @@ namespace FolderFlow.Application.Services;
 public class JobAppService
 {
     private readonly IJobStore _jobStore;
+    private readonly IJobQueue _jobQueue;
 
-    public JobAppService(IJobStore jobStore)
+    public JobAppService(IJobStore jobStore, IJobQueue jobQueue)
     {
         _jobStore = jobStore;
+        _jobQueue = jobQueue;
     }
 
     public Task<IEnumerable<Job>> GetAllJobsAsync() => _jobStore.GetAllAsync();
@@ -25,6 +27,15 @@ public class JobAppService
     }
 
     public Task DeleteJobAsync(Guid id) => _jobStore.DeleteAsync(id);
+
+    public async Task RunJobAsync(Guid id)
+    {
+        var job = await _jobStore.GetByIdAsync(id);
+        if (job != null)
+        {
+            await _jobQueue.EnqueueAsync(job);
+        }
+    }
 
     public async Task ExportJobsAsync(IEnumerable<Job> jobs, string filePath)
     {
@@ -44,8 +55,6 @@ public class JobAppService
         int count = 0;
         foreach (var job in imported)
         {
-            // Gera novo ID para evitar conflito com jobs existentes se necessário, 
-            // ou apenas salva se for um job novo. No MVP, vamos garantir novos IDs para importações.
             job.Id = Guid.NewGuid();
             await _jobStore.SaveAsync(job);
             count++;
@@ -56,18 +65,15 @@ public class JobAppService
     private void ValidateJob(Job job)
     {
         if (string.IsNullOrWhiteSpace(job.Name))
-            throw new ArgumentException("O nome do Job é obrigatório.");
+            throw new ArgumentException("O nome do Job  obrigatrio.");
 
         if (string.IsNullOrWhiteSpace(job.SourcePath))
-            throw new ArgumentException("O caminho de origem é obrigatório.");
+            throw new ArgumentException("O caminho de origem  obrigatrio.");
 
         if (string.IsNullOrWhiteSpace(job.TargetPath))
-            throw new ArgumentException("O caminho de destino é obrigatório.");
+            throw new ArgumentException("O caminho de destino  obrigatrio.");
 
         if (job.SourcePath.Equals(job.TargetPath, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Origem e destino não podem ser iguais.");
-
-        // Validação básica de existência (opcional para o momento da criação, mas boa prática)
-        // No MVP, permitimos salvar mesmo que não exista, mas avisamos ou validamos na execução.
+            throw new ArgumentException("Origem e destino no podem ser iguais.");
     }
 }

@@ -9,18 +9,18 @@ public partial class MainWindowViewModel : ViewModelBase
     private ViewModelBase _currentPage;
 
     public DashboardViewModel Dashboard { get; }
-    public JobsViewModel Jobs { get; }
+    public AutomationViewModel Automation { get; }
     public HistoryViewModel History { get; }
     public SettingsViewModel Settings { get; }
 
     public MainWindowViewModel(
         DashboardViewModel dashboard, 
-        JobsViewModel jobs, 
+        AutomationViewModel automation, 
         HistoryViewModel history,
         SettingsViewModel settings)
     {
         Dashboard = dashboard;
-        Jobs = jobs;
+        Automation = automation;
         History = history;
         Settings = settings;
         _currentPage = Dashboard;
@@ -30,7 +30,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public void NavigateToDashboard() => CurrentPage = Dashboard;
 
     [RelayCommand]
-    public void NavigateToJobs() => CurrentPage = Jobs;
+    public void NavigateToAutomation() => CurrentPage = Automation;
 
     [RelayCommand]
     public void NavigateToHistory() => CurrentPage = History;
@@ -43,7 +43,7 @@ public partial class MainWindowViewModel : ViewModelBase
         switch (pageName)
         {
             case "Dashboard": NavigateToDashboard(); break;
-            case "Jobs": NavigateToJobs(); break;
+            case "Automation": NavigateToAutomation(); break;
             case "History": NavigateToHistory(); break;
             case "Settings": NavigateToSettings(); break;
         }
@@ -51,8 +51,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public void NavigateToJobs(string mode)
     {
-        CurrentPage = Jobs;
-        if (mode == "DirectCopy") Jobs.CreateDirectCopyJobCommand.Execute(null);
-        else if (mode == "WatchFolder") Jobs.CreateWatchFolderJobCommand.Execute(null);
+        CurrentPage = Automation;
+        if (mode == "DirectCopy") Automation.CreateDirectCopyCommand.Execute(null);
+        else if (mode == "WatchFolder") Automation.CreateWatchFolderCommand.Execute(null);
     }
 }

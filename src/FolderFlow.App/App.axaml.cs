@@ -151,7 +151,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IAppLogger, FileLogger>();
         services.AddSingleton<IAuditService, SqliteAuditService>();
         services.AddSingleton<IFailureStore, JsonFailureStore>();
-        services.AddSingleton<IJobQueue, ChannelJobQueue>();
+        services.AddSingleton<IJobQueue, ObservableJobQueue>();
         services.AddSingleton<IHashService, Sha256HashService>();
         services.AddSingleton<ICloudHydrationService, WindowsCloudHydrationService>();
         services.AddSingleton<ILocalizationService, JsonLocalizationService>();
@@ -177,7 +177,7 @@ public partial class App : Avalonia.Application
 
         // ViewModels
         services.AddTransient<DashboardViewModel>();
-        services.AddTransient<JobsViewModel>();
+        services.AddTransient<AutomationViewModel>();
         services.AddTransient<JobEditorViewModel>();
         services.AddTransient<HistoryViewModel>();
         services.AddTransient<SettingsViewModel>();
