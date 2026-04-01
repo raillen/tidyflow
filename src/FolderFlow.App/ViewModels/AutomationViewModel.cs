@@ -64,26 +64,74 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         RefreshAutomationState();
     }
 
+    [ObservableProperty] private bool _isSelectedAll;
+    [ObservableProperty] private bool _hasSelection;
+    [ObservableProperty] private int _selectedCount;
+
+    public void UpdateSelectionState()
+    {
+        SelectedCount = AllJobs.Count(j => j.IsSelected);
+        HasSelection = SelectedCount > 0;
+        
+        var shouldBeAll = AllJobs.Any() && SelectedCount == AllJobs.Count;
+        if (_isSelectedAll != shouldBeAll)
+        {
+            _isSelectedAll = shouldBeAll;
+            OnPropertyChanged(nameof(IsSelectedAll));
+        }
+    }
+
+    // ... dentro do RefreshAutomationState ...
     private void RefreshAutomationState()
     {
-        // 1. Atualiza lista de execues ativas (The Stage)
         var active = _globalProgressService.GetActiveJobs().ToList();
         ActiveExecutions.Clear();
         foreach (var job in active) ActiveExecutions.Add(job);
 
-        // 2. Atualiza estado de cada item na lista (Contextual UI)
-        var pendingIds = _jobQueue.PendingJobs.Select(j => j.Id).ToList();
-        
         foreach (var jobVm in AllJobs)
         {
-            var isActive = active.Any(a => a.JobId == jobVm.Job.Id);
-            var isPending = pendingIds.Contains(jobVm.Job.Id);
-            
-            // Aqui poderamos setar propriedades extras no JobItemViewModel para mudar o visual
-            // Por enquanto, o refresh garante que os bindings de comando funcionem
+            var p = active.FirstOrDefault(a => a.JobId == jobVm.Job.Id);
+            if (p != null) jobVm.UpdateFromProgress(p);
+            else jobVm.Status = _queueProcessor.IsJobActive(jobVm.Job.Id) ? "Processando..." : "Ocioso";
         }
 
+        UpdateSelectionState();
         IsQueuePaused = _jobQueue.IsPaused;
+    }
+
+    [RelayCommand]
+    private void ToggleSelectAll()
+    {
+        foreach (var job in AllJobs) job.IsSelected = IsSelectedAll;
+        UpdateSelectionState();
+    }
+
+    [RelayCommand]
+    private async Task DeleteSelected()
+    {
+        var selected = AllJobs.Where(j => j.IsSelected).ToList();
+        if (!selected.Any()) return;
+
+        foreach (var jobVm in selected)
+        {
+            await _jobAppService.DeleteJobAsync(jobVm.Job.Id);
+            AllJobs.Remove(jobVm);
+        }
+        UpdateSelectionState();
+    }
+
+    [RelayCommand]
+    private async Task RunSelected()
+    {
+        var selected = AllJobs.Where(j => j.IsSelected).ToList();
+        foreach (var jobVm in selected) await jobVm.RunNowCommand.ExecuteAsync(null);
+    }
+
+    [RelayCommand]
+    private void StopSelected()
+    {
+        var selected = AllJobs.Where(j => j.IsSelected).ToList();
+        foreach (var jobVm in selected) _queueProcessor.StopJob(jobVm.Job.Id);
     }
 
     // Comandos de Gesto
@@ -94,6 +142,9 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
     [RelayCommand] private void TogglePauseQueue() { _queueProcessor.TogglePause(); IsQueuePaused = _jobQueue.IsPaused; }
     [RelayCommand] private void StopAll() => _queueProcessor.StopAll();
     
+    [RelayCommand]
+    private void StopJob(Guid jobId) => _queueProcessor.StopJob(jobId);
+
     [RelayCommand]
     private void RunNow(Guid jobId)
     {

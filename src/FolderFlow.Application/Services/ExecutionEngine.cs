@@ -154,6 +154,9 @@ public class ExecutionEngine
 
                     if (ShouldProcessFile(file, job, _fileOperator))
                     {
+                        progressInfo.AddLog($"Iniciando: {Path.GetFileName(file)}");
+                        ReportProgress();
+
                         // RETRY AUTOMTICO (3 vezes)
                         AuditEntry? entry = null;
                         int attempts = 0;
@@ -162,14 +165,12 @@ public class ExecutionEngine
                             progressInfo.CurrentFilePercentage = 0;
                             progressInfo.TransferSpeed = 0;
                             
-                            long startProcessedBytes = progressInfo.ProcessedBytes; // Salva o estado antes do retry
+                            long startProcessedBytes = progressInfo.ProcessedBytes; 
                             
                             entry = await ProcessFileAsync(file, job, _fileOperator, cancellationToken, (p) => 
                             {
-                                // Atualiza ProcessedBytes durante a cópia baseando-se no %
                                 progressInfo.ProcessedBytes = startProcessedBytes + (long)(fileBytes * (p.CurrentFilePercentage / 100.0));
                                 
-                                // Calcula ETA simples
                                 if (p.TransferSpeed > 0)
                                 {
                                     var remainingBytes = p.TotalBytes - p.ProcessedBytes;
@@ -182,14 +183,14 @@ public class ExecutionEngine
                             
                             if (entry != null && entry.Status != "FALHA") 
                             {
-                                // Garante que o total do arquivo foi somado ao final do sucesso
                                 progressInfo.ProcessedBytes = startProcessedBytes + fileBytes;
+                                progressInfo.AddLog($"Sucesso: {Path.GetFileName(file)}");
                                 break;
                             }
                             else
                             {
-                                // Restaura ProcessedBytes em caso de falha para tentar de novo
                                 progressInfo.ProcessedBytes = startProcessedBytes;
+                                if (attempts == 2) progressInfo.AddLog($"ERRO: {Path.GetFileName(file)} - {entry?.Details}");
                             }
                             
                             attempts++;

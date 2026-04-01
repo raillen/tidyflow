@@ -22,4 +22,13 @@ public class JobProgressInfo
     public double TransferSpeed { get; set; } // Bytes per second
     public TimeSpan? EstimatedTimeRemaining { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.Now;
+
+    // Premium Rolling Log
+    public System.Collections.Generic.List<string> RecentFilesLog { get; set; } = new();
+
+    public void AddLog(string message)
+    {
+        RecentFilesLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {message}");
+        if (RecentFilesLog.Count > 10) RecentFilesLog.RemoveAt(10);
+    }
 }
