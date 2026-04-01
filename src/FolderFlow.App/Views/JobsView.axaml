@@ -235,18 +235,28 @@
                                             <Border Grid.Row="1" IsVisible="{Binding IsExpanded}" Margin="0,10,0,5" Padding="15" Background="{DynamicResource AppBackground}" CornerRadius="8">
                                                 <StackPanel Spacing="8">
                                                     <Grid ColumnDefinitions="Auto, *">
-                                                        <TextBlock Grid.Column="0" Text="Detalhes:" FontWeight="SemiBold" Width="80" FontSize="12"/>
+                                                        <TextBlock Grid.Column="0" Text="Detalhes:" FontWeight="SemiBold" Width="100" FontSize="12"/>
                                                         <TextBlock Grid.Column="1" Text="{Binding Progress.Details}" TextWrapping="Wrap" FontSize="12"/>
                                                     </Grid>
                                                     <Grid ColumnDefinitions="Auto, *">
-                                                        <TextBlock Grid.Column="0" Text="Progresso:" FontWeight="SemiBold" Width="80" FontSize="12"/>
+                                                        <TextBlock Grid.Column="0" Text="Arquivos:" FontWeight="SemiBold" Width="100" FontSize="12"/>
                                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
                                                             <ProgressBar Value="{Binding Progress.Percentage}" Width="150" Height="6" CornerRadius="3" VerticalAlignment="Center"/>
                                                             <TextBlock Text="{Binding Progress.ProcessedFiles}" FontSize="12"/>
                                                             <TextBlock Text="/" FontSize="12"/>
                                                             <TextBlock Text="{Binding Progress.TotalFiles}" FontSize="12"/>
-                                                            <TextBlock Text="arquivos" FontSize="12"/>
                                                         </StackPanel>
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="Auto, *">
+                                                        <TextBlock Grid.Column="0" Text="Tamanho:" FontWeight="SemiBold" Width="100" FontSize="12"/>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                                                            <ProgressBar Value="{Binding Progress.TotalPercentage}" Width="150" Height="6" CornerRadius="3" VerticalAlignment="Center" Foreground="{DynamicResource SuccessColor}"/>
+                                                            <TextBlock Text="{Binding Progress.TotalPercentage, StringFormat='{}{0:F1}%'}" FontSize="12"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="Auto, *">
+                                                        <TextBlock Grid.Column="0" Text="ETA:" FontWeight="SemiBold" Width="100" FontSize="12"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Progress.EstimatedTimeRemaining, StringFormat='{}{0:hh\\:mm\\:ss}', TargetNullValue='Calculando...'}" FontSize="12" Foreground="{DynamicResource AccentColor}" FontWeight="Medium"/>
                                                     </Grid>
                                                 </StackPanel>
                                             </Border>

@@ -23,6 +23,8 @@ public class ExecutionEngine
     private readonly IFailureStore _failureStore;
     private readonly ISystemActivityService _activityService;
     private readonly GlobalProgressService _globalProgressService;
+    private readonly IExternalNotificationService _externalNotificationService;
+    private readonly IScriptRunner _scriptRunner;
 
     public ExecutionEngine(
         IFileOperator fileOperator, 
@@ -33,7 +35,9 @@ public class ExecutionEngine
         IAuditService auditService,
         IFailureStore failureStore,
         ISystemActivityService activityService,
-        GlobalProgressService globalProgressService)
+        GlobalProgressService globalProgressService,
+        IExternalNotificationService externalNotificationService,
+        IScriptRunner scriptRunner)
     {
         _fileOperator = fileOperator;
         _logger = logger;
@@ -44,6 +48,8 @@ public class ExecutionEngine
         _failureStore = failureStore;
         _activityService = activityService;
         _globalProgressService = globalProgressService;
+        _externalNotificationService = externalNotificationService;
+        _scriptRunner = scriptRunner;
     }
 
     public async Task RunJobAsync(Job job, CancellationToken cancellationToken = default, bool isRetry = false, IProgress<JobProgressInfo>? progress = null)
@@ -52,6 +58,9 @@ public class ExecutionEngine
         var failedPaths = new System.Collections.Generic.List<string>();
         var progressInfo = new JobProgressInfo { JobId = job.Id, JobName = job.Name };
         var lastReportTime = DateTime.MinValue;
+        bool hasCriticalError = false;
+        string? errorMessage = null;
+        int processedCount = 0;
 
         void ReportProgress(bool force = false)
         {
@@ -68,6 +77,15 @@ public class ExecutionEngine
             await _activityService.LogActivityAsync($"Tarefa '{job.Name}' iniciada.");
             await _logger.LogAsync($"Iniciando Job: {job.Name}" + (isRetry ? " [MODO RETRY]" : ""));
 
+            if (!string.IsNullOrWhiteSpace(job.PreScriptPath))
+            {
+                var preSuccess = await _scriptRunner.RunScriptAsync(job.PreScriptPath, cancellationToken);
+                if (!preSuccess)
+                {
+                    await _logger.LogAsync("Pre-script falhou. A tarefa continuar, mas verifique os logs.", "WARNING");
+                }
+            }
+
             if (!_fileOperator.Exists(job.SourcePath) && !isRetry)
             {
                 var msg = $"Pasta de origem não encontrada: {job.SourcePath}";
@@ -76,6 +94,8 @@ public class ExecutionEngine
                 auditEntries.Add(new AuditEntry { JobName = job.Name, Status = "FALHA", Details = msg });
                 await _auditService.SaveReportAsync(job.Name, auditEntries);
                 await _activityService.LogActivityAsync($"Tarefa '{job.Name}' falhou: Origem no encontrada.", "ERROR");
+                hasCriticalError = true;
+                errorMessage = msg;
                 return;
             }
 
@@ -93,7 +113,15 @@ public class ExecutionEngine
             }
 
             progressInfo.TotalFiles = filesToProcess.Count;
-            int processedCount = 0;
+            
+            // Calcula TotalBytes para ETA
+            long totalJobBytes = 0;
+            foreach (var f in filesToProcess)
+            {
+                var meta = _fileOperator.GetFileMetadata(f);
+                if (meta != null) totalJobBytes += meta.Size;
+            }
+            progressInfo.TotalBytes = totalJobBytes;
 
             foreach (var file in filesToProcess)
             {
@@ -101,6 +129,9 @@ public class ExecutionEngine
 
                 progressInfo.CurrentFile = Path.GetFileName(file);
                 ReportProgress();
+
+                var fileMeta = _fileOperator.GetFileMetadata(file);
+                long fileBytes = fileMeta?.Size ?? 0;
 
                 if (ShouldProcessFile(file, job))
                 {
@@ -111,8 +142,36 @@ public class ExecutionEngine
                     {
                         progressInfo.CurrentFilePercentage = 0;
                         progressInfo.TransferSpeed = 0;
-                        entry = await ProcessFileAsync(file, job, cancellationToken, (p) => ReportProgress(), progressInfo);
-                        if (entry != null && entry.Status != "FALHA") break;
+                        
+                        long startProcessedBytes = progressInfo.ProcessedBytes; // Salva o estado antes do retry
+                        
+                        entry = await ProcessFileAsync(file, job, cancellationToken, (p) => 
+                        {
+                            // Atualiza ProcessedBytes durante a cópia baseando-se no %
+                            progressInfo.ProcessedBytes = startProcessedBytes + (long)(fileBytes * (p.CurrentFilePercentage / 100.0));
+                            
+                            // Calcula ETA simples
+                            if (p.TransferSpeed > 0)
+                            {
+                                var remainingBytes = p.TotalBytes - p.ProcessedBytes;
+                                var remainingSeconds = remainingBytes / p.TransferSpeed;
+                                p.EstimatedTimeRemaining = TimeSpan.FromSeconds(remainingSeconds);
+                            }
+                            
+                            ReportProgress();
+                        }, progressInfo);
+                        
+                        if (entry != null && entry.Status != "FALHA") 
+                        {
+                            // Garante que o total do arquivo foi somado ao final do sucesso
+                            progressInfo.ProcessedBytes = startProcessedBytes + fileBytes;
+                            break;
+                        }
+                        else
+                        {
+                            // Restaura ProcessedBytes em caso de falha para tentar de novo
+                            progressInfo.ProcessedBytes = startProcessedBytes;
+                        }
                         
                         attempts++;
                         if (attempts < 3) await Task.Delay(1000, cancellationToken);
@@ -130,6 +189,7 @@ public class ExecutionEngine
                 }
                 else
                 {
+                    progressInfo.ProcessedBytes += fileBytes; // Mesmo ignorado, conta como processado no total
                     var details = "Filtro de excluso ou critrios de data/tamanho.";
                     auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, Status = "IGNORADO", Details = details });
                     progressInfo.Status = "IGNORADO";
@@ -150,16 +210,40 @@ public class ExecutionEngine
             await _logger.LogAsync($"Job Finalizado: {job.Name}. {processedCount} processados.");
             _notificationService.Show("Job Concluído", $"{job.Name}: {processedCount} processados.");
             await _activityService.LogActivityAsync($"Tarefa '{job.Name}' concluda. {processedCount} arquivos processados.");
+            
+            if (failedPaths.Any())
+            {
+                hasCriticalError = true;
+                errorMessage = $"{failedPaths.Count} arquivos falharam.";
+            }
         }
         catch (OperationCanceledException)
         {
             await _activityService.LogActivityAsync($"Tarefa '{job.Name}' cancelada pelo usurio.", "WARNING");
+            hasCriticalError = true;
+            errorMessage = "Operação cancelada pelo usuário.";
         }
         catch (Exception ex)
         {
             await _logger.LogAsync($"ERRO CRÍTICO: {ex.Message}", "ERROR");
             _notificationService.Show("Erro Crítico", ex.Message, true);
             await _activityService.LogActivityAsync($"Erro crtico na tarefa '{job.Name}': {ex.Message}", "ERROR");
+            hasCriticalError = true;
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            if (!string.IsNullOrWhiteSpace(job.PostScriptPath))
+            {
+                var postSuccess = await _scriptRunner.RunScriptAsync(job.PostScriptPath, cancellationToken);
+                if (!postSuccess)
+                {
+                    await _logger.LogAsync("Post-script falhou.", "WARNING");
+                }
+            }
+
+            await _externalNotificationService.NotifyJobCompletionAsync(job, !hasCriticalError, processedCount, errorMessage);
+            _globalProgressService.CompleteJob(job.Id);
         }
     }
 

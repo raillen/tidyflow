@@ -39,4 +39,12 @@ public class Job
     public List<DayOfWeek> DaysOfWeek { get; set; } = new(); // Para agendamento semanal
     public DateTime? LastRun { get; set; }
     public DateTime? NextRun { get; set; }
+
+    // Webhooks e Notificaes (Fase 1)
+    public string? WebhookUrl { get; set; }
+    public NotificationTrigger NotifyOn { get; set; } = NotificationTrigger.None;
+
+    // Scripts e Hooks (Fase 1)
+    public string? PreScriptPath { get; set; }
+    public string? PostScriptPath { get; set; }
 }

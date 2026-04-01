@@ -43,6 +43,7 @@ public partial class JobEditorViewModel : ViewModelBase
     public ObservableCollection<ConflictMode> ConflictModes { get; } = new(new[] { ConflictMode.Skip, ConflictMode.Overwrite, ConflictMode.Rename });
     public ObservableCollection<ScheduleType> ScheduleTypes { get; } = new(new[] { ScheduleType.None, ScheduleType.Interval, ScheduleType.Daily, ScheduleType.Weekly });
     public ObservableCollection<MonitoringMode> MonitoringModes { get; } = new(new[] { MonitoringMode.RealTime, MonitoringMode.Polling });
+    public ObservableCollection<FolderFlow.Domain.Enums.NotificationTrigger> NotificationTriggers { get; } = new(Enum.GetValues<FolderFlow.Domain.Enums.NotificationTrigger>());
 
     public event Action? Saved;
     public event Action? Cancelled;
@@ -72,6 +73,19 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty]
     private DateTimeOffset? _selectedDateOffset;
 
+    // Fase 1 - Webhooks e Scripts
+    [ObservableProperty]
+    private string _webhookUrl = string.Empty;
+
+    [ObservableProperty]
+    private FolderFlow.Domain.Enums.NotificationTrigger _notifyOn = FolderFlow.Domain.Enums.NotificationTrigger.None;
+
+    [ObservableProperty]
+    private string _preScriptPath = string.Empty;
+
+    [ObservableProperty]
+    private string _postScriptPath = string.Empty;
+
     public void SetJob(Job job)
     {
         Job = new Job
@@ -98,6 +112,10 @@ public partial class JobEditorViewModel : ViewModelBase
             IntervalMinutes = job.IntervalMinutes,
             ScheduleTime = job.ScheduleTime,
             SpecificDate = job.SpecificDate,
+            WebhookUrl = job.WebhookUrl,
+            NotifyOn = job.NotifyOn,
+            PreScriptPath = job.PreScriptPath,
+            PostScriptPath = job.PostScriptPath,
             DaysOfWeek = new System.Collections.Generic.List<DayOfWeek>(job.DaysOfWeek ?? new()),
             IncludeExtensions = new System.Collections.Generic.List<string>(job.IncludeExtensions),
             ExcludePatterns = new System.Collections.Generic.List<string>(job.ExcludePatterns)
@@ -108,6 +126,11 @@ public partial class JobEditorViewModel : ViewModelBase
         ExcludePatternsText = string.Join(", ", Job.ExcludePatterns);
         SelectedDateOffset = Job.SpecificDate.HasValue ? new DateTimeOffset(Job.SpecificDate.Value) : null;
         
+        WebhookUrl = Job.WebhookUrl ?? string.Empty;
+        NotifyOn = Job.NotifyOn;
+        PreScriptPath = Job.PreScriptPath ?? string.Empty;
+        PostScriptPath = Job.PostScriptPath ?? string.Empty;
+
         var days = Job.DaysOfWeek ?? new();
         IsSun = days.Contains(DayOfWeek.Sunday);
         IsMon = days.Contains(DayOfWeek.Monday);
@@ -138,6 +161,11 @@ public partial class JobEditorViewModel : ViewModelBase
         Job.SpecificDate = SelectedDateOffset.HasValue ? SelectedDateOffset.Value.DateTime : null;
         Job.ScheduleTime = $"{ScheduleHour:D2}:{ScheduleMinute:D2}:{ScheduleSecond:D2}";
         
+        Job.WebhookUrl = string.IsNullOrWhiteSpace(WebhookUrl) ? null : WebhookUrl.Trim();
+        Job.NotifyOn = NotifyOn;
+        Job.PreScriptPath = string.IsNullOrWhiteSpace(PreScriptPath) ? null : PreScriptPath.Trim();
+        Job.PostScriptPath = string.IsNullOrWhiteSpace(PostScriptPath) ? null : PostScriptPath.Trim();
+
         var days = new System.Collections.Generic.List<DayOfWeek>();
         if (IsSun) days.Add(DayOfWeek.Sunday);
         if (IsMon) days.Add(DayOfWeek.Monday);

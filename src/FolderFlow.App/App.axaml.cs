@@ -14,6 +14,8 @@ using FolderFlow.Application.Services;
 using FolderFlow.Infrastructure.Filesystem;
 using FolderFlow.Infrastructure.Localization;
 using FolderFlow.Infrastructure.Logging;
+using FolderFlow.Infrastructure.Notifications;
+using FolderFlow.Infrastructure.Execution;
 using FolderFlow.Infrastructure.Persistence.Json;
 using FolderFlow.Infrastructure.Watching;
 using Microsoft.Extensions.DependencyInjection;

@@ -25,7 +25,6 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
     private readonly ISettingsStore _settingsStore;
     private readonly DispatcherTimer _timer;
     private readonly Process _currentProcess;
-    private IDisposable? _progressSubscription;
 
     [ObservableProperty] private string _selectedTypeFilter = "Todos";
     [ObservableProperty] private string _selectedTaskFilter = "Todos";
