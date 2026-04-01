@@ -27,6 +27,7 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty] private PreviewSummary? _currentPreview;
     [ObservableProperty] private bool _isPreviewLoading;
     [ObservableProperty] private bool _isWatchMode;
+    [ObservableProperty] private bool _hasPreview;
 
     // Time Components
     [ObservableProperty] private int _scheduleHour = 3;
@@ -138,6 +139,14 @@ public partial class JobEditorViewModel : ViewModelBase
         IsPreviewLoading = true;
         SyncFields();
         CurrentPreview = await _previewEngine.GeneratePreviewAsync(Job);
+        HasPreview = CurrentPreview != null;
         IsPreviewLoading = false;
+    }
+
+    [RelayCommand]
+    private void ClearPreview()
+    {
+        CurrentPreview = null;
+        HasPreview = false;
     }
 }
