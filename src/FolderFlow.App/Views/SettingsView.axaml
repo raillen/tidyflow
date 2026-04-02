@@ -174,6 +174,34 @@
                 </StackPanel>
             </Border>
 
+            <!-- Support & Donation -->
+            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="#1AEE4444" BorderThickness="1">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Spacing="15">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <material:MaterialIcon Kind="Heart" Width="20" Height="20" Foreground="#EF4444"/>
+                            <TextBlock Text="{lcl:Lcl SupportTitle}" FontSize="13" FontWeight="Bold" LetterSpacing="1"/>
+                        </StackPanel>
+                        <TextBlock Text="{lcl:Lcl SupportDesc}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left"/>
+                        <StackPanel Orientation="Horizontal" Spacing="20">
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="{lcl:Lcl SupportPixLabel}" FontSize="11" FontWeight="Bold" Opacity="0.5"/>
+                                <TextBlock Text="contato@raillen.site" FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center">
+                        <Button Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowDonateCommand}" 
+                                Classes="Primary" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="20,10">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <material:MaterialIcon Kind="HandHeartOutline" Width="18"/>
+                                <TextBlock Text="{lcl:Lcl Donate}" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- Visual & UI -->
             <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="20">

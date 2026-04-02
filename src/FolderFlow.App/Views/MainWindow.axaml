@@ -115,13 +115,25 @@
                     </StackPanel>
 
                     <!-- Footer -->
-                    <StackPanel Grid.Row="2" Margin="12,0,12,30">
-                        <Button Command="{Binding NavigateToSettingsCommand}"
+                    <StackPanel Grid.Row="2" Margin="12,0,12,30" Spacing="4">
+                        <Button Command="{Binding ShowDonateCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12,10">
                             <StackPanel Orientation="Horizontal" Spacing="16">
-                                <material:MaterialIcon Kind="SettingsOutline" Width="22" Height="22" Foreground="{DynamicResource TextSecondary}"/>
-                                <TextBlock Text="{lcl:Lcl Settings}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                                <material:MaterialIcon Kind="Heart" Width="22" Height="22" Foreground="#EF4444"/>
+                                <TextBlock Text="{lcl:Lcl Donate}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding NavigateToSettingsCommand}"
+                                Background="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter='Settings', Converter={StaticResource ActivePageBackgroundConverter}}"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                BorderThickness="0" CornerRadius="8" Padding="12,10">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <material:MaterialIcon Kind="SettingsOutline" Width="22" Height="22" 
+                                                      Foreground="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter='Settings', Converter={StaticResource ActivePageForegroundConverter}, FallbackValue={DynamicResource TextSecondary}}"/>
+                                <TextBlock Text="{lcl:Lcl Settings}" VerticalAlignment="Center" FontWeight="Medium"
+                                           Foreground="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter='Settings', Converter={StaticResource ActivePageForegroundConverter}, FallbackValue={DynamicResource TextSecondary}}"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>

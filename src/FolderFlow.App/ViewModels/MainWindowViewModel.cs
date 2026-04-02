@@ -45,6 +45,20 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     public void NavigateToSettings() => CurrentPage = Settings;
 
+    [RelayCommand]
+    public async Task ShowDonate()
+    {
+        var window = new Views.DonateWindow
+        {
+            DataContext = new DonateViewModel(_localizationService)
+        };
+
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            await window.ShowDialog(desktop.MainWindow!);
+        }
+    }
+
     public void NavigateToPage(string pageName)
     {
         switch (pageName)
