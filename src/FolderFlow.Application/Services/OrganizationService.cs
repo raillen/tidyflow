@@ -16,51 +16,51 @@ public class OrganizationService : IOrganizationService
         _logger = logger;
     }
 
-    public async Task ProcessOrganizationAsync(Job job)
+    public async Task ProcessBlueprintAsync(Blueprint blueprint)
     {
-        if (!job.OrganizationEnabled || !Directory.Exists(job.SourcePath)) return;
+        if (!blueprint.IsActive || !Directory.Exists(blueprint.Path)) return;
 
         try
         {
-            // 1. Scaffolding
-            if (job.BlueprintFolders.Any())
+            // 1. Scaffolding (Pastas)
+            if (blueprint.BlueprintFolders.Any())
             {
-                var subDirs = Directory.GetDirectories(job.SourcePath);
+                var subDirs = Directory.GetDirectories(blueprint.Path);
                 foreach (var dir in subDirs)
                 {
-                    await ApplyScaffoldingAsync(job, dir);
+                    await ApplyScaffoldingAsync(blueprint, dir);
                 }
             }
 
-            // 2. Renaming (Simplificado: apenas arquivos no root da origem por enquanto para segurana)
-            if (!string.IsNullOrWhiteSpace(job.RenameTemplate))
+            // 2. Renaming (Arquivos)
+            if (!string.IsNullOrWhiteSpace(blueprint.RenameTemplate))
             {
-                var files = Directory.GetFiles(job.SourcePath);
+                var files = Directory.GetFiles(blueprint.Path);
                 foreach (var file in files)
                 {
-                    await TryRenameFileAsync(job, file);
+                    await TryRenameFileAsync(blueprint.RenameTemplate, blueprint.Name, file);
                 }
             }
         }
         catch (Exception ex)
         {
-            await _logger.LogAsync($"Erro no processamento de organização: {ex.Message}", "ERROR");
+            await _logger.LogAsync($"Organization: Error processing blueprint '{blueprint.Name}': {ex.Message}", "ERROR");
         }
     }
 
-    public Task ApplyScaffoldingAsync(Job job, string newFolderPath)
+    public Task ApplyScaffoldingAsync(Blueprint blueprint, string newFolderPath)
     {
         return Task.Run(() =>
         {
             try
             {
-                foreach (var subName in job.BlueprintFolders)
+                foreach (var subName in blueprint.BlueprintFolders)
                 {
                     var targetSub = Path.Combine(newFolderPath, subName);
                     if (!Directory.Exists(targetSub))
                     {
                         Directory.CreateDirectory(targetSub);
-                        _logger.LogAsync($"Organization: Scaffolding created '{subName}' in '{Path.GetFileName(newFolderPath)}'", "INFO");
+                        _logger.LogAsync($"Organization: Blueprint Scaffolding created '{subName}' in '{Path.GetFileName(newFolderPath)}'", "INFO");
                     }
                 }
             }
@@ -68,23 +68,23 @@ public class OrganizationService : IOrganizationService
         });
     }
 
-    public Task<string> GetRenamedPathAsync(Job job, string originalPath)
+    public Task<string> GetRenamedPathAsync(string renameTemplate, string jobName, string originalPath)
     {
-        if (string.IsNullOrWhiteSpace(job.RenameTemplate)) return Task.FromResult(originalPath);
+        if (string.IsNullOrWhiteSpace(renameTemplate)) return Task.FromResult(originalPath);
 
         var fileName = Path.GetFileNameWithoutExtension(originalPath);
         var ext = Path.GetExtension(originalPath);
         var date = DateTime.Now.ToString("yyyy-MM-dd");
         var parent = Path.GetFileName(Path.GetDirectoryName(originalPath)) ?? "";
 
-        var newName = job.RenameTemplate
+        var newName = renameTemplate
             .Replace("{Date}", date)
-            .Replace("{JobName}", job.Name)
+            .Replace("{JobName}", jobName)
             .Replace("{FileName}", fileName)
             .Replace("{Ext}", ext.TrimStart('.'))
             .Replace("{Parent}", parent);
 
-        // Garante a extenso se no estiver no template
+        // Garante a extenso
         if (!newName.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
         {
             newName += ext;
@@ -94,9 +94,9 @@ public class OrganizationService : IOrganizationService
         return Task.FromResult(Path.Combine(dir ?? "", newName));
     }
 
-    private async Task TryRenameFileAsync(Job job, string filePath)
+    private async Task TryRenameFileAsync(string template, string name, string filePath)
     {
-        var newPath = await GetRenamedPathAsync(job, filePath);
+        var newPath = await GetRenamedPathAsync(template, name, filePath);
         
         if (newPath != filePath && !File.Exists(newPath))
         {

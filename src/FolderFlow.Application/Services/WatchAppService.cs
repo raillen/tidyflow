@@ -10,24 +10,39 @@ public class WatchAppService
     private readonly IWatchService _watchService;
     private readonly IJobQueue _jobQueue;
     private readonly JobAppService _jobAppService;
-    private readonly IOrganizationService _organizationService;
+    private readonly BlueprintAppService _blueprintService;
 
-    public WatchAppService(IWatchService watchService, IJobQueue jobQueue, JobAppService jobAppService, IOrganizationService organizationService)
+    public WatchAppService(
+        IWatchService watchService, 
+        IJobQueue jobQueue, 
+        JobAppService jobAppService, 
+        BlueprintAppService blueprintService)
     {
         _watchService = watchService;
         _jobQueue = jobQueue;
         _jobAppService = jobAppService;
-        _organizationService = organizationService;
+        _blueprintService = blueprintService;
     }
 
     public async Task InitializeAsync()
     {
+        // Inicializa Jobs de Transferncia
         var jobs = await _jobAppService.GetAllJobsAsync();
         foreach (var job in jobs)
         {
             if (job.WatchEnabled)
             {
-                _watchService.StartWatching(job, async (j) => await HandleFileChanged(j));
+                _watchService.StartWatching(job, async (j) => await _jobQueue.EnqueueAsync(j));
+            }
+        }
+
+        // Inicializa Blueprints de Organizao
+        var blueprints = await _blueprintService.GetAllBlueprintsAsync();
+        foreach (var blueprint in blueprints)
+        {
+            if (blueprint.IsActive)
+            {
+                _watchService.StartWatchingBlueprint(blueprint, async (b) => await _blueprintService.ApplyBlueprintAsync(b));
             }
         }
     }
@@ -36,7 +51,7 @@ public class WatchAppService
     {
         if (job.WatchEnabled)
         {
-            _watchService.StartWatching(job, async (j) => await HandleFileChanged(j));
+            _watchService.StartWatching(job, async (j) => await _jobQueue.EnqueueAsync(j));
         }
         else
         {
@@ -44,13 +59,15 @@ public class WatchAppService
         }
     }
 
-    private async Task HandleFileChanged(Job job)
+    public void UpdateBlueprintWatching(Blueprint blueprint)
     {
-        if (job.OrganizationEnabled)
+        if (blueprint.IsActive)
         {
-            await _organizationService.ProcessOrganizationAsync(job);
+            _watchService.StartWatchingBlueprint(blueprint, async (b) => await _blueprintService.ApplyBlueprintAsync(b));
         }
-        
-        await _jobQueue.EnqueueAsync(job);
+        else
+        {
+            _watchService.StopWatchingBlueprint(blueprint);
+        }
     }
 }

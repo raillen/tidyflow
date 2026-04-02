@@ -413,3 +413,4 @@
 5. OnFrameworkInitializationCompleted done.
    -> MainWindow Opened.
    -> MainWindow Closed.
+   -> WindowState changed to: Normal

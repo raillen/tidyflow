@@ -14,7 +14,7 @@ public class Job
     public bool Recursive { get; set; } = true;
     public ConflictMode ConflictMode { get; set; } = ConflictMode.Skip;
 
-    // Automao e Segurana
+    // Automação e Segurança
     public bool SmartSync { get; set; } = true;
     public bool DeltaSync { get; set; } = false;
     public bool WatchEnabled { get; set; } = false;
@@ -41,7 +41,7 @@ public class Job
     public DateTime? LastRun { get; set; }
     public DateTime? NextRun { get; set; }
 
-    // Webhooks e Notificaes (Fase 1)
+    // Webhooks e Notificações (Fase 1)
     public string? WebhookUrl { get; set; }
     public NotificationTrigger NotifyOn { get; set; } = NotificationTrigger.None;
 
@@ -49,14 +49,9 @@ public class Job
     public string? PreScriptPath { get; set; }
     public string? PostScriptPath { get; set; }
 
-    // Segurana, Reteno e Otimizao (Fase 2)
+    // Segurança, Retenção e Otimização (Fase 2)
     public ArchiveFormat ArchiveFormat { get; set; } = ArchiveFormat.None;
     public string? EncryptionKey { get; set; }
     public RetentionPolicy RetentionPolicy { get; set; } = RetentionPolicy.None;
     public int RetentionCount { get; set; } = 0;
-
-    // Organização e Blueprint (Novo)
-    public bool OrganizationEnabled { get; set; } = false;
-    public List<string> BlueprintFolders { get; set; } = new();
-    public string? RenameTemplate { get; set; }
 }

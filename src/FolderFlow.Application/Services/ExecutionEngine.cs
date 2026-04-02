@@ -28,7 +28,6 @@ public class ExecutionEngine
     private readonly IEncryptionService _encryptionService;
     private readonly ISettingsStore _settingsStore;
     private readonly ILocalizationService _localizationService;
-    private readonly IOrganizationService _organizationService;
 
     public ExecutionEngine(
         FileOperatorFactory fileOperatorFactory, 
@@ -44,8 +43,7 @@ public class ExecutionEngine
         IScriptRunner scriptRunner,
         IEncryptionService encryptionService,
         ISettingsStore settingsStore,
-        ILocalizationService localizationService,
-        IOrganizationService organizationService)
+        ILocalizationService localizationService)
     {
         _fileOperatorFactory = fileOperatorFactory;
         _logger = logger;
@@ -61,7 +59,6 @@ public class ExecutionEngine
         _encryptionService = encryptionService;
         _settingsStore = settingsStore;
         _localizationService = localizationService;
-        _organizationService = organizationService;
     }
 
     public async Task RunJobAsync(Job job, CancellationToken cancellationToken = default, bool isRetry = false, IProgress<JobProgressInfo>? progress = null)
@@ -236,8 +233,7 @@ public class ExecutionEngine
             await _auditService.SaveReportAsync(job.Name, auditEntries);
             await _logger.LogAsync(string.Format(_localizationService["JobFinished"], job.Name, processedCount));
             _notificationService.Show(_localizationService["JobCompleted"], $"{job.Name}: {processedCount} processados.");
-            await _activityService.LogActivityAsync(string.Format(_localizationService["JobStarted"], job.Name).Replace(_localizationService["StartingJobLog"], _localizationService["JobCompleted"])); // Logic improvement needed but keeping it simple
-            // Actually better:
+            
             await _activityService.LogActivityAsync($"{_localizationService["JobCompleted"]}: {job.Name}. {processedCount} arquivos.");
             
             // Applica Retenção
@@ -325,20 +321,8 @@ public class ExecutionEngine
         {
             await _cloudHydrationService.EnsureFileIsLocalAsync(sourceFile, cancellationToken);
             
-            // Aplica Renomeao se habilitado
-            var processedSource = sourceFile;
-            if (job.OrganizationEnabled && !string.IsNullOrWhiteSpace(job.RenameTemplate))
-            {
-                var renamedPath = await _organizationService.GetRenamedPathAsync(job, sourceFile);
-                if (renamedPath != sourceFile && !File.Exists(renamedPath))
-                {
-                    try { File.Move(sourceFile, renamedPath); processedSource = renamedPath; } catch { }
-                }
-            }
-
-            var relativePath = Path.GetRelativePath(job.SourcePath, processedSource);
+            var relativePath = Path.GetRelativePath(job.SourcePath, sourceFile);
             targetFile = Path.Combine(job.TargetPath, relativePath);
-            entry.SourcePath = processedSource;
             entry.TargetPath = targetFile;
 
             fileOperator.CreateDirectory(Path.GetDirectoryName(targetFile)!);
@@ -575,9 +559,10 @@ public class ExecutionEngine
         if (!job.EnableTrash) return;
         try
         {
-            var trashFolder = Path.Combine(job.TargetPath, ".folderflow", "trash", DateTime.Now.ToString("yyyyMMdd"));
-            fileOperator.CreateDirectory(trashFolder);
-            await fileOperator.CopyAsync(filePath, Path.Combine(trashFolder, $"{Guid.NewGuid()}_{Path.GetFileName(filePath)}"), cancellationToken);
+            var trashDir = Path.Combine(job.TargetPath, ".trash");
+            fileOperator.CreateDirectory(trashDir);
+            var dest = Path.Combine(trashDir, Path.GetFileName(filePath) + "." + DateTime.Now.Ticks);
+            await fileOperator.MoveAsync(filePath, dest, cancellationToken);
         }
         catch { }
     }

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
+using System.Threading.Tasks;
 using FolderFlow.Application.Interfaces;
 using FolderFlow.Domain.Entities;
 using FolderFlow.Domain.Enums;
@@ -11,116 +11,84 @@ namespace FolderFlow.Infrastructure.Watching;
 
 public class NativeWatchService : IWatchService
 {
-    private class WatchContext : IDisposable
-    {
-        public FileSystemWatcher? Watcher { get; set; }
-        public Timer? Timer { get; set; }
-        public Job Job { get; set; } = null!;
-        public Action<Job> OnFileChanged { get; set; } = null!;
-        public object LockObj { get; } = new object();
-        public bool IsPending { get; set; }
-
-        public void Dispose()
-        {
-            Watcher?.Dispose();
-            Timer?.Dispose();
-        }
-    }
-
-    private readonly ConcurrentDictionary<Guid, WatchContext> _contexts = new();
+    private readonly ConcurrentDictionary<Guid, FileSystemWatcher> _contexts = new();
+    private readonly ConcurrentDictionary<Guid, Action<Job>> _jobCallbacks = new();
+    private readonly ConcurrentDictionary<Guid, Action<Blueprint>> _blueprintCallbacks = new();
+    private readonly ConcurrentDictionary<Guid, DateTime> _lastEventTime = new();
 
     public void StartWatching(Job job, Action<Job> onFileChanged)
     {
-        if (_contexts.ContainsKey(job.Id)) return;
+        if (_contexts.ContainsKey(job.Id)) StopWatching(job);
         if (!Directory.Exists(job.SourcePath)) return;
 
-        var context = new WatchContext
+        var watcher = CreateWatcher(job.SourcePath, job.Recursive);
+        watcher.Created += (s, e) => Debounce(job.Id, job.SettleTimeSeconds, () => _jobCallbacks[job.Id](job));
+        watcher.Changed += (s, e) => Debounce(job.Id, job.SettleTimeSeconds, () => _jobCallbacks[job.Id](job));
+        watcher.Renamed += (s, e) => Debounce(job.Id, job.SettleTimeSeconds, () => _jobCallbacks[job.Id](job));
+
+        _contexts[job.Id] = watcher;
+        _jobCallbacks[job.Id] = onFileChanged;
+    }
+
+    public void StartWatchingBlueprint(Blueprint blueprint, Action<Blueprint> onChanged)
+    {
+        if (_contexts.ContainsKey(blueprint.Id)) StopWatchingBlueprint(blueprint);
+        if (!Directory.Exists(blueprint.Path)) return;
+
+        var watcher = CreateWatcher(blueprint.Path, false); // Blueprints geralmente no root da pasta organizada
+        watcher.Created += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint));
+        watcher.Changed += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint));
+
+        _contexts[blueprint.Id] = watcher;
+        _blueprintCallbacks[blueprint.Id] = onChanged;
+    }
+
+    private FileSystemWatcher CreateWatcher(string path, bool recursive)
+    {
+        return new FileSystemWatcher(path)
         {
-            Job = job,
-            OnFileChanged = onFileChanged
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.DirectoryName,
+            IncludeSubdirectories = recursive,
+            EnableRaisingEvents = true
         };
-
-        if (job.MonitoringMode == MonitoringMode.RealTime)
-        {
-            context.Timer = new Timer(OnRealTimeTimerElapsed, context, Timeout.Infinite, Timeout.Infinite);
-            
-            var watcher = new FileSystemWatcher(job.SourcePath)
-            {
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName,
-                IncludeSubdirectories = true,
-                EnableRaisingEvents = true
-            };
-
-            FileSystemEventHandler handler = (s, e) =>
-            {
-                lock (context.LockObj)
-                {
-                    context.IsPending = true;
-                    // Reset the timer to wait for SettleTimeSeconds
-                    context.Timer.Change(TimeSpan.FromSeconds(context.Job.SettleTimeSeconds), Timeout.InfiniteTimeSpan);
-                }
-            };
-
-            watcher.Created += handler;
-            watcher.Changed += handler;
-            watcher.Renamed += (s, e) => handler(s, e);
-            watcher.Deleted += handler;
-
-            context.Watcher = watcher;
-        }
-        else if (job.MonitoringMode == MonitoringMode.Polling)
-        {
-            var interval = TimeSpan.FromSeconds(job.ScanIntervalSeconds);
-            context.Timer = new Timer(OnPollingTimerElapsed, context, interval, interval);
-        }
-
-        _contexts[job.Id] = context;
     }
 
-    private void OnRealTimeTimerElapsed(object? state)
+    public void StopWatching(Job job) => RemoveWatcher(job.Id);
+    public void StopWatchingBlueprint(Blueprint blueprint) => RemoveWatcher(blueprint.Id);
+
+    private void RemoveWatcher(Guid id)
     {
-        if (state is WatchContext context)
+        if (_contexts.TryRemove(id, out var watcher))
         {
-            bool shouldFire = false;
-            lock (context.LockObj)
-            {
-                if (context.IsPending)
-                {
-                    context.IsPending = false;
-                    shouldFire = true;
-                }
-            }
-            if (shouldFire)
-            {
-                context.OnFileChanged(context.Job);
-            }
+            watcher.EnableRaisingEvents = false;
+            watcher.Dispose();
         }
+        _jobCallbacks.TryRemove(id, out _);
+        _blueprintCallbacks.TryRemove(id, out _);
     }
 
-    private void OnPollingTimerElapsed(object? state)
+    private void Debounce(Guid id, int settleSeconds, Action callback)
     {
-        if (state is WatchContext context)
+        var now = DateTime.Now;
+        if (_lastEventTime.TryGetValue(id, out var lastTime))
         {
-            context.OnFileChanged(context.Job);
+            if ((now - lastTime).TotalSeconds < settleSeconds) return;
         }
-    }
 
-    public void StopWatching(Job job)
-    {
-        if (_contexts.TryRemove(job.Id, out var context))
-        {
-            context.Dispose();
-        }
+        _lastEventTime[id] = now;
+        
+        Task.Run(async () => {
+            await Task.Delay(settleSeconds * 1000);
+            callback();
+        });
     }
 
     public bool IsWatching(Job job) => _contexts.ContainsKey(job.Id);
+    public bool IsWatchingBlueprint(Blueprint blueprint) => _contexts.ContainsKey(blueprint.Id);
 
     public void Dispose()
     {
-        foreach (var context in _contexts.Values)
-        {
-            context.Dispose();
-        }
+        foreach (var context in _contexts.Values) context.Dispose();
         _contexts.Clear();
     }
 }

@@ -4,22 +4,14 @@
         xmlns:v="using:FolderFlow.App.Views"
         xmlns:material="using:Material.Icons.Avalonia"
         xmlns:lcl="using:FolderFlow.App.Localization"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="850"
-        Width="1200" Height="850"
-        MinWidth="1000" MinHeight="700"
         x:Class="FolderFlow.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="FolderFlow"
-        Background="{DynamicResource AppBackground}"
-        ExtendClientAreaToDecorationsHint="False"
-        WindowStartupLocation="CenterScreen">
-
-    <Design.DataContext>
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
+        Width="1100" Height="700"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{DynamicResource AppBackground}">
 
     <Window.DataTemplates>
         <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
@@ -27,6 +19,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:AutomationViewModel}">
             <v:AutomationView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BlueprintViewModel}">
+            <v:BlueprintView/>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
             <v:HistoryView/>
@@ -37,25 +32,19 @@
     </Window.DataTemplates>
 
     <Panel>
-        <!-- Layer de Fundo Global -->
-        <Border Background="{DynamicResource AppBackground}" 
-                Opacity="{Binding Settings.Settings.GlassOpacity, FallbackValue=0.8}"/>
-
+        <!-- Background com Mica/Acrylic effect simulado -->
+        <Border Background="{DynamicResource AppBackground}" IsHitTestVisible="False" />
+        
         <SplitView IsPaneOpen="True"
                    DisplayMode="CompactInline"
-                   CompactPaneLength="72"
+                   CompactPaneLength="70"
                    OpenPaneLength="260"
                    Background="Transparent"
                    PaneBackground="Transparent">
             <SplitView.Pane>
-                <Grid RowDefinitions="Auto,*,Auto">
-                    <!-- Sidebar Background -->
-                    <Border Grid.RowSpan="3" 
-                            Background="{DynamicResource SidebarBackground}" 
-                            Opacity="{Binding Settings.Settings.GlassOpacity, FallbackValue=0.9}"
-                            BorderBrush="{DynamicResource SidebarBorderBrush}"
-                            BorderThickness="0,0,1,0"/>
-
+                <Grid RowDefinitions="Auto, *, Auto" Margin="0,0,0,0">
+                    <Border Grid.RowSpan="3" Background="{DynamicResource SidebarBackground}" Opacity="{Binding Settings.Settings.GlassOpacity}" IsHitTestVisible="False"/>
+                    
                     <!-- Logo Premium -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="16" Margin="20,45,20,40">
                         <Border Background="{DynamicResource AccentColor}" CornerRadius="8" Width="40" Height="40">
@@ -95,10 +84,20 @@
                             <Button Command="{Binding NavigateToAutomationCommand}"
                                     Background="{Binding CurrentPage, Converter={StaticResource ActivePageBackgroundConverter}, ConverterParameter='Automation'}">
                                 <StackPanel Orientation="Horizontal" Spacing="16">
-                                    <material:MaterialIcon Kind="AutoFix" Width="22" Height="22" 
+                                    <material:MaterialIcon Kind="SwapHorizontal" Width="22" Height="22" 
                                                           Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Automation'}"/>
                                     <TextBlock Text="{lcl:Lcl SidebarAutomation}" VerticalAlignment="Center" FontWeight="Medium" 
                                                Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Automation'}"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Command="{Binding NavigateToBlueprintCommand}"
+                                    Background="{Binding CurrentPage, Converter={StaticResource ActivePageBackgroundConverter}, ConverterParameter='Blueprint'}">
+                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                    <material:MaterialIcon Kind="FileTree" Width="22" Height="22" 
+                                                          Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Blueprint'}"/>
+                                    <TextBlock Text="{lcl:Lcl SidebarBlueprint}" VerticalAlignment="Center" FontWeight="Medium" 
+                                               Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Blueprint'}"/>
                                 </StackPanel>
                             </Button>
 
@@ -126,29 +125,22 @@
                         </Button>
 
                         <Button Command="{Binding NavigateToSettingsCommand}"
-                                Background="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter='Settings', Converter={StaticResource ActivePageBackgroundConverter}}"
+                                Background="{Binding CurrentPage, Converter={StaticResource ActivePageBackgroundConverter}, ConverterParameter='Settings'}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 BorderThickness="0" CornerRadius="8" Padding="12,10">
                             <StackPanel Orientation="Horizontal" Spacing="16">
                                 <material:MaterialIcon Kind="SettingsOutline" Width="22" Height="22" 
-                                                      Foreground="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter='Settings', Converter={StaticResource ActivePageForegroundConverter}, FallbackValue={DynamicResource TextSecondary}}"/>
+                                                      Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Settings', FallbackValue={DynamicResource TextSecondary}}"/>
                                 <TextBlock Text="{lcl:Lcl Settings}" VerticalAlignment="Center" FontWeight="Medium"
-                                           Foreground="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter='Settings', Converter={StaticResource ActivePageForegroundConverter}, FallbackValue={DynamicResource TextSecondary}}"/>
+                                           Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Settings', FallbackValue={DynamicResource TextSecondary}}"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </Grid>
             </SplitView.Pane>
 
-            <!-- Main Content Area -->
-            <Grid>
-                <TransitioningContentControl Content="{Binding CurrentPage}" Margin="0">
-                    <TransitioningContentControl.PageTransition>
-                        <PageSlide Duration="0:0:0.4" Orientation="Vertical" />
-                    </TransitioningContentControl.PageTransition>
-                </TransitioningContentControl>
-            </Grid>
-        </SplitView>
+            <TransitioningContentControl Content="{Binding CurrentPage}" />
+      </SplitView>
 
         <!-- Custom Draggable Area (TitleBar) - GARANTIDO NO TOPO -->
         <Border Name="DragArea" Height="45" VerticalAlignment="Top" Background="#00000000" IsHitTestVisible="True" />

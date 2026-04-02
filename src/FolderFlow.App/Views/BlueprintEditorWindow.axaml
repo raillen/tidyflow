@@ -1,0 +1,97 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FolderFlow.App.ViewModels"
+        xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:lcl="using:FolderFlow.App.Localization"
+        x:Class="FolderFlow.App.Views.BlueprintEditorWindow"
+        x:DataType="vm:BlueprintEditorViewModel"
+        Title="{lcl:Lcl NewBlueprintTitle}"
+        Width="600" Height="700"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{DynamicResource AppBackground}">
+
+    <Panel>
+        <Border Background="{DynamicResource AppBackground}" Opacity="0.95"/>
+        
+        <Grid RowDefinitions="Auto, *, Auto" Margin="30">
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Spacing="5" Margin="0,0,0,25">
+                <TextBlock Text="{lcl:Lcl ConfigureAutomation}" FontSize="24" FontWeight="Black"/>
+                <TextBlock Text="{lcl:Lcl BlueprintDesc}" FontSize="13" Opacity="0.6"/>
+            </StackPanel>
+
+            <!-- Content -->
+            <ScrollViewer Grid.Row="1">
+                <StackPanel Spacing="25">
+                    <!-- Path Section -->
+                    <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                        <StackPanel Spacing="15">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{lcl:Lcl JobName}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                <TextBox Text="{Binding Blueprint.Name}" Watermark="{lcl:Lcl JobNameWatermark}"/>
+                            </StackPanel>
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{lcl:Lcl PathToOrganize}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBox Text="{Binding PathText}" CornerRadius="8,0,0,8"/>
+                                    <Button Grid.Column="1" Command="{Binding SelectPathCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Content="{lcl:Lcl Browse}" CornerRadius="0,8,8,0"/>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Scaffolding Section -->
+                    <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                        <StackPanel Spacing="15">
+                            <TextBlock Text="{lcl:Lcl Scaffolding}" FontSize="14" FontWeight="Bold"/>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBox Text="{Binding NewFolderName}" Watermark="{lcl:Lcl AddFolder}" CornerRadius="8,0,0,8"/>
+                                <Button Grid.Column="1" Command="{Binding AddFolderCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Width="40" CornerRadius="0,8,8,0">
+                                    <material:MaterialIcon Kind="Plus"/>
+                                </Button>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding BlueprintFolders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource SidebarBackground}" CornerRadius="6" Margin="0,2" Padding="10,5">
+                                            <Grid ColumnDefinitions="*, Auto">
+                                                <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1" Command="{Binding $parent[Window].((vm:BlueprintEditorViewModel)DataContext).RemoveFolderCommand}" CommandParameter="{Binding}" Theme="{DynamicResource TransparentButton}" Foreground="{DynamicResource DangerColor}">
+                                                    <material:MaterialIcon Kind="Close" Width="14"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Renaming Section -->
+                    <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                        <StackPanel Spacing="15">
+                            <TextBlock Text="{lcl:Lcl Renaming}" FontSize="14" FontWeight="Bold"/>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBox Text="{Binding RenameTemplateText}" Watermark="{lcl:Lcl RenameTemplateLabel}" CornerRadius="8,0,0,8" Margin="0,0,10,0"/>
+                                <Button Grid.Column="1" Command="{Binding TestRenameCommand}" Theme="{DynamicResource OutlineButton}" Content="{lcl:Lcl Simulate}" CornerRadius="8"/>
+                            </Grid>
+                            <Border IsVisible="{Binding RenamePreviewResult, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" 
+                                    Background="{DynamicResource SidebarBackground}" CornerRadius="8" Padding="15,10" BorderBrush="{DynamicResource AccentColor}" BorderThickness="1">
+                                <TextBlock Text="{Binding RenamePreviewResult}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="{lcl:Lcl TokensAvailable}" FontSize="10" Opacity="0.4" FontStyle="Italic"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Footer -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="15" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <Button Command="{Binding CancelCommand}" Content="{lcl:Lcl Cancel}" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="20,10"/>
+                <Button Command="{Binding SaveCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" Content="{lcl:Lcl Save}" CornerRadius="8" Padding="25,10" FontWeight="Bold"/>
+            </StackPanel>
+        </Grid>
+    </Panel>
+</Window>

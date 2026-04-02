@@ -20,7 +20,6 @@ public partial class JobEditorViewModel : ViewModelBase
     private readonly PreviewEngine _previewEngine;
     private readonly ISettingsStore _settingsStore;
     private readonly ILocalizationService _localizationService;
-    private readonly IOrganizationService _organizationService;
 
     [ObservableProperty] private Job _job = new();
     [ObservableProperty] private string _sourcePathText = string.Empty;
@@ -32,13 +31,6 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty] private bool _isWatchMode;
     [ObservableProperty] private string _watchModeLabel = string.Empty;
     [ObservableProperty] private bool _hasPreview;
-    [ObservableProperty] private bool _organizationEnabled;
-
-    // Organization
-    [ObservableProperty] private ObservableCollection<string> _blueprintFolders = new();
-    [ObservableProperty] private string _newFolderName = string.Empty;
-    [ObservableProperty] private string _renameTemplateText = string.Empty;
-    [ObservableProperty] private string _renamePreviewResult = string.Empty;
 
     // Time Components
     [ObservableProperty] private int _scheduleHour = 3;
@@ -64,15 +56,13 @@ public partial class JobEditorViewModel : ViewModelBase
         IStorageService storageService, 
         PreviewEngine previewEngine,
         ISettingsStore settingsStore,
-        ILocalizationService localizationService,
-        IOrganizationService organizationService)
+        ILocalizationService localizationService)
     {
         _jobAppService = jobAppService;
         _storageService = storageService;
         _previewEngine = previewEngine;
         _settingsStore = settingsStore;
         _localizationService = localizationService;
-        _organizationService = organizationService;
 
         if (_localizationService is System.ComponentModel.INotifyPropertyChanged npc)
         {
@@ -101,10 +91,6 @@ public partial class JobEditorViewModel : ViewModelBase
         TargetPathText = job.TargetPath;
         ExtensionsText = string.Join(", ", job.IncludeExtensions);
         ExcludePatternsText = string.Join(", ", job.ExcludePatterns);
-        BlueprintFolders = new ObservableCollection<string>(job.BlueprintFolders);
-        RenameTemplateText = job.RenameTemplate ?? "";
-        OrganizationEnabled = job.OrganizationEnabled;
-        RenamePreviewResult = string.Empty;
         
         if (TimeSpan.TryParse(job.ScheduleTime, out var ts))
         {
@@ -144,8 +130,6 @@ public partial class JobEditorViewModel : ViewModelBase
         Job.WatchEnabled = IsWatchMode;
         Job.ScheduleTime = $"{ScheduleHour:D2}:{ScheduleMinute:D2}:{ScheduleSecond:D2}";
         Job.SpecificDate = SelectedDateOffset?.DateTime;
-        Job.RenameTemplate = RenameTemplateText;
-        Job.OrganizationEnabled = OrganizationEnabled;
         
         Job.IncludeExtensions = ExtensionsText.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
         Job.ExcludePatterns = ExcludePatternsText.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
@@ -159,38 +143,6 @@ public partial class JobEditorViewModel : ViewModelBase
         if (IsFri) days.Add(DayOfWeek.Friday);
         if (IsSat) days.Add(DayOfWeek.Saturday);
         Job.DaysOfWeek = days;
-        Job.BlueprintFolders = BlueprintFolders.ToList();
-    }
-
-    [RelayCommand]
-    private void AddBlueprintFolder()
-    {
-        if (!string.IsNullOrWhiteSpace(NewFolderName))
-        {
-            if (!BlueprintFolders.Contains(NewFolderName))
-            {
-                BlueprintFolders.Add(NewFolderName);
-            }
-            NewFolderName = string.Empty;
-        }
-    }
-
-    [RelayCommand]
-    private void RemoveBlueprintFolder(string folderName)
-    {
-        BlueprintFolders.Remove(folderName);
-    }
-
-    [RelayCommand]
-    private async Task TestRename()
-    {
-        if (string.IsNullOrWhiteSpace(RenameTemplateText)) return;
-        
-        // Simula com um arquivo fictcio
-        var mockPath = Path.Combine(SourcePathText, "projeto_v1_final.mp4");
-        var job = new Job { Name = Job.Name, RenameTemplate = RenameTemplateText, SourcePath = SourcePathText };
-        RenamePreviewResult = await _organizationService.GetRenamedPathAsync(job, mockPath);
-        RenamePreviewResult = Path.GetFileName(RenamePreviewResult);
     }
 
     [RelayCommand]

@@ -6,19 +6,20 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
-using FolderFlow.App.Services;
 using FolderFlow.App.ViewModels;
 using FolderFlow.App.Views;
+using FolderFlow.App.Services;
 using FolderFlow.Application.Interfaces;
 using FolderFlow.Application.Services;
-using FolderFlow.Infrastructure.Filesystem;
 using FolderFlow.Infrastructure.Localization;
 using FolderFlow.Infrastructure.Logging;
-using FolderFlow.Infrastructure.Notifications;
-using FolderFlow.Infrastructure.Execution;
-using FolderFlow.Infrastructure.Security;
+using FolderFlow.Infrastructure.Persistence;
 using FolderFlow.Infrastructure.Persistence.Json;
+using FolderFlow.Infrastructure.Security;
+using FolderFlow.Infrastructure.Execution;
+using FolderFlow.Infrastructure.Filesystem;
 using FolderFlow.Infrastructure.Watching;
+using FolderFlow.Infrastructure.Notifications;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FolderFlow.App;
@@ -32,157 +33,89 @@ public partial class App : Avalonia.Application
         AvaloniaXamlLoader.Load(this);
     }
 
-    public override void OnFrameworkInitializationCompleted()
+    public override async void OnFrameworkInitializationCompleted()
     {
-        try
+        var serviceCollection = new ServiceCollection();
+        ConfigureServices(serviceCollection);
+        Services = serviceCollection.BuildServiceProvider();
+
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            System.IO.File.AppendAllText("trace.txt", "1. Starting DI configuration...\n");
-            var services = new ServiceCollection();
-            ConfigureServices(services);
-            Services = services.BuildServiceProvider();
-
-            System.IO.File.AppendAllText("trace.txt", "2. DI configured.\n");
-
-            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            {
-                DisableAvaloniaDataAnnotationValidation();
-                
-                System.IO.File.AppendAllText("trace.txt", "3. Creating MainWindow...\n");
-                var mainWindowViewModel = Services.GetRequiredService<MainWindowViewModel>();
-                desktop.MainWindow = new MainWindow
-                {
-                    DataContext = mainWindowViewModel,
-                };
-                
-                desktop.MainWindow.Opened += (s, e) => System.IO.File.AppendAllText("trace.txt", "   -> MainWindow Opened.\n");
-                desktop.MainWindow.Closed += (s, e) => System.IO.File.AppendAllText("trace.txt", "   -> MainWindow Closed.\n");
-
-                System.IO.File.AppendAllText("trace.txt", "4. Starting InitializeServicesAsync...\n");
-                // Inicialização assíncrona para evitar deadlock na UI
-                _ = InitializeServicesAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.IO.File.WriteAllText("init_error.txt", ex.ToString());
-            throw;
+            // Remove Avalonia data validation so that native DataAnnotations validation will be used
+            DisableAvaloniaDataAnnotationValidation();
+            
+            var mainWindow = new MainWindow();
+            desktop.MainWindow = mainWindow;
+            
+            // Inicializa Servios
+            await InitializeServicesAsync();
+            
+            mainWindow.DataContext = Services.GetRequiredService<MainWindowViewModel>();
         }
 
         base.OnFrameworkInitializationCompleted();
-        System.IO.File.AppendAllText("trace.txt", "5. OnFrameworkInitializationCompleted done.\n");
     }
-
-    public void OnOpenClick(object? sender, EventArgs e)
-    {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow is Window window)
-        {
-            // Força a exibição e restauração do estado correto da janela
-            window.Show();
-            
-            if (window.WindowState == WindowState.Minimized)
-            {
-                window.WindowState = WindowState.Normal;
-            }
-
-            // Hack para trazer a janela para frente em alguns SOs
-            window.Topmost = true;
-            window.Topmost = false;
-
-            window.Activate();
-            window.Focus();
-        }
-    }
-
-    public void OnExitClick(object? sender, EventArgs e)
-    {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow is MainWindow window)
-        {
-            window.ForceClose();
-        }
-    }
-
-    private async Task InitializeServicesAsync()
-    {
-        if (Services == null) return;
-
-        var settingsStore = Services.GetRequiredService<ISettingsStore>();
-        var themeService = Services.GetRequiredService<ThemeService>();
-        var localizationService = Services.GetRequiredService<ILocalizationService>();
-        var queueProcessor = Services.GetRequiredService<QueueProcessor>();
-        var schedulerService = Services.GetRequiredService<ISchedulerService>();
-        var watchAppService = Services.GetRequiredService<WatchAppService>();
-
-        // Carregar configurações, aplicar tema e idioma
-        var settings = await settingsStore.LoadAsync();
-        Avalonia.Threading.Dispatcher.UIThread.Post(() => {
-            themeService.SetTheme(settings.Theme);
-            localizationService.SetLanguage(settings.Language);
-        });
-
-        // Iniciar servios de background
-        queueProcessor.Start(System.Threading.CancellationToken.None);
-        schedulerService.Start(System.Threading.CancellationToken.None);
-        await watchAppService.InitializeAsync();
-
-        // Manuteno Automtica (SQLite)
-        if (Services.GetService<IAuditService>() is SqliteAuditService sqliteAudit)
-        {
-            await sqliteAudit.PurgeOldLogsAsync(settings.LogRetentionDays);
-        }
-        }
-
 
     private void ConfigureServices(IServiceCollection services)
     {
         // Infrastructure
-        services.AddSingleton<ISettingsStore>(new SettingsJsonStore());
-        services.AddSingleton<IJobStore>(new JobJsonStore());
-        
-        // File Operators setup
-        services.AddSingleton<LocalFileOperator>();
-        services.AddSingleton<SftpFileOperator>(provider => new SftpFileOperator("localhost", 22, "root", "")); // Mock config
-        services.AddSingleton<IFileOperator, LocalFileOperator>(); // Default
-        services.AddSingleton(provider => new FileOperatorFactory(new IFileOperator[] { 
-            provider.GetRequiredService<LocalFileOperator>(),
-            provider.GetRequiredService<SftpFileOperator>()
-        }));
-
-        services.AddSingleton<IWatchService, NativeWatchService>();
         services.AddSingleton<IAppLogger, FileLogger>();
         services.AddSingleton<IAuditService, SqliteAuditService>();
-        services.AddSingleton<IFailureStore, JsonFailureStore>();
-        services.AddSingleton<IJobQueue, ObservableJobQueue>();
-        services.AddSingleton<IHashService, Sha256HashService>();
-        services.AddSingleton<ICloudHydrationService, WindowsCloudHydrationService>();
-        services.AddSingleton<ILocalizationService, JsonLocalizationService>();
         services.AddSingleton<ISystemActivityService, SystemActivityService>();
-        services.AddSingleton<GlobalProgressService>();
-
-        services.AddSingleton<IExternalNotificationService, CompositeNotificationService>();
-        services.AddSingleton<IScriptRunner, LocalScriptRunner>();
+        services.AddSingleton<ILocalizationService, JsonLocalizationService>();
+        services.AddSingleton<ISettingsStore, SettingsJsonStore>();
+        services.AddSingleton<IJobStore, JobJsonStore>();
+        services.AddSingleton<IBlueprintStore, JsonBlueprintStore>();
+        services.AddSingleton<IHashService, Sha256HashService>();
         services.AddSingleton<IEncryptionService, EncryptionService>();
+        services.AddSingleton<IFileOperator, LocalFileOperator>();
+        services.AddSingleton<FileOperatorFactory>();
+        services.AddSingleton<IScriptRunner, LocalScriptRunner>();
+        services.AddSingleton<IWatchService, NativeWatchService>();
+        services.AddSingleton<INotificationService, AvaloniaNotificationService>();
+        services.AddSingleton<IExternalNotificationService, WebhookNotificationService>();
+        services.AddSingleton<ICloudHydrationService, WindowsCloudHydrationService>();
+        services.AddSingleton<IStorageService, AvaloniaStorageService>();
+        services.AddSingleton<IJobQueue, ObservableJobQueue>();
+        services.AddSingleton<ISchedulerService, SimpleScheduler>();
+        services.AddSingleton<ThemeService>();
 
-        // Application Services
+        // Application
         services.AddSingleton<JobAppService>();
+        services.AddSingleton<BlueprintAppService>();
         services.AddSingleton<ExecutionEngine>();
         services.AddSingleton<PreviewEngine>();
         services.AddSingleton<IOrganizationService, OrganizationService>();
         services.AddSingleton<QueueProcessor>();
         services.AddSingleton<WatchAppService>();
-        services.AddSingleton<ISchedulerService, SimpleScheduler>();
 
-        // UI Services
-        services.AddSingleton<ThemeService>();
-        services.AddSingleton<IStorageService, AvaloniaStorageService>();
-        services.AddSingleton<INotificationService, AvaloniaNotificationService>();
-
-        // ViewModels
+        // Presentation
+        services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<AutomationViewModel>();
-        services.AddTransient<JobEditorViewModel>();
+        services.AddTransient<BlueprintViewModel>();
         services.AddTransient<HistoryViewModel>();
         services.AddTransient<SettingsViewModel>();
-        services.AddSingleton<MainWindowViewModel>();
+        services.AddTransient<JobEditorViewModel>();
+        services.AddTransient<BlueprintEditorViewModel>();
+    }
+
+    private async Task InitializeServicesAsync()
+    {
+        var settingsStore = Services!.GetRequiredService<ISettingsStore>();
+        var settings = await settingsStore.LoadAsync();
+        
+        var localizationService = Services!.GetRequiredService<ILocalizationService>();
+        localizationService.SetLanguage(settings.Language);
+
+        var themeService = Services!.GetRequiredService<ThemeService>();
+        themeService.SetTheme(settings.Theme);
+
+        var watchAppService = Services!.GetRequiredService<WatchAppService>();
+        await watchAppService.InitializeAsync();
+
+        var scheduler = Services!.GetRequiredService<ISchedulerService>();
+        scheduler.Start(default);
     }
 
     private void DisableAvaloniaDataAnnotationValidation()
@@ -193,6 +126,23 @@ public partial class App : Avalonia.Application
         foreach (var plugin in dataValidationPluginsToRemove)
         {
             BindingPlugins.DataValidators.Remove(plugin);
+        }
+    }
+
+    public void OnOpenClick(object? sender, EventArgs e)
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.MainWindow?.Show();
+            desktop.MainWindow?.Activate();
+        }
+    }
+
+    public void OnExitClick(object? sender, EventArgs e)
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.Shutdown();
         }
     }
 }
