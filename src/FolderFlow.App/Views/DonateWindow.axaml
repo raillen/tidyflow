@@ -6,7 +6,7 @@
         x:Class="FolderFlow.App.Views.DonateWindow"
         x:DataType="vm:DonateViewModel"
         Title="{lcl:Lcl Donate}"
-        Width="450" Height="550"
+        Width="450" Height="650"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ExtendClientAreaToDecorationsHint="True"
@@ -15,39 +15,44 @@
     <Panel>
         <Border Background="{DynamicResource AppBackground}" Opacity="0.95"/>
         
-        <StackPanel Margin="30" Spacing="25" VerticalAlignment="Center">
-            <material:MaterialIcon Kind="Heart" Width="60" Height="60" Foreground="#EF4444" HorizontalAlignment="Center"/>
-            
-            <StackPanel Spacing="5" HorizontalAlignment="Center">
-                <TextBlock Text="{lcl:Lcl SupportTitle}" FontSize="22" FontWeight="Black" HorizontalAlignment="Center"/>
-                <TextBlock Text="{lcl:Lcl SupportDesc}" FontSize="13" Opacity="0.6" TextAlignment="Center" TextWrapping="Wrap"/>
+        <ScrollViewer>
+            <StackPanel Margin="30" Spacing="25" VerticalAlignment="Center">
+                <material:MaterialIcon Kind="Heart" Width="60" Height="60" Foreground="#EF4444" HorizontalAlignment="Center"/>
+                
+                <StackPanel Spacing="5" HorizontalAlignment="Center">
+                    <TextBlock Text="{lcl:Lcl SupportTitle}" FontSize="22" FontWeight="Black" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{lcl:Lcl SupportDesc}" FontSize="13" Opacity="0.6" TextAlignment="Center" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <!-- PIX Section -->
+                <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="{lcl:Lcl SupportPixLabel}" FontSize="12" FontWeight="Bold" Opacity="0.7" HorizontalAlignment="Center"/>
+                        
+                        <Border Width="200" Height="200" Background="White" CornerRadius="12" Padding="10" HorizontalAlignment="Center">
+                            <Image Source="{Binding QrCode}" RenderOptions.BitmapInterpolationMode="None"/>
+                        </Border>
+
+                        <Button Command="{Binding CopyPixKeyCommand}" Theme="{DynamicResource OutlineButton}" HorizontalAlignment="Stretch" Height="40" CornerRadius="8">
+                            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                                <material:MaterialIcon Kind="ContentCopy" Width="16"/>
+                                <TextBlock Text="{lcl:Lcl SupportCopyPix}"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Buy Me A Coffee -->
+                <Button Command="{Binding OpenCoffeeCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" HorizontalAlignment="Stretch" Height="45" CornerRadius="10">
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                        <material:MaterialIcon Kind="Coffee" Width="20"/>
+                        <TextBlock Text="{lcl:Lcl SupportCoffeeLabel}" FontWeight="Bold"/>
+                    </StackPanel>
+                </Button>
+                
+                <!-- Spacer for bottom padding in scroll -->
+                <Border Height="10"/>
             </StackPanel>
-
-            <!-- PIX Section -->
-            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="15">
-                    <TextBlock Text="{lcl:Lcl SupportPixLabel}" FontSize="12" FontWeight="Bold" Opacity="0.7" HorizontalAlignment="Center"/>
-                    
-                    <Border Width="200" Height="200" Background="White" CornerRadius="12" Padding="10" HorizontalAlignment="Center">
-                        <Image Source="{Binding QrCode}" RenderOptions.BitmapInterpolationMode="None"/>
-                    </Border>
-
-                    <Button Command="{Binding CopyPixKeyCommand}" Theme="{DynamicResource OutlineButton}" HorizontalAlignment="Stretch" Height="40" CornerRadius="8">
-                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                            <material:MaterialIcon Kind="ContentCopy" Width="16"/>
-                            <TextBlock Text="{lcl:Lcl SupportCopyPix}"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Border>
-
-            <!-- Buy Me A Coffee -->
-            <Button Command="{Binding OpenCoffeeCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" HorizontalAlignment="Stretch" Height="45" CornerRadius="10">
-                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
-                    <material:MaterialIcon Kind="Coffee" Width="20"/>
-                    <TextBlock Text="{lcl:Lcl SupportCoffeeLabel}" FontWeight="Bold"/>
-                </StackPanel>
-            </Button>
-        </StackPanel>
+        </ScrollViewer>
     </Panel>
 </Window>
