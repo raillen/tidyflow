@@ -1,8 +1,18 @@
-Avalonia.Markup.Xaml.XamlLoadException: No precompiled XAML found for FolderFlow.App.App, make sure to specify x:Class and include your XAML file as AvaloniaResource
-   at Avalonia.Markup.Xaml.AvaloniaXamlLoader.Load(Object obj)
-   at FolderFlow.App.App.Initialize() in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\FolderFlow.App\App.axaml.cs:line 32
-   at Avalonia.AppBuilder.SetupUnsafe()
-   at Avalonia.AppBuilder.Setup()
-   at Avalonia.AppBuilder.SetupWithLifetime(IApplicationLifetime lifetime)
+System.ArgumentException: O caminho de destino  obrigatrio.
+   at FolderFlow.Application.Services.JobAppService.ValidateJob(Job job) in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\FolderFlow.Application\Services\JobAppService.cs:line 74
+   at FolderFlow.Application.Services.JobAppService.SaveJobAsync(Job job) in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\FolderFlow.Application\Services\JobAppService.cs:line 25
+   at FolderFlow.App.ViewModels.JobEditorViewModel.Save() in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\FolderFlow.App\ViewModels\JobEditorViewModel.cs:line 200
+   at CommunityToolkit.Mvvm.Input.AsyncRelayCommand.AwaitAndThrowIfFailed(Task executionTask)
+   at System.Threading.Tasks.Task.<>c.<ThrowAsync>b__124_0(Object state)
+   at Avalonia.Threading.SendOrPostCallbackDispatcherOperation.InvokeCore()
+   at Avalonia.Threading.Dispatcher.ExecuteJobsCore(Boolean fromExplicitBackgroundProcessingCallback)
+   at Avalonia.Win32.Win32Platform.WndProc(IntPtr hWnd, UInt32 msg, IntPtr wParam, IntPtr lParam)
+   at Avalonia.Win32.Interop.UnmanagedMethods.DispatchMessage(MSG& lpmsg)
+   at Avalonia.Win32.Win32DispatcherImpl.RunLoop(CancellationToken cancellationToken)
+   at Avalonia.Threading.DispatcherFrame.Run(IControlledDispatcherImpl impl)
+   at Avalonia.Threading.Dispatcher.PushFrame(DispatcherFrame frame)
+   at Avalonia.Threading.Dispatcher.MainLoop(CancellationToken cancellationToken)
+   at Avalonia.Controls.ApplicationLifetimes.ClassicDesktopStyleApplicationLifetime.StartCore(String[] args)
+   at Avalonia.Controls.ApplicationLifetimes.ClassicDesktopStyleApplicationLifetime.Start(String[] args)
    at Avalonia.ClassicDesktopStyleApplicationLifetimeExtensions.StartWithClassicDesktopLifetime(AppBuilder builder, String[] args, Action`1 lifetimeBuilder)
    at FolderFlow.App.Program.Main(String[] args) in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\FolderFlow.App\Program.cs:line 16

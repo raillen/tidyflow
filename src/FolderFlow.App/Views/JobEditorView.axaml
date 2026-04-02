@@ -58,14 +58,14 @@
         </Border>
 
         <!-- Tab Content -->
-        <TabControl Name="ContentTabs" Grid.Row="2" Grid.Column="0" Margin="0">
+        <TabControl Name="ContentTabs" Grid.Row="2" Grid.Column="0" Margin="0,0,0,20">
             <TabControl.Styles><Style Selector="TabItem"><Setter Property="Header" Value=""/><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="0"/></Style></TabControl.Styles>
 
             <!-- GERAL -->
             <TabItem>
                 <ScrollViewer Padding="30,10,30,30">
                     <StackPanel Spacing="25">
-                        <Border Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                        <Border Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,20">
                             <StackPanel Spacing="20">
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="{lcl:Lcl JobName}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>

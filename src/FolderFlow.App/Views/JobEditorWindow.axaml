@@ -6,7 +6,7 @@
         x:Class="FolderFlow.App.Views.JobEditorWindow"
         x:DataType="vm:JobEditorViewModel"
         Title="{lcl:Lcl ConfigureAutomation}"
-        Width="800" Height="700"
+        Width="800" Height="850"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ExtendClientAreaToDecorationsHint="True"
