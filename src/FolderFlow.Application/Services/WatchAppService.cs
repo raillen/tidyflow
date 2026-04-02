@@ -10,12 +10,14 @@ public class WatchAppService
     private readonly IWatchService _watchService;
     private readonly IJobQueue _jobQueue;
     private readonly JobAppService _jobAppService;
+    private readonly IOrganizationService _organizationService;
 
-    public WatchAppService(IWatchService watchService, IJobQueue jobQueue, JobAppService jobAppService)
+    public WatchAppService(IWatchService watchService, IJobQueue jobQueue, JobAppService jobAppService, IOrganizationService organizationService)
     {
         _watchService = watchService;
         _jobQueue = jobQueue;
         _jobAppService = jobAppService;
+        _organizationService = organizationService;
     }
 
     public async Task InitializeAsync()
@@ -25,7 +27,7 @@ public class WatchAppService
         {
             if (job.WatchEnabled)
             {
-                _watchService.StartWatching(job, async (j) => await _jobQueue.EnqueueAsync(j));
+                _watchService.StartWatching(job, async (j) => await HandleFileChanged(j));
             }
         }
     }
@@ -34,11 +36,21 @@ public class WatchAppService
     {
         if (job.WatchEnabled)
         {
-            _watchService.StartWatching(job, async (j) => await _jobQueue.EnqueueAsync(j));
+            _watchService.StartWatching(job, async (j) => await HandleFileChanged(j));
         }
         else
         {
             _watchService.StopWatching(job);
         }
+    }
+
+    private async Task HandleFileChanged(Job job)
+    {
+        if (job.OrganizationEnabled)
+        {
+            await _organizationService.ProcessOrganizationAsync(job);
+        }
+        
+        await _jobQueue.EnqueueAsync(job);
     }
 }

@@ -166,6 +166,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<JobAppService>();
         services.AddSingleton<ExecutionEngine>();
         services.AddSingleton<PreviewEngine>();
+        services.AddSingleton<IOrganizationService, OrganizationService>();
         services.AddSingleton<QueueProcessor>();
         services.AddSingleton<WatchAppService>();
         services.AddSingleton<ISchedulerService, SimpleScheduler>();

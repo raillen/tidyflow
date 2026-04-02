@@ -54,4 +54,9 @@ public class Job
     public string? EncryptionKey { get; set; }
     public RetentionPolicy RetentionPolicy { get; set; } = RetentionPolicy.None;
     public int RetentionCount { get; set; } = 0;
+
+    // Organização e Blueprint (Novo)
+    public bool OrganizationEnabled { get; set; } = false;
+    public List<string> BlueprintFolders { get; set; } = new();
+    public string? RenameTemplate { get; set; }
 }

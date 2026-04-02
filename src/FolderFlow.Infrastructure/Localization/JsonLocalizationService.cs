@@ -154,13 +154,13 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["Size"] = "Size", ["Duration"] = "Duration", ["EngineLogs"] = "Engine Logs", ["SelectEntry"] = "Select an entry",
         ["SearchWatermark"] = "Search...", ["Time"] = "Time", ["Origin"] = "Origin", ["OpenSourceFolder"] = "Open Source Folder",
         ["OpenDestFolder"] = "Open Destination Folder", ["ClearHistory"] = "Clear History", ["Copied"] = "COPIED",
-        ["Moved"] = "MOVED", ["Ignored"] = "IGNORED", ["FailedStatus"] = "FAILED", ["Zipped"] = "ZIPPED", ["Cancelled"] = "CANCELLED",
+        ["Moved"] = "MOVIDO", ["Ignored"] = "IGNORED", ["FailedStatus"] = "FAILED", ["Zipped"] = "ZIPPED", ["Cancelled"] = "CANCELLED",
         ["SidebarAutomation"] = "Automation", ["SidebarAudit"] = "Audit", ["AutomationHub"] = "Automation Hub",
         ["ActiveBadge"] = "{0} Active", ["QueueReady"] = "Queue Ready", ["AutomationDesc"] = "Manage your data flows",
         ["StopAllTip"] = "Stop All", ["Active"] = "Active", ["Pending"] = "Pending", ["Watchers"] = "Watchers",
         ["SearchJobsWatermark"] = "Search tasks...", ["SelectedCount"] = "{0} selected", ["RealTimeProcessing"] = "REAL-TIME",
         ["ConfiguredTasks"] = "YOUR CONFIGURED TASKS", ["RunTip"] = "Run", ["StopTip"] = "Stop", ["EditTip"] = "Edit", ["DeleteTip"] = "Delete",
-        ["OriginLabel"] = "ORIGIN:", ["DestLabel"] = "DEST:", ["Frequency"] = "FREQ", ["SpeedLabel"] = "SPEED", ["LiveTerminal"] = "TERMINAL",
+        ["OriginLabel"] = "ORIGIN:", ["DestLabel"] = "DEST:", ["Frequency"] = "FREQUENCY", ["SpeedLabel"] = "SPEED", ["LiveTerminal"] = "TERMINAL",
         ["Processing"] = "Processing...", ["Idle"] = "Idle", ["Queued"] = "Queued...", ["NewDirectCopy"] = "New Direct Copy",
         ["NewWatchFolder"] = "New Watch Folder", ["JobNameWatermark"] = "e.g. Backup", ["Browse"] = "Browse",
         ["ExtensionsWatermark"] = ".jpg, .png", ["IgnoreWatermark"] = "temp, node_modules", ["RegexWatermark"] = "^[0-9].*",
@@ -181,7 +181,19 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["DailyMaintenanceSuccess"] = "Maintenance OK.", ["DailyMaintenanceError"] = "Maintenance error: {0}",
         ["DailySummaryName"] = "Daily Summary", ["InXDays"] = "in {0} days", ["InXHours"] = "in {0}h", ["InXMinutes"] = "in {0}min",
         ["SupportTitle"] = "Support the Developer", ["SupportPixLabel"] = "Pix Key (Brazil)", ["SupportCoffeeLabel"] = "Buy Me a Coffee", ["SupportCopyPix"] = "Copy Key",
-        ["Donate"] = "Donate"
+        ["Donate"] = "Donate",
+        
+        // Organization
+        ["Organization"] = "Organization",
+        ["Scaffolding"] = "Folder Scaffolding",
+        ["ScaffoldingDesc"] = "Create subfolders automatically when new folders are detected",
+        ["Renaming"] = "Smart Renaming",
+        ["RenamingDesc"] = "Standardize filenames using tokens",
+        ["FolderBlueprint"] = "Blueprint Folders",
+        ["AddFolder"] = "Add Folder",
+        ["RenameTemplateLabel"] = "Renaming Template",
+        ["TokensAvailable"] = "Available Tokens: {Date}, {JobName}, {FileName}, {Ext}, {Parent}",
+        ["EnableOrganization"] = "Enable Organization Functions",
     };
 
     private Dictionary<string, string> GetEsEsDefaults() => new() {
@@ -204,16 +216,16 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["ControlPanel"] = "Panel de Controle", ["SystemOverview"] = "Visión general del sistema",
         ["Type"] = "Tipo:", ["Task"] = "Tarea:", ["SystemHealth"] = "SALUD DEL SISTEMA", ["TotalVolume"] = "VOLUMEN TOTAL",
         ["ProcessedData"] = "Datos processados", ["TimeSaved"] = "TIEMPO AHORRADO", ["AutomatedWork"] = "Trabajo automatizado",
-        ["Files"] = "ARCHIVOS", ["DirectCopy"] = "Copia Directa", ["WatchFolder"] = "Watch Folder", ["PauseAll"] = "Pausar Todo",
+        ["Files"] = "ARCHIVOS", ["DirectCopy"] = "Copia Directa", ["WatchFolder"] = "Watch Folder", ["PauseAll"] = "Pausar Tudo",
         ["RecentActivities"] = "ACTIVIDADES RECENTES", ["UpcomingRadar"] = "RADAR DE TAREAS", ["SystemMonitor"] = "MONITOR DEL SISTEMA",
         ["CopySpeed"] = "Velocidad", ["Processor"] = "Procesador", ["Ram"] = "Memoria RAM", ["CloudSync"] = "Sincro Nube",
         ["All"] = "Todos", ["Excellent"] = "Excelente", ["Good"] = "Bueno", ["Attention"] = "Atención", ["Critical"] = "Crítico",
         ["NoData"] = "Sin datos", ["Downloading"] = "Descargando...", ["Synced"] = "Sincronizado", ["GlobalPaused"] = "Procesamiento pausado.", ["GlobalResumed"] = "Procesamiento reanudado.",
-        ["AdvancedSettings"] = "Ajustes Avanzados", ["SettingsDesc"] = "Control total del sistema",
+        ["AdvancedSettings"] = "Ajustes Avançados", ["SettingsDesc"] = "Control total del sistema",
         ["EnginePerformance"] = "MOTOR Y RENDIMIENTO", ["Parallelism"] = "Paralelismo", ["ParallelismDesc"] = "Archivos simultáneos",
         ["ProcessPriority"] = "Prioridad", ["PriorityDesc"] = "Impacto en el sistema",
         ["GlobalBandwidth"] = "Límite de Banda", ["BandwidthDesc"] = "0 = Ilimitado",
-        ["SecurityPrivacy"] = "SEGURIDAD Y PRIVACIDAD", ["AccessPin"] = "PIN de Acceso", ["PinWatermark"] = "Introduce un PIN",
+        ["SecurityPrivacy"] = "SEGURIDAD Y PRIVACIDADE", ["AccessPin"] = "PIN de Acceso", ["PinWatermark"] = "Introduce un PIN",
         ["PinDesc"] = "Protege la interfaz", ["LockOnMinimize"] = "Bloquear al minimizar",
         ["EncryptionKey"] = "Clave Maestra", ["EncryptionKeyWatermark"] = "Tu clave global", ["EncryptionDesc"] = "Por defecto para nuevos jobs",
         ["ExternalNotifications"] = "NOTIFICACIONES (WEBHOOK & SMTP)", ["WebhookUrl"] = "URL Webhook",
@@ -227,11 +239,11 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["VisualLanguage"] = "VISUAL E IDIOMA", ["InterfaceTheme"] = "Tema", ["SystemLanguage"] = "Idioma",
         ["GlassOpacity"] = "Opacidade Cristal", ["DiscardChanges"] = "Descartar",
         ["ConfigureAutomation"] = "Configurar Tarea", ["AutomationRules"] = "Define reglas y destinos",
-        ["General"] = "General", ["Filters"] = "Filtros", ["Schedule"] = "Agenda", ["Security"] = "Seguridad", ["Advanced"] = "Avanzado",
-        ["JobName"] = "Nombre", ["SourcePath"] = "Origen", ["DestPath"] = "Destino", ["WorkMode"] = "Modo",
+        ["General"] = "General", ["Filters"] = "Filtros", ["Schedule"] = "Agenda", ["Security"] = "Segurança", ["Advanced"] = "Avanzado",
+        ["JobName"] = "Nombre", ["SourcePath"] = "Origem", ["DestPath"] = "Destino", ["WorkMode"] = "Modo",
         ["FileConflicts"] = "Conflictos", ["IncludeExtensions"] = "Extensiones", ["IgnorePatterns"] = "Ignorar",
         ["RegexExpression"] = "Regex", ["WatcherConfigs"] = "WATCHER", ["DetectionMethod"] = "Método",
-        ["StabilizationTime"] = "Estabilización", ["ScheduleType"] = "Tipo Agenda", ["RepeatOnDays"] = "Días:",
+        ["StabilizationTime"] = "Estabilização", ["ScheduleType"] = "Tipo Agenda", ["RepeatOnDays"] = "Días:",
         ["Sun"] = "D", ["Mon"] = "L", ["Tue"] = "M", ["Wed"] = "M", ["Thu"] = "J", ["Fri"] = "V", ["Sat"] = "S",
         ["ExecutionTime"] = "Hora", ["DataProtection"] = "PROTECCIÓN", ["EncryptionKeyLabel"] = "Clave",
         ["JobWebhooks"] = "WEBHOOKS", ["SimulationSummary"] = "RESUMEN", ["FilesIdentified"] = "Archivos",
@@ -250,7 +262,7 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["StopAllTip"] = "Parar Todo", ["Active"] = "Activos", ["Pending"] = "Pendentes", ["Watchers"] = "Watchers",
         ["SearchJobsWatermark"] = "Buscar...", ["SelectedCount"] = "{0} seleccionados", ["RealTimeProcessing"] = "TIEMPO REAL",
         ["ConfiguredTasks"] = "TAREAS", ["RunTip"] = "Arrancar", ["StopTip"] = "Parar", ["EditTip"] = "Editar", ["DeleteTip"] = "Borrar",
-        ["OriginLabel"] = "ORIGEN:", ["DestLabel"] = "DEST:", ["Frequency"] = "FREQ", ["SpeedLabel"] = "VEL", ["LiveTerminal"] = "TERMINAL",
+        ["OriginLabel"] = "ORIGEM:", ["DestLabel"] = "DEST:", ["Frequency"] = "FREQ", ["SpeedLabel"] = "VEL", ["LiveTerminal"] = "TERMINAL",
         ["Processing"] = "Ejecutando...", ["Idle"] = "Inactivo", ["Queued"] = "En cola...", ["NewDirectCopy"] = "Nueva Copia",
         ["NewWatchFolder"] = "Nueva Watch", ["JobNameWatermark"] = "Ej: Backup", ["Browse"] = "Buscar",
         ["ExtensionsWatermark"] = ".jpg", ["IgnoreWatermark"] = "temp", ["RegexWatermark"] = "^[0-9].*",
@@ -264,14 +276,26 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["IntegrityFailed"] = "Error integridad.", ["ZipCreationFailed"] = "Error ZIP: {0}",
         ["RetentionOldDeleted"] = "Retención: Borrado {0}", ["RetentionExpiredDeleted"] = "Retención: Expirado {0}",
         ["RetentionFailed"] = "Error retención: {0}", ["SmartSyncDetail"] = "SmartSync", ["StartingJobLog"] = "Iniciando: {0}",
-        ["PreviewErrorSourceNotFound"] = "Sin origen: {0}", ["PreviewIgnored"] = "[IGN] {0}",
+        ["PreviewErrorSourceNotFound"] = "Sin origem: {0}", ["PreviewIgnored"] = "[IGN] {0}",
         ["PreviewIgnoredSmartSync"] = "[SYNC] {0}", ["PreviewIgnoredConflict"] = "[CONF] {0}",
         ["PreviewOverwrite"] = "[SOB] {0}", ["PreviewRename"] = "[REN] {0}", ["PreviewCopy"] = "[COP] {0}", ["PreviewMove"] = "[MOV] {0}",
         ["RamUsageFormat"] = "{0} GB / {1} GB", ["TimeSavedFormat"] = "{0}h {1}m", ["SchedulerLoopError"] = "Error agenda: {0}",
         ["DailyMaintenanceSuccess"] = "Mantenimiento OK.", ["DailyMaintenanceError"] = "Error mantenimiento: {0}",
         ["DailySummaryName"] = "Resumen Diario", ["InXDays"] = "en {0} días", ["InXHours"] = "en {0}h", ["InXMinutes"] = "en {0}min",
         ["SupportTitle"] = "Apoya al Desarrollador", ["SupportPixLabel"] = "Clave Pix (Brasil)", ["SupportCoffeeLabel"] = "Buy Me a Coffee", ["SupportCopyPix"] = "Copiar Clave",
-        ["Donate"] = "Donar"
+        ["Donate"] = "Donar",
+        
+        // Organization
+        ["Organization"] = "Organización",
+        ["Scaffolding"] = "Estructura (Blueprint)",
+        ["ScaffoldingDesc"] = "Crear subcarpetas automáticamente",
+        ["Renaming"] = "Renombramiento Inteligente",
+        ["RenamingDesc"] = "Estandarizar nombres de archivos",
+        ["FolderBlueprint"] = "Blueprint de Carpetas",
+        ["AddFolder"] = "Añadir Carpeta",
+        ["RenameTemplateLabel"] = "Plantilla de Renombramiento",
+        ["TokensAvailable"] = "Tokens: {Date}, {JobName}, {FileName}, {Ext}, {Parent}",
+        ["EnableOrganization"] = "Activar Organización",
     };
 
     private Dictionary<string, string> GetJaJpDefaults() => new() {
@@ -361,7 +385,19 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["DailyMaintenanceSuccess"] = "メンテナンス完了。", ["DailyMaintenanceError"] = "メンテナンスエラー: {0}",
         ["DailySummaryName"] = "デイリーサマリー", ["InXDays"] = "{0}日後", ["InXHours"] = "{0}時間後", ["InXMinutes"] = "{0}分後",
         ["SupportTitle"] = "開発者を支援", ["SupportPixLabel"] = "Pixキー (ブラジル)", ["SupportCoffeeLabel"] = "コーヒーを買う", ["SupportCopyPix"] = "キーをコピー",
-        ["Donate"] = "寄付"
+        ["Donate"] = "寄付",
+        
+        // Organization
+        ["Organization"] = "組織",
+        ["Scaffolding"] = "フォルダー構造作成",
+        ["ScaffoldingDesc"] = "新しいフォルダを検知して自動作成",
+        ["Renaming"] = "スマートリネーム",
+        ["RenamingDesc"] = "トークンを使用してファイル名を標準化",
+        ["FolderBlueprint"] = "フォルダ設計図",
+        ["AddFolder"] = "フォルダ追加",
+        ["RenameTemplateLabel"] = "リネームテンプレート",
+        ["TokensAvailable"] = "利用可能: {Date}, {JobName}, {FileName}, {Ext}, {Parent}",
+        ["EnableOrganization"] = "組織機能を有効にする",
     };
 
     private Dictionary<string, string> GetRuRuDefaults() => new() {
@@ -451,7 +487,19 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["DailyMaintenanceSuccess"] = "Обслуживание завершено.", ["DailyMaintenanceError"] = "Ошибка обслуживания: {0}",
         ["DailySummaryName"] = "Отчет за день", ["InXDays"] = "через {0} д.", ["InXHours"] = "через {0} ч.", ["InXMinutes"] = "через {0} мин.",
         ["SupportTitle"] = "Поддержка разработчика", ["SupportPixLabel"] = "Pix ключ (Бразилия)", ["SupportCoffeeLabel"] = "Купить кофе", ["SupportCopyPix"] = "Копировать",
-        ["Donate"] = "Донат"
+        ["Donate"] = "Донат",
+        
+        // Organization
+        ["Organization"] = "Организация",
+        ["Scaffolding"] = "Структура папок",
+        ["ScaffoldingDesc"] = "Автоматическое создание подпапок",
+        ["Renaming"] = "Умное переименование",
+        ["RenamingDesc"] = "Стандартизация имен файлов",
+        ["FolderBlueprint"] = "Шаблон папок",
+        ["AddFolder"] = "Добавить папку",
+        ["RenameTemplateLabel"] = "Шаблон переименования",
+        ["TokensAvailable"] = "Токены: {Date}, {JobName}, {FileName}, {Ext}, {Parent}",
+        ["EnableOrganization"] = "Включить функции организации",
     };
 
     private Dictionary<string, string> GetPtBrDefaults() => new() {
@@ -541,7 +589,19 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["DailyMaintenanceSuccess"] = "Manutenção diária concluída com sucesso.", ["DailyMaintenanceError"] = "Erro na manutenção diária: {0}",
         ["DailySummaryName"] = "Resumo Diário", ["InXDays"] = "em {0} dias", ["InXHours"] = "em {0}h", ["InXMinutes"] = "em {0}min",
         ["SupportTitle"] = "Apoie o Desenvolvedor", ["SupportPixLabel"] = "Chave Pix (Brasil)", ["SupportCoffeeLabel"] = "Buy Me a Coffee", ["SupportCopyPix"] = "Copiar Chave",
-        ["Donate"] = "Doar"
+        ["Donate"] = "Doar",
+        
+        // Organization
+        ["Organization"] = "Organização",
+        ["Scaffolding"] = "Estrutura (Blueprint)",
+        ["ScaffoldingDesc"] = "Criar subpastas automaticamente",
+        ["Renaming"] = "Renomeação Inteligente",
+        ["RenamingDesc"] = "Padronizar nomes de arquivos",
+        ["FolderBlueprint"] = "Pastas do Blueprint",
+        ["AddFolder"] = "Adicionar Pasta",
+        ["RenameTemplateLabel"] = "Template de Renomeação",
+        ["TokensAvailable"] = "Tokens: {Date}, {JobName}, {FileName}, {Ext}, {Parent}",
+        ["EnableOrganization"] = "Ativar Organização",
     };
 
     private void CreateDefaultFile(string path, string culture)

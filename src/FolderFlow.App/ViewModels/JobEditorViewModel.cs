@@ -18,6 +18,7 @@ public partial class JobEditorViewModel : ViewModelBase
     private readonly IStorageService _storageService;
     private readonly PreviewEngine _previewEngine;
     private readonly ISettingsStore _settingsStore;
+    private readonly ILocalizationService _localizationService;
 
     [ObservableProperty] private Job _job = new();
     [ObservableProperty] private string _sourcePathText = string.Empty;
@@ -29,6 +30,10 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty] private bool _isWatchMode;
     [ObservableProperty] private string _watchModeLabel = string.Empty;
     [ObservableProperty] private bool _hasPreview;
+
+    // Organization
+    [ObservableProperty] private ObservableCollection<string> _blueprintFolders = new();
+    [ObservableProperty] private string _newFolderName = string.Empty;
 
     // Time Components
     [ObservableProperty] private int _scheduleHour = 3;
@@ -48,10 +53,6 @@ public partial class JobEditorViewModel : ViewModelBase
 
     public event Action? Saved;
     public event Action? Cancelled;
-
-    private readonly ILocalizationService _localizationService;
-
-    // ... (rest of the fields)
 
     public JobEditorViewModel(
         JobAppService jobAppService, 
@@ -93,6 +94,7 @@ public partial class JobEditorViewModel : ViewModelBase
         TargetPathText = job.TargetPath;
         ExtensionsText = string.Join(", ", job.IncludeExtensions);
         ExcludePatternsText = string.Join(", ", job.ExcludePatterns);
+        BlueprintFolders = new ObservableCollection<string>(job.BlueprintFolders);
         
         if (TimeSpan.TryParse(job.ScheduleTime, out var ts))
         {
@@ -145,6 +147,26 @@ public partial class JobEditorViewModel : ViewModelBase
         if (IsFri) days.Add(DayOfWeek.Friday);
         if (IsSat) days.Add(DayOfWeek.Saturday);
         Job.DaysOfWeek = days;
+        Job.BlueprintFolders = BlueprintFolders.ToList();
+    }
+
+    [RelayCommand]
+    private void AddBlueprintFolder()
+    {
+        if (!string.IsNullOrWhiteSpace(NewFolderName))
+        {
+            if (!BlueprintFolders.Contains(NewFolderName))
+            {
+                BlueprintFolders.Add(NewFolderName);
+            }
+            NewFolderName = string.Empty;
+        }
+    }
+
+    [RelayCommand]
+    private void RemoveBlueprintFolder(string folderName)
+    {
+        BlueprintFolders.Remove(folderName);
     }
 
     [RelayCommand]
