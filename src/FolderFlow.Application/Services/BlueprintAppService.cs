@@ -33,8 +33,8 @@ public class BlueprintAppService
         await _logger.LogAsync($"Blueprint removido: {id}", "INFO");
     }
 
-    public async Task ApplyBlueprintAsync(Blueprint blueprint)
+    public async Task ApplyBlueprintAsync(Blueprint blueprint, string? eventPath = null)
     {
-        await _organizationService.ProcessBlueprintAsync(blueprint);
+        await _organizationService.ProcessBlueprintAsync(blueprint, eventPath);
     }
 }

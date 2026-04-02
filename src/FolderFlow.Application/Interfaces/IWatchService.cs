@@ -9,8 +9,8 @@ public interface IWatchService : IDisposable
     void StopWatching(Job job);
     bool IsWatching(Job job);
 
-    // Suporte a Blueprint (Novo)
-    void StartWatchingBlueprint(Blueprint blueprint, Action<Blueprint> onChanged);
+    // Suporte a Blueprint Reativo (Atualizado)
+    void StartWatchingBlueprint(Blueprint blueprint, Action<Blueprint, string> onChanged);
     void StopWatchingBlueprint(Blueprint blueprint);
     bool IsWatchingBlueprint(Blueprint blueprint);
 }

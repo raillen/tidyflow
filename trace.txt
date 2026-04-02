@@ -425,3 +425,5 @@
    -> WindowState changed to: Normal
    -> WindowState changed to: Minimized
    -> closeToTray: False
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal

@@ -200,6 +200,10 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["NewBlueprintTitle"] = "New Folder Blueprint",
         ["PathToOrganize"] = "Path to Organize",
         ["SidebarBlueprint"] = "Blueprint",
+        ["EnableAutoScaffolding"] = "Real-time Monitoring (Auto-Scaffolding)",
+        ["AutoScaffoldingTip"] = "Automatically inject the folder structure when a new directory is created or renamed.",
+        ["EnableAutoRenaming"] = "Automatic Renaming",
+        ["AutoRenamingTip"] = "Automatically rename new files entering this folder based on the template.",
     };
 
     private Dictionary<string, string> GetEsEsDefaults() => new() {
@@ -232,9 +236,9 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["EnginePerformance"] = "MOTOR Y RENDIMIENTO", ["Parallelism"] = "Paralelismo", ["ParallelismDesc"] = "Archivos simultáneos",
         ["ProcessPriority"] = "Prioridad", ["PriorityDesc"] = "Impacto en el sistema",
         ["GlobalBandwidth"] = "Límite de Banda", ["BandwidthDesc"] = "0 = Ilimitado",
-        ["SecurityPrivacy"] = "SEGURIDAD Y PRIVACIDADE", ["AccessPin"] = "PIN de Acceso", ["PinWatermark"] = "Introduce un PIN",
+        ["SecurityPrivacy"] = "SEGURIDAD Y PRIVACIDADE", ["AccessPin"] = "PIN de Acesso", ["PinWatermark"] = "Introduce un PIN",
         ["PinDesc"] = "Protege la interfaz", ["LockOnMinimize"] = "Bloquear al minimizar",
-        ["EncryptionKey"] = "Clave Maestra", ["EncryptionKeyWatermark"] = "Tu clave global", ["EncryptionDesc"] = "Por defecto para nuevos jobs",
+        ["EncryptionKey"] = "Clave Maestra", ["EncryptionKeyWatermark"] = "Tu clave global", ["EncryptionDesc"] = "Por defecto para novos jobs",
         ["ExternalNotifications"] = "NOTIFICAÇÕES (WEBHOOK & SMTP)", ["WebhookUrl"] = "URL Webhook",
         ["WebhookUrlWatermark"] = "https://...", ["SmtpServer"] = "Servidor SMTP",
         ["SmtpHostWatermark"] = "smtp.ejemplo.com", ["Port"] = "Puerto", ["DestEmail"] = "Email Destino",
@@ -308,6 +312,10 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["NewBlueprintTitle"] = "Nuevo Blueprint",
         ["PathToOrganize"] = "Ruta a Organizar",
         ["SidebarBlueprint"] = "Blueprint",
+        ["EnableAutoScaffolding"] = "Monitorización en Tiempo Real (Auto-Scaffolding)",
+        ["AutoScaffoldingTip"] = "Inyecta automáticamente la estructura de carpetas cuando se crea o renombra un nuevo directorio.",
+        ["EnableAutoRenaming"] = "Renombrado Automático",
+        ["AutoRenamingTip"] = "Renombra automáticamente los nuevos archivos que entren en esta carpeta según la plantilla.",
     };
 
     private Dictionary<string, string> GetJaJpDefaults() => new() {
@@ -416,6 +424,10 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["NewBlueprintTitle"] = "新規ブループリント",
         ["PathToOrganize"] = "整理対象パス",
         ["SidebarBlueprint"] = "整理",
+        ["EnableAutoScaffolding"] = "リアルタイム監視 (構造自動作成)",
+        ["AutoScaffoldingTip"] = "新しいフォルダが作成または名前変更されたとき、自動的に構造を注入します。",
+        ["EnableAutoRenaming"] = "自動リネーム",
+        ["AutoRenamingTip"] = "このフォルダに入る新しいファイルをテンプレートに従って自動的にリネームします。",
     };
 
     private Dictionary<string, string> GetRuRuDefaults() => new() {
@@ -510,8 +522,8 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         
         // Organization (Blueprint)
         ["Organization"] = "Шаблон",
-        ["Scaffolding"] = "Структура",
-        ["ScaffoldingDesc"] = "Создание подпапок",
+        ["Scaffolding"] = "Структура папок",
+        ["ScaffoldingDesc"] = "Автоматическое создание подпапок",
         ["Renaming"] = "Переименование",
         ["RenamingDesc"] = "Стандартизация имен",
         ["FolderBlueprint"] = "Шаблон папок",
@@ -524,6 +536,10 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["NewBlueprintTitle"] = "Новый Blueprint",
         ["PathToOrganize"] = "Путь организации",
         ["SidebarBlueprint"] = "Шаблон",
+        ["EnableAutoScaffolding"] = "Мониторинг в реальном времени (Auto-Scaffolding)",
+        ["AutoScaffoldingTip"] = "Автоматически создавать структуру папок при создании или переименовании новой папки.",
+        ["EnableAutoRenaming"] = "Автоматическое переименование",
+        ["AutoRenamingTip"] = "Автоматически переименовывать новые файлы в этой папке по шаблону.",
     };
 
     private Dictionary<string, string> GetPtBrDefaults() => new() {
@@ -632,6 +648,10 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["NewBlueprintTitle"] = "Novo Blueprint de Pasta",
         ["PathToOrganize"] = "Caminho a Organizar",
         ["SidebarBlueprint"] = "Blueprint",
+        ["EnableAutoScaffolding"] = "Monitoramento em Tempo Real (Auto-Scaffolding)",
+        ["AutoScaffoldingTip"] = "Injeta automaticamente a estrutura de pastas quando um novo diretório é criado ou renomeado.",
+        ["EnableAutoRenaming"] = "Renomeação Automática",
+        ["AutoRenamingTip"] = "Renomeia automaticamente os novos arquivos que entram nesta pasta baseado no template.",
     };
 
     private void CreateDefaultFile(string path, string culture)

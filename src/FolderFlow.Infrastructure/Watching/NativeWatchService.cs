@@ -13,7 +13,7 @@ public class NativeWatchService : IWatchService
 {
     private readonly ConcurrentDictionary<Guid, FileSystemWatcher> _contexts = new();
     private readonly ConcurrentDictionary<Guid, Action<Job>> _jobCallbacks = new();
-    private readonly ConcurrentDictionary<Guid, Action<Blueprint>> _blueprintCallbacks = new();
+    private readonly ConcurrentDictionary<Guid, Action<Blueprint, string>> _blueprintCallbacks = new();
     private readonly ConcurrentDictionary<Guid, DateTime> _lastEventTime = new();
 
     public void StartWatching(Job job, Action<Job> onFileChanged)
@@ -30,14 +30,16 @@ public class NativeWatchService : IWatchService
         _jobCallbacks[job.Id] = onFileChanged;
     }
 
-    public void StartWatchingBlueprint(Blueprint blueprint, Action<Blueprint> onChanged)
+    public void StartWatchingBlueprint(Blueprint blueprint, Action<Blueprint, string> onChanged)
     {
         if (_contexts.ContainsKey(blueprint.Id)) StopWatchingBlueprint(blueprint);
         if (!Directory.Exists(blueprint.Path)) return;
 
-        var watcher = CreateWatcher(blueprint.Path, false); // Blueprints geralmente no root da pasta organizada
-        watcher.Created += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint));
-        watcher.Changed += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint));
+        var watcher = CreateWatcher(blueprint.Path, false);
+        // Captura o caminho especfico do evento para o Blueprint
+        watcher.Created += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint, e.FullPath));
+        watcher.Renamed += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint, e.FullPath));
+        watcher.Changed += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint, e.FullPath));
 
         _contexts[blueprint.Id] = watcher;
         _blueprintCallbacks[blueprint.Id] = onChanged;

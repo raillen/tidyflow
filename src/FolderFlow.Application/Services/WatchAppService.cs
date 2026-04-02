@@ -42,7 +42,7 @@ public class WatchAppService
         {
             if (blueprint.IsActive)
             {
-                _watchService.StartWatchingBlueprint(blueprint, async (b) => await _blueprintService.ApplyBlueprintAsync(b));
+                _watchService.StartWatchingBlueprint(blueprint, async (b, path) => await _blueprintService.ApplyBlueprintAsync(b, path));
             }
         }
     }
@@ -63,7 +63,7 @@ public class WatchAppService
     {
         if (blueprint.IsActive)
         {
-            _watchService.StartWatchingBlueprint(blueprint, async (b) => await _blueprintService.ApplyBlueprintAsync(b));
+            _watchService.StartWatchingBlueprint(blueprint, async (b, path) => await _blueprintService.ApplyBlueprintAsync(b, path));
         }
         else
         {

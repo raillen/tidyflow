@@ -1,7 +1,5 @@
 using System;
 using System.Collections.ObjectModel;
-using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,77 +12,83 @@ namespace FolderFlow.App.ViewModels;
 public partial class BlueprintEditorViewModel : ViewModelBase
 {
     private readonly BlueprintAppService _blueprintService;
-    private readonly IStorageService _storageService;
-    private readonly IOrganizationService _organizationService;
     private readonly ILocalizationService _localizationService;
-
-    [ObservableProperty] private Blueprint _blueprint = new();
-    [ObservableProperty] private string _pathText = string.Empty;
-    [ObservableProperty] private ObservableCollection<string> _blueprintFolders = new();
-    [ObservableProperty] private string _newFolderName = string.Empty;
-    [ObservableProperty] private string _renameTemplateText = string.Empty;
-    [ObservableProperty] private string _renamePreviewResult = string.Empty;
+    private readonly IStorageService _storageService;
+    private Blueprint _originalBlueprint = null!;
 
     public event Action? Saved;
     public event Action? Cancelled;
 
+    [ObservableProperty] private string _name = string.Empty;
+    [ObservableProperty] private string _path = string.Empty;
+    [ObservableProperty] private string _renameTemplate = string.Empty;
+    [ObservableProperty] private bool _autoScaffoldingEnabled;
+    [ObservableProperty] private bool _autoRenamingEnabled;
+    [ObservableProperty] private bool _isActive = true;
+    [ObservableProperty] private ObservableCollection<string> _folders = new();
+    [ObservableProperty] private string _newFolderName = string.Empty;
+
     public BlueprintEditorViewModel(
         BlueprintAppService blueprintService,
-        IStorageService storageService,
-        IOrganizationService organizationService,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        IStorageService storageService)
     {
         _blueprintService = blueprintService;
-        _storageService = storageService;
-        _organizationService = organizationService;
         _localizationService = localizationService;
+        _storageService = storageService;
     }
 
     public void SetBlueprint(Blueprint blueprint)
     {
-        Blueprint = blueprint;
-        PathText = blueprint.Path;
-        BlueprintFolders = new ObservableCollection<string>(blueprint.BlueprintFolders);
-        RenameTemplateText = blueprint.RenameTemplate ?? "";
-        RenamePreviewResult = string.Empty;
+        _originalBlueprint = blueprint;
+        Name = blueprint.Name;
+        Path = blueprint.Path;
+        RenameTemplate = blueprint.RenameTemplate ?? string.Empty;
+        AutoScaffoldingEnabled = blueprint.AutoScaffoldingEnabled;
+        AutoRenamingEnabled = blueprint.AutoRenamingEnabled;
+        IsActive = blueprint.IsActive;
+        
+        Folders.Clear();
+        foreach (var f in blueprint.BlueprintFolders) Folders.Add(f);
     }
 
     [RelayCommand]
-    private async Task SelectPath()
+    private async Task BrowsePath()
     {
-        var path = await _storageService.SelectFolderAsync();
-        if (path != null) PathText = path;
+        var result = await _storageService.OpenFolderPickerAsync();
+        if (result != null) Path = result;
     }
 
     [RelayCommand]
     private void AddFolder()
     {
-        if (!string.IsNullOrWhiteSpace(NewFolderName))
+        if (!string.IsNullOrWhiteSpace(NewFolderName) && !Folders.Contains(NewFolderName))
         {
-            if (!BlueprintFolders.Contains(NewFolderName)) BlueprintFolders.Add(NewFolderName);
+            Folders.Add(NewFolderName);
             NewFolderName = string.Empty;
         }
     }
 
     [RelayCommand]
-    private void RemoveFolder(string folderName) => BlueprintFolders.Remove(folderName);
-
-    [RelayCommand]
-    private async Task TestRename()
-    {
-        if (string.IsNullOrWhiteSpace(RenameTemplateText)) return;
-        var mockPath = System.IO.Path.Combine(PathText, "file_sample.mp4");
-        RenamePreviewResult = await _organizationService.GetRenamedPathAsync(RenameTemplateText, Blueprint.Name, mockPath);
-        RenamePreviewResult = System.IO.Path.GetFileName(RenamePreviewResult);
-    }
+    private void RemoveFolder(string folder) => Folders.Remove(folder);
 
     [RelayCommand]
     private async Task Save()
     {
-        Blueprint.Path = PathText;
-        Blueprint.BlueprintFolders = BlueprintFolders.ToList();
-        Blueprint.RenameTemplate = RenameTemplateText;
-        await _blueprintService.SaveBlueprintAsync(Blueprint);
+        _originalBlueprint.Name = Name;
+        _originalBlueprint.Path = Path;
+        _originalBlueprint.RenameTemplate = RenameTemplate;
+        _originalBlueprint.AutoScaffoldingEnabled = AutoScaffoldingEnabled;
+        _originalBlueprint.AutoRenamingEnabled = AutoRenamingEnabled;
+        _originalBlueprint.IsActive = IsActive;
+        _originalBlueprint.BlueprintFolders = new System.Collections.Generic.List<string>(Folders);
+
+        await _blueprintService.SaveBlueprintAsync(_originalBlueprint);
+        
+        // Notifica o Watcher
+        var watchService = App.Services?.GetService(typeof(WatchAppService)) as WatchAppService;
+        watchService?.UpdateBlueprintWatching(_originalBlueprint);
+
         Saved?.Invoke();
     }
 

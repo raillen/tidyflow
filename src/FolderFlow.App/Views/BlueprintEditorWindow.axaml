@@ -6,7 +6,7 @@
         x:Class="FolderFlow.App.Views.BlueprintEditorWindow"
         x:DataType="vm:BlueprintEditorViewModel"
         Title="{lcl:Lcl NewBlueprintTitle}"
-        Width="600" Height="700"
+        Width="600" Height="750"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ExtendClientAreaToDecorationsHint="True"
@@ -30,29 +30,39 @@
                         <StackPanel Spacing="15">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="{lcl:Lcl JobName}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
-                                <TextBox Text="{Binding Blueprint.Name}" Watermark="{lcl:Lcl JobNameWatermark}"/>
+                                <TextBox Text="{Binding Name}" Watermark="{lcl:Lcl JobNameWatermark}"/>
                             </StackPanel>
                             <StackPanel Spacing="8">
                                 <TextBlock Text="{lcl:Lcl PathToOrganize}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
                                 <Grid ColumnDefinitions="*, Auto">
-                                    <TextBox Text="{Binding PathText}" CornerRadius="8,0,0,8"/>
-                                    <Button Grid.Column="1" Command="{Binding SelectPathCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Content="{lcl:Lcl Browse}" CornerRadius="0,8,8,0"/>
+                                    <TextBox Text="{Binding Path}" CornerRadius="8,0,0,8"/>
+                                    <Button Grid.Column="1" Command="{Binding BrowsePathCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Content="{lcl:Lcl Browse}" CornerRadius="0,8,8,0"/>
                                 </Grid>
                             </StackPanel>
+                            <CheckBox IsChecked="{Binding IsActive}" Content="{lcl:Lcl EnableOrganization}"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Scaffolding Section -->
                     <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                         <StackPanel Spacing="15">
-                            <TextBlock Text="{lcl:Lcl Scaffolding}" FontSize="14" FontWeight="Bold"/>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <StackPanel>
+                                    <TextBlock Text="{lcl:Lcl Scaffolding}" FontSize="14" FontWeight="Bold"/>
+                                    <TextBlock Text="{lcl:Lcl ScaffoldingDesc}" FontSize="11" Opacity="0.5"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" IsChecked="{Binding AutoScaffoldingEnabled}" 
+                                          ToolTip.Tip="{lcl:Lcl AutoScaffoldingTip}"
+                                          Content="{lcl:Lcl EnableAutoScaffolding}"/>
+                            </Grid>
+                            
                             <Grid ColumnDefinitions="*, Auto">
                                 <TextBox Text="{Binding NewFolderName}" Watermark="{lcl:Lcl AddFolder}" CornerRadius="8,0,0,8"/>
                                 <Button Grid.Column="1" Command="{Binding AddFolderCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Width="40" CornerRadius="0,8,8,0">
                                     <material:MaterialIcon Kind="Plus"/>
                                 </Button>
                             </Grid>
-                            <ItemsControl ItemsSource="{Binding BlueprintFolders}">
+                            <ItemsControl ItemsSource="{Binding Folders}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Background="{DynamicResource SidebarBackground}" CornerRadius="6" Margin="0,2" Padding="10,5">
@@ -72,15 +82,17 @@
                     <!-- Renaming Section -->
                     <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                         <StackPanel Spacing="15">
-                            <TextBlock Text="{lcl:Lcl Renaming}" FontSize="14" FontWeight="Bold"/>
                             <Grid ColumnDefinitions="*, Auto">
-                                <TextBox Text="{Binding RenameTemplateText}" Watermark="{lcl:Lcl RenameTemplateLabel}" CornerRadius="8,0,0,8" Margin="0,0,10,0"/>
-                                <Button Grid.Column="1" Command="{Binding TestRenameCommand}" Theme="{DynamicResource OutlineButton}" Content="{lcl:Lcl Simulate}" CornerRadius="8"/>
+                                <StackPanel>
+                                    <TextBlock Text="{lcl:Lcl Renaming}" FontSize="14" FontWeight="Bold"/>
+                                    <TextBlock Text="{lcl:Lcl RenamingDesc}" FontSize="11" Opacity="0.5"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" IsChecked="{Binding AutoRenamingEnabled}" 
+                                          ToolTip.Tip="{lcl:Lcl AutoRenamingTip}"
+                                          Content="{lcl:Lcl EnableAutoRenaming}"/>
                             </Grid>
-                            <Border IsVisible="{Binding RenamePreviewResult, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" 
-                                    Background="{DynamicResource SidebarBackground}" CornerRadius="8" Padding="15,10" BorderBrush="{DynamicResource AccentColor}" BorderThickness="1">
-                                <TextBlock Text="{Binding RenamePreviewResult}" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            </Border>
+
+                            <TextBox Text="{Binding RenameTemplate}" Watermark="{lcl:Lcl RenameTemplateLabel}" CornerRadius="8"/>
                             <TextBlock Text="{lcl:Lcl TokensAvailable}" FontSize="10" Opacity="0.4" FontStyle="Italic"/>
                         </StackPanel>
                     </Border>

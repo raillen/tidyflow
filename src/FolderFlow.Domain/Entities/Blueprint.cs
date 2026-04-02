@@ -11,9 +11,11 @@ public class Blueprint
     
     // Scaffolding: Pastas a serem criadas automaticamente
     public List<string> BlueprintFolders { get; set; } = new();
+    public bool AutoScaffoldingEnabled { get; set; } = false;
     
     // Renaming: Template para renomeação de novos arquivos
     public string? RenameTemplate { get; set; }
+    public bool AutoRenamingEnabled { get; set; } = false;
     
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.Now;
