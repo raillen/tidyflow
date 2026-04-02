@@ -1,0 +1,4 @@
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal

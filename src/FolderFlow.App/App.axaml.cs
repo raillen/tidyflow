@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -35,27 +36,40 @@ public partial class App : Avalonia.Application
 
     public override async void OnFrameworkInitializationCompleted()
     {
-        var serviceCollection = new ServiceCollection();
-        ConfigureServices(serviceCollection);
-        Services = serviceCollection.BuildServiceProvider();
-
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        try 
         {
-            // Remove Avalonia data validation so that native DataAnnotations validation will be used
-            DisableAvaloniaDataAnnotationValidation();
-            
-            var mainWindow = new MainWindow();
-            desktop.MainWindow = mainWindow;
-            
-            // Inicializa Servios
-            await InitializeServicesAsync();
-            
-            var mainVm = Services.GetRequiredService<MainWindowViewModel>();
-            mainVm.CurrentPage = mainVm.Dashboard; // Inicializa a primeira pgina aqui para evitar loops
-            mainWindow.DataContext = mainVm;
-        }
+            var serviceCollection = new ServiceCollection();
+            ConfigureServices(serviceCollection);
+            Services = serviceCollection.BuildServiceProvider();
 
-        base.OnFrameworkInitializationCompleted();
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                // Remove Avalonia data validation so that native DataAnnotations validation will be used
+                DisableAvaloniaDataAnnotationValidation();
+                
+                var mainWindow = new MainWindow();
+                desktop.MainWindow = mainWindow;
+                
+                // Inicializa Servios
+                await InitializeServicesAsync();
+                
+                var mainVm = Services.GetRequiredService<MainWindowViewModel>();
+                mainVm.CurrentPage = mainVm.Dashboard; // Inicializa a primeira pgina aqui para evitar loops
+                mainWindow.DataContext = mainVm;
+            }
+
+            base.OnFrameworkInitializationCompleted();
+        }
+        catch (Exception ex)
+        {
+            // Log crash to file for diagnosis
+            File.WriteAllText("crash_log.txt", $"CRASH AT STARTUP: {ex.Message}\n{ex.StackTrace}");
+            
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown();
+            }
+        }
     }
 
     private void ConfigureServices(IServiceCollection services)

@@ -11,6 +11,7 @@ using FolderFlow.Application.Services;
 using FolderFlow.Infrastructure.Logging;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 
 namespace FolderFlow.App.ViewModels;
 
@@ -86,9 +87,12 @@ public partial class HistoryViewModel : ViewModelBase
         await LoadLogs();
     }
 
+    private readonly SemaphoreSlim _loadLock = new(1, 1);
+
     [RelayCommand]
     private async Task LoadLogs()
     {
+        if (!await _loadLock.WaitAsync(0)) return;
         try
         {
             var sqliteAudit = _auditService as SqliteAuditService;
@@ -115,6 +119,10 @@ public partial class HistoryViewModel : ViewModelBase
         catch (Exception ex)
         {
             Debug.WriteLine($"Erro ao carregar logs SQLite: {ex.Message}");
+        }
+        finally
+        {
+            _loadLock.Release();
         }
     }
 

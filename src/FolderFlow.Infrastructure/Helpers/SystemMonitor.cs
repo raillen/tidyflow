@@ -25,20 +25,36 @@ public static class SystemMonitor
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern bool GlobalMemoryStatusEx([In, Out] MEMORYSTATUSEX lpBuffer);
 
-    private static PerformanceCounter? _cpuCounter;
+    private static DateTime _lastTime;
+    private static TimeSpan _lastProcessorTime;
+    private static double _lastCpuUsage;
 
     public static double GetCpuUsage()
     {
         try
         {
-            if (_cpuCounter == null)
+            var process = Process.GetCurrentProcess();
+            var currentTime = DateTime.UtcNow;
+            var currentProcessorTime = process.TotalProcessorTime;
+
+            if (_lastTime == DateTime.MinValue)
             {
-                _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-                _cpuCounter.NextValue(); // Primeira leitura  sempre 0
+                _lastTime = currentTime;
+                _lastProcessorTime = currentProcessorTime;
+                return 0;
             }
-            return _cpuCounter.NextValue();
+
+            double cpuUsedMs = (currentProcessorTime - _lastProcessorTime).TotalMilliseconds;
+            double totalMsPassed = (currentTime - _lastTime).TotalMilliseconds;
+            double cpuUsage = (cpuUsedMs / (Environment.ProcessorCount * totalMsPassed)) * 100;
+
+            _lastTime = currentTime;
+            _lastProcessorTime = currentProcessorTime;
+            _lastCpuUsage = Math.Clamp(cpuUsage, 0, 100);
+            
+            return _lastCpuUsage;
         }
-        catch { return 0; }
+        catch { return _lastCpuUsage; }
     }
 
     public static (long total, long used, double percentage) GetRamStatus()

@@ -26,25 +26,29 @@ public class WatchAppService
 
     public async Task InitializeAsync()
     {
-        // Inicializa Jobs de Transferncia
-        var jobs = await _jobAppService.GetAllJobsAsync();
-        foreach (var job in jobs)
-        {
-            if (job.WatchEnabled)
+        _ = Task.Run(async () => {
+            // Inicializa Jobs de Transferncia
+            var jobs = await _jobAppService.GetAllJobsAsync();
+            foreach (var job in jobs)
             {
-                _watchService.StartWatching(job, async (j) => await _jobQueue.EnqueueAsync(j));
+                if (job.WatchEnabled)
+                {
+                    _watchService.StartWatching(job, async (j) => await _jobQueue.EnqueueAsync(j));
+                }
             }
-        }
 
-        // Inicializa Blueprints de Organizao
-        var blueprints = await _blueprintService.GetAllBlueprintsAsync();
-        foreach (var blueprint in blueprints)
-        {
-            if (blueprint.IsActive)
+            // Inicializa Blueprints de Organizao
+            var blueprints = await _blueprintService.GetAllBlueprintsAsync();
+            foreach (var blueprint in blueprints)
             {
-                _watchService.StartWatchingBlueprint(blueprint, async (b, path) => await _blueprintService.ApplyBlueprintAsync(b, path));
+                if (blueprint.IsActive)
+                {
+                    _watchService.StartWatchingBlueprint(blueprint, async (b, path) => await _blueprintService.ApplyBlueprintAsync(b, path));
+                }
             }
-        }
+        });
+
+        await Task.CompletedTask;
     }
 
     public void UpdateJobWatching(Job job)

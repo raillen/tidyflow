@@ -22,31 +22,38 @@ public class SqliteAuditService : IAuditService
         _dbPath = Path.Combine(dataFolder, "audit.db");
         _connectionString = $"Data Source={_dbPath}";
 
-        InitializeDatabase();
+        _ = InitializeDatabaseAsync();
     }
 
-    private void InitializeDatabase()
+    private async Task InitializeDatabaseAsync()
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        try 
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
-        command.CommandText = @"
-            CREATE TABLE IF NOT EXISTS AuditEntries (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Timestamp TEXT NOT NULL,
-                JobName TEXT NOT NULL,
-                SourcePath TEXT,
-                TargetPath TEXT,
-                Status TEXT NOT NULL,
-                Details TEXT,
-                FileSize INTEGER DEFAULT 0,
-                DurationMs REAL DEFAULT 0
-            );
-            CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON AuditEntries(Timestamp);
-            CREATE INDEX IF NOT EXISTS idx_audit_jobname ON AuditEntries(JobName);
-        ";
-        command.ExecuteNonQuery();
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                CREATE TABLE IF NOT EXISTS AuditEntries (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Timestamp TEXT NOT NULL,
+                    JobName TEXT NOT NULL,
+                    SourcePath TEXT,
+                    TargetPath TEXT,
+                    Status TEXT NOT NULL,
+                    Details TEXT,
+                    FileSize INTEGER DEFAULT 0,
+                    DurationMs REAL DEFAULT 0
+                );
+                CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON AuditEntries(Timestamp);
+                CREATE INDEX IF NOT EXISTS idx_audit_jobname ON AuditEntries(JobName);
+            ";
+            await command.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Critical Error Initializing Database: {ex.Message}");
+        }
     }
 
     public async Task SaveReportAsync(string jobName, IEnumerable<AuditEntry> entries)
