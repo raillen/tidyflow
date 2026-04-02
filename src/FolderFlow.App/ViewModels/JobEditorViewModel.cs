@@ -32,6 +32,7 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty] private bool _isWatchMode;
     [ObservableProperty] private string _watchModeLabel = string.Empty;
     [ObservableProperty] private bool _hasPreview;
+    [ObservableProperty] private bool _organizationEnabled;
 
     // Organization
     [ObservableProperty] private ObservableCollection<string> _blueprintFolders = new();
@@ -102,6 +103,7 @@ public partial class JobEditorViewModel : ViewModelBase
         ExcludePatternsText = string.Join(", ", job.ExcludePatterns);
         BlueprintFolders = new ObservableCollection<string>(job.BlueprintFolders);
         RenameTemplateText = job.RenameTemplate ?? "";
+        OrganizationEnabled = job.OrganizationEnabled;
         RenamePreviewResult = string.Empty;
         
         if (TimeSpan.TryParse(job.ScheduleTime, out var ts))
@@ -143,6 +145,7 @@ public partial class JobEditorViewModel : ViewModelBase
         Job.ScheduleTime = $"{ScheduleHour:D2}:{ScheduleMinute:D2}:{ScheduleSecond:D2}";
         Job.SpecificDate = SelectedDateOffset?.DateTime;
         Job.RenameTemplate = RenameTemplateText;
+        Job.OrganizationEnabled = OrganizationEnabled;
         
         Job.IncludeExtensions = ExtensionsText.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
         Job.ExcludePatterns = ExcludePatternsText.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
