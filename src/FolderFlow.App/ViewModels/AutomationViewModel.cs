@@ -11,49 +11,53 @@ using FolderFlow.Application.Interfaces;
 using FolderFlow.Application.Services;
 using FolderFlow.Domain.Entities;
 using FolderFlow.Domain.ValueObjects;
+using FolderFlow.Domain.Enums;
 
 namespace FolderFlow.App.ViewModels;
 
 public partial class AutomationViewModel : ViewModelBase, IDisposable
 {
     private readonly JobAppService _jobAppService;
+    private readonly BlueprintAppService _blueprintService;
     private readonly IJobQueue _jobQueue;
     private readonly QueueProcessor _queueProcessor;
     private readonly GlobalProgressService _globalProgressService;
     private readonly INotificationService _notificationService;
     private readonly ILocalizationService _localizationService;
+    private readonly WatchAppService _watchAppService;
     private readonly DispatcherTimer _timer;
 
     [ObservableProperty] private ObservableCollection<JobItemViewModel> _allJobs = new();
+    [ObservableProperty] private ObservableCollection<BlueprintItemViewModel> _allBlueprints = new();
+    [ObservableProperty] private ObservableCollection<BlueprintItemViewModel> _fileBlueprints = new();
+    [ObservableProperty] private ObservableCollection<BlueprintItemViewModel> _folderBlueprints = new();
     [ObservableProperty] private ObservableCollection<JobProgressInfo> _activeExecutions = new();
     [ObservableProperty] private bool _isQueuePaused;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private string _selectedFilter = "";
 
-    partial void OnSelectedFilterChanged(string value)
-    {
-        // Se o valor selecionado for a traduo de "Todos", mapeamos internamente se necessrio
-        // Mas o melhor  usar a prpria traduo para comparar se ela vier do combo.
-        // Como o RadioButton no XAML usa EqualsConverter com string fixa 'Todos',
-        // precisamos atualizar o XAML ou o ViewModel.
-    }
+    // ... (partial OnSelectedFilterChanged)
 
     public ObservableCollection<string> Filters { get; } = new();
 
     public AutomationViewModel(
         JobAppService jobAppService,
+        BlueprintAppService blueprintService,
         IJobQueue jobQueue,
         QueueProcessor queueProcessor,
         GlobalProgressService globalProgressService,
         INotificationService notificationService,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        WatchAppService watchAppService)
     {
         _jobAppService = jobAppService;
+        _blueprintService = blueprintService;
         _jobQueue = jobQueue;
         _queueProcessor = queueProcessor;
         _globalProgressService = globalProgressService;
         _notificationService = notificationService;
         _localizationService = localizationService;
+        _watchAppService = watchAppService;
 
         _selectedFilter = _localizationService["All"];
         UpdateFilters();
@@ -76,6 +80,7 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
 
         IsQueuePaused = _jobQueue.IsPaused;
         _ = LoadJobsAsync();
+        _ = LoadBlueprintsAsync();
     }
 
     private void UpdateFilters()
@@ -88,6 +93,28 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         Filters.Add("WatchFolder");
         Filters.Add("DirectCopy");
         SelectedFilter = Filters.Contains(current) ? current : "All";
+    }
+
+    [RelayCommand]
+    public async Task LoadBlueprintsAsync()
+    {
+        var blueprints = await _blueprintService.GetAllBlueprintsAsync();
+        var vms = blueprints.Select(b => new BlueprintItemViewModel(b, _blueprintService, _localizationService, _watchAppService)).ToList();
+        
+        AllBlueprints.Clear();
+        FileBlueprints.Clear();
+        FolderBlueprints.Clear();
+        
+        foreach (var vm in vms) 
+        {
+            AllBlueprints.Add(vm);
+            if (vm.Blueprint.Type == FolderFlow.Domain.Enums.BlueprintType.File)
+                FileBlueprints.Add(vm);
+            else
+                FolderBlueprints.Add(vm);
+        }
+        
+        RefreshAutomationState();
     }
 
     [RelayCommand]
@@ -188,6 +215,28 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
     {
         var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
         mainVm?.ShowEditor(new Job { WatchEnabled = true, Name = _localizationService["NewWatchFolder"] });
+    }
+
+    [RelayCommand]
+    private void CreateFileBlueprint()
+    {
+        var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
+        mainVm?.ShowBlueprintEditor(new Blueprint 
+        { 
+            Name = _localizationService["NewFileBlueprintTitle"],
+            Type = FolderFlow.Domain.Enums.BlueprintType.File
+        });
+    }
+
+    [RelayCommand]
+    private void CreateFolderBlueprint()
+    {
+        var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
+        mainVm?.ShowBlueprintEditor(new Blueprint 
+        { 
+            Name = _localizationService["NewFolderBlueprintTitle"],
+            Type = FolderFlow.Domain.Enums.BlueprintType.Folder
+        });
     }
 
     // Comandos de Orquestrao

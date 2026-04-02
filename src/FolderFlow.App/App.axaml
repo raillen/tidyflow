@@ -21,12 +21,15 @@
             <conv:PlayPauseColorConverter x:Key="StatusToColorConverter"/>
             <conv:StatusToProgressColorConverter x:Key="StatusToProgressColorConverter"/>
             <conv:BoolToIconConverter x:Key="BoolToIconConverter"/>
+            <conv:BoolToTextConverter x:Key="BoolToTextConverter"/>
+            <conv:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
             <conv:StatusToPercentageConverter x:Key="StatusToPercentageConverter"/>
             <conv:SpeedToHeightConverter x:Key="SpeedToHeightConverter"/>
             <conv:FileSizeConverter x:Key="FileSizeConverter"/>
             <conv:EnumLocalizationConverter x:Key="EnumLocalizationConverter"/>
             <conv:ActivePageBackgroundConverter x:Key="ActivePageBackgroundConverter"/>
             <conv:ActivePageForegroundConverter x:Key="ActivePageForegroundConverter"/>
+            <conv:BlueprintTypeToIconConverter x:Key="BlueprintTypeToIconConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 

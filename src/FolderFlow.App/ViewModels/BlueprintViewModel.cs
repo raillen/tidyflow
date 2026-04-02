@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using FolderFlow.Application.Interfaces;
 using FolderFlow.Application.Services;
 using FolderFlow.Domain.Entities;
+using FolderFlow.Domain.Enums;
 
 namespace FolderFlow.App.ViewModels;
 
@@ -19,6 +20,8 @@ public partial class BlueprintViewModel : ViewModelBase, IDisposable
     private readonly DispatcherTimer _timer;
 
     [ObservableProperty] private ObservableCollection<BlueprintItemViewModel> _allBlueprints = new();
+    [ObservableProperty] private ObservableCollection<BlueprintItemViewModel> _fileBlueprints = new();
+    [ObservableProperty] private ObservableCollection<BlueprintItemViewModel> _folderBlueprints = new();
     [ObservableProperty] private string _searchText = string.Empty;
 
     public BlueprintViewModel(
@@ -46,14 +49,39 @@ public partial class BlueprintViewModel : ViewModelBase, IDisposable
         var vms = blueprints.Select(b => new BlueprintItemViewModel(b, _blueprintService, _localizationService, _watchAppService)).ToList();
         
         AllBlueprints.Clear();
-        foreach (var vm in vms) AllBlueprints.Add(vm);
+        FileBlueprints.Clear();
+        FolderBlueprints.Clear();
+
+        foreach (var vm in vms) 
+        {
+            AllBlueprints.Add(vm);
+            if (vm.Blueprint.Type == FolderFlow.Domain.Enums.BlueprintType.File)
+                FileBlueprints.Add(vm);
+            else
+                FolderBlueprints.Add(vm);
+        }
     }
 
     [RelayCommand]
-    private void CreateBlueprint()
+    private void CreateFileBlueprint()
     {
         var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
-        mainVm?.ShowBlueprintEditor(new Blueprint { Name = _localizationService["NewBlueprintTitle"] });
+        mainVm?.ShowBlueprintEditor(new Blueprint 
+        { 
+            Name = _localizationService["NewFileBlueprintTitle"],
+            Type = BlueprintType.File
+        });
+    }
+
+    [RelayCommand]
+    private void CreateFolderBlueprint()
+    {
+        var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
+        mainVm?.ShowBlueprintEditor(new Blueprint 
+        { 
+            Name = _localizationService["NewFolderBlueprintTitle"],
+            Type = BlueprintType.Folder
+        });
     }
 
     public void Dispose() => _timer.Stop();
@@ -66,6 +94,8 @@ public partial class BlueprintItemViewModel : ViewModelBase
     private readonly WatchAppService _watchAppService;
 
     public Blueprint Blueprint { get; }
+    public string TypeLabel => Blueprint.Type == BlueprintType.File ? "FILE" : "FOLDER";
+    public string IconPath => Blueprint.Type == BlueprintType.File ? "file_regular" : "folder_regular";
 
     public BlueprintItemViewModel(Blueprint blueprint, BlueprintAppService blueprintService, ILocalizationService localizationService, WatchAppService watchAppService)
     {

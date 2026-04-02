@@ -429,3 +429,16 @@
    -> WindowState changed to: Normal
    -> WindowState changed to: Normal
    -> WindowState changed to: Maximized
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Maximized
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Maximized
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Maximized
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Maximized
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Maximized

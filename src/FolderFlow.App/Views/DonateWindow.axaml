@@ -8,7 +8,7 @@
         Title="{lcl:Lcl Donate}"
         Width="450" Height="650"
         WindowStartupLocation="CenterOwner"
-        CanResize="False"
+        CanResize="True"
         ExtendClientAreaToDecorationsHint="True"
         Background="{DynamicResource AppBackground}">
 
