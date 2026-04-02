@@ -14,7 +14,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IServiceProvider _serviceProvider;
 
     [ObservableProperty]
-    private ViewModelBase _currentPage;
+    private ViewModelBase? _currentPage;
 
     private DashboardViewModel? _dashboard;
     public DashboardViewModel Dashboard => _dashboard ??= _serviceProvider.GetRequiredService<DashboardViewModel>();
