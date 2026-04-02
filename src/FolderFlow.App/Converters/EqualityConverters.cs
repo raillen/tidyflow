@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using Avalonia;
 using Avalonia.Data.Converters;
 
 namespace FolderFlow.App.Converters;
@@ -33,7 +34,8 @@ public class EqualsConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        if (value is bool b && b) return parameter;
+        return AvaloniaProperty.UnsetValue;
     }
 }
 
@@ -47,6 +49,7 @@ public class NotEqualsConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        if (value is bool b && b) return parameter;
+        return AvaloniaProperty.UnsetValue;
     }
 }

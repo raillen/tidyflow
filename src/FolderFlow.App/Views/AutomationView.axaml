@@ -137,10 +137,10 @@
                 <!-- Busca e Filtros (Chips) -->
                 <Grid ColumnDefinitions="Auto, *, Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <RadioButton Content="{lcl:Lcl All}" Classes="Chip" IsChecked="{Binding SelectedFilter, Converter={StaticResource EqualsConverter}, ConverterParameter='All'}"/>
-                        <RadioButton Content="{lcl:Lcl Active}" Classes="Chip" IsChecked="{Binding SelectedFilter, Converter={StaticResource EqualsConverter}, ConverterParameter='Active'}"/>
-                        <RadioButton Content="{lcl:Lcl Pending}" Classes="Chip" IsChecked="{Binding SelectedFilter, Converter={StaticResource EqualsConverter}, ConverterParameter='Pending'}"/>
-                        <RadioButton Content="{lcl:Lcl Watchers}" Classes="Chip" IsChecked="{Binding SelectedFilter, Converter={StaticResource EqualsConverter}, ConverterParameter='WatchFolder'}"/>
+                        <RadioButton Content="{lcl:Lcl All}" Classes="Chip" IsChecked="{Binding SelectedFilter, Mode=TwoWay, Converter={StaticResource EqualsConverter}, ConverterParameter='All'}"/>
+                        <RadioButton Content="{lcl:Lcl Active}" Classes="Chip" IsChecked="{Binding SelectedFilter, Mode=TwoWay, Converter={StaticResource EqualsConverter}, ConverterParameter='Active'}"/>
+                        <RadioButton Content="{lcl:Lcl Pending}" Classes="Chip" IsChecked="{Binding SelectedFilter, Mode=TwoWay, Converter={StaticResource EqualsConverter}, ConverterParameter='Pending'}"/>
+                        <RadioButton Content="{lcl:Lcl Watchers}" Classes="Chip" IsChecked="{Binding SelectedFilter, Mode=TwoWay, Converter={StaticResource EqualsConverter}, ConverterParameter='WatchFolder'}"/>
                     </StackPanel>
 
                     <TextBox Grid.Column="2" Text="{Binding SearchText}" Watermark="{lcl:Lcl SearchJobsWatermark}" Width="300" Height="40" CornerRadius="12">

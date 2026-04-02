@@ -31,7 +31,9 @@
         <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
             <v:HistoryView/>
         </DataTemplate>
-
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <v:SettingsView/>
+        </DataTemplate>
     </Window.DataTemplates>
 
     <Panel>
@@ -80,24 +82,33 @@
                                 </Style>
                             </ListBox.Styles>
 
-                            <Button Command="{Binding NavigateToDashboardCommand}">
+                            <Button Command="{Binding NavigateToDashboardCommand}"
+                                    Background="{Binding CurrentPage, Converter={StaticResource ActivePageBackgroundConverter}, ConverterParameter='Dashboard'}">
                                 <StackPanel Orientation="Horizontal" Spacing="16">
-                                    <material:MaterialIcon Kind="ViewDashboardOutline" Width="22" Height="22" Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBlock Text="{lcl:Lcl Dashboard}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                                    <material:MaterialIcon Kind="ViewDashboardOutline" Width="22" Height="22" 
+                                                          Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Dashboard'}"/>
+                                    <TextBlock Text="{lcl:Lcl Dashboard}" VerticalAlignment="Center" FontWeight="Medium" 
+                                               Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Dashboard'}"/>
                                 </StackPanel>
                             </Button>
 
-                            <Button Command="{Binding NavigateToAutomationCommand}">
+                            <Button Command="{Binding NavigateToAutomationCommand}"
+                                    Background="{Binding CurrentPage, Converter={StaticResource ActivePageBackgroundConverter}, ConverterParameter='Automation'}">
                                 <StackPanel Orientation="Horizontal" Spacing="16">
-                                    <material:MaterialIcon Kind="AutoFix" Width="22" Height="22" Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBlock Text="{lcl:Lcl SidebarAutomation}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                                    <material:MaterialIcon Kind="AutoFix" Width="22" Height="22" 
+                                                          Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Automation'}"/>
+                                    <TextBlock Text="{lcl:Lcl SidebarAutomation}" VerticalAlignment="Center" FontWeight="Medium" 
+                                               Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Automation'}"/>
                                 </StackPanel>
                             </Button>
 
-                            <Button Command="{Binding NavigateToHistoryCommand}">
+                            <Button Command="{Binding NavigateToHistoryCommand}"
+                                    Background="{Binding CurrentPage, Converter={StaticResource ActivePageBackgroundConverter}, ConverterParameter='History'}">
                                 <StackPanel Orientation="Horizontal" Spacing="16">
-                                    <material:MaterialIcon Kind="History" Width="22" Height="22" Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBlock Text="{lcl:Lcl SidebarAudit}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                                    <material:MaterialIcon Kind="History" Width="22" Height="22" 
+                                                          Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='History'}"/>
+                                    <TextBlock Text="{lcl:Lcl SidebarAudit}" VerticalAlignment="Center" FontWeight="Medium" 
+                                               Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='History'}"/>
                                 </StackPanel>
                             </Button>
                         </ListBox>
