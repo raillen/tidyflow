@@ -340,6 +340,15 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
                 // Formatting
                 ["RamUsageFormat"] = "{0} GB / {1} GB",
                 ["TimeSavedFormat"] = "{0}h {1}m",
+
+                // Scheduler
+                ["SchedulerLoopError"] = "Error in scheduler loop: {0}",
+                ["DailyMaintenanceSuccess"] = "Daily maintenance completed successfully.",
+                ["DailyMaintenanceError"] = "Error in daily maintenance: {0}",
+                ["DailySummaryName"] = "Daily Summary",
+                ["InXDays"] = "in {0} days",
+                ["InXHours"] = "in {0}h",
+                ["InXMinutes"] = "in {0}min",
             },
             _ => new Dictionary<string, string> { 
                 ["Dashboard"] = "Painel", ["Jobs"] = "Fila", ["History"] = "Histórico", ["Settings"] = "Configurações", 
@@ -595,6 +604,15 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
                 // Formatting
                 ["RamUsageFormat"] = "{0} GB / {1} GB",
                 ["TimeSavedFormat"] = "{0}h {1}m",
+
+                // Scheduler
+                ["SchedulerLoopError"] = "Erro no loop do agendador: {0}",
+                ["DailyMaintenanceSuccess"] = "Manutenção diária concluída com sucesso.",
+                ["DailyMaintenanceError"] = "Erro na manutenção diária: {0}",
+                ["DailySummaryName"] = "Resumo Diário",
+                ["InXDays"] = "em {0} dias",
+                ["InXHours"] = "em {0}h",
+                ["InXMinutes"] = "em {0}min",
             }
         };
         return dict;

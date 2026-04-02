@@ -18,6 +18,7 @@ public class SimpleScheduler : ISchedulerService
     private readonly IAuditService _auditService;
     private readonly ISettingsStore _settingsStore;
     private readonly IExternalNotificationService _notificationService;
+    private readonly ILocalizationService _localizationService;
     private CancellationTokenSource? _cts;
 
     public SimpleScheduler(
@@ -26,7 +27,8 @@ public class SimpleScheduler : ISchedulerService
         ISystemActivityService activityService,
         IAuditService auditService,
         ISettingsStore settingsStore,
-        IExternalNotificationService notificationService)
+        IExternalNotificationService notificationService,
+        ILocalizationService localizationService)
     {
         _jobQueue = jobQueue;
         _jobAppService = jobAppService;
@@ -34,6 +36,7 @@ public class SimpleScheduler : ISchedulerService
         _auditService = auditService;
         _settingsStore = settingsStore;
         _notificationService = notificationService;
+        _localizationService = localizationService;
     }
 
     public void Start(CancellationToken cancellationToken)
@@ -73,7 +76,7 @@ public class SimpleScheduler : ISchedulerService
             }
             catch (Exception ex)
             {
-                await _activityService.LogActivityAsync($"Erro no loop do agendador: {ex.Message}", "ERROR");
+                await _activityService.LogActivityAsync(string.Format(_localizationService["SchedulerLoopError"], ex.Message), "ERROR");
                 await Task.Delay(5000, cancellationToken);
             }
 
@@ -94,14 +97,14 @@ public class SimpleScheduler : ISchedulerService
             {
                 var summary = await _auditService.GetDailySummaryAsync();
                 await _notificationService.NotifyJobCompletionAsync(
-                    new Job { Name = "Resumo Dirio" }, true, 0, summary);
+                    new Job { Name = _localizationService["DailySummaryName"] }, true, 0, summary);
             }
 
-            await _activityService.LogActivityAsync("Manuteno diria concluda com sucesso.");
+            await _activityService.LogActivityAsync(_localizationService["DailyMaintenanceSuccess"]);
         }
         catch (Exception ex)
         {
-            await _activityService.LogActivityAsync($"Erro na manuteno diria: {ex.Message}", "WARNING");
+            await _activityService.LogActivityAsync(string.Format(_localizationService["DailyMaintenanceError"], ex.Message), "WARNING");
         }
     }
 
@@ -117,9 +120,9 @@ public class SimpleScheduler : ISchedulerService
                    .Select(x => {
                        var diff = x.Next!.Value - now;
                        string remaining;
-                       if (diff.TotalDays >= 1) remaining = $"em {(int)diff.TotalDays} dias";
-                       else if (diff.TotalHours >= 1) remaining = $"em {(int)diff.TotalHours}h";
-                       else remaining = $"em {(int)diff.TotalMinutes}min";
+                       if (diff.TotalDays >= 1) remaining = string.Format(_localizationService["InXDays"], (int)diff.TotalDays);
+                       else if (diff.TotalHours >= 1) remaining = string.Format(_localizationService["InXHours"], (int)diff.TotalHours);
+                       else remaining = string.Format(_localizationService["InXMinutes"], (int)diff.TotalMinutes);
 
                        return new UpcomingJobInfo {
                            JobName = x.Job.Name,

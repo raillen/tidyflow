@@ -1,5 +1,8 @@
 using System;
+using System.IO;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FolderFlow.Domain.Entities;
 using FolderFlow.Application.Interfaces;
 
@@ -14,6 +17,30 @@ public partial class AuditEntryViewModel : ViewModelBase
     {
         Entry = entry;
         _localizationService = App.Services?.GetService(typeof(ILocalizationService)) as ILocalizationService;
+    }
+
+    [RelayCommand]
+    public void OpenSource() => OpenPath(Entry.SourcePath);
+
+    [RelayCommand]
+    public void OpenTarget() => OpenPath(Entry.TargetPath);
+
+    private void OpenPath(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return;
+        try
+        {
+            var dir = Path.GetDirectoryName(path);
+            if (Directory.Exists(dir))
+            {
+                Process.Start("explorer.exe", dir);
+            }
+            else if (Directory.Exists(path))
+            {
+                Process.Start("explorer.exe", path);
+            }
+        }
+        catch { }
     }
 
     public string LocalizedStatus

@@ -92,11 +92,29 @@
                                 <StackPanel Spacing="15">
                                     <StackPanel>
                                         <TextBlock Text="{lcl:Lcl File}" FontSize="11" Opacity="0.5"/>
-                                        <TextBlock Text="{Binding SelectedLog.Entry.SourcePath}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                        <Button Command="{Binding SelectedLog.OpenSourceCommand}" 
+                                                Theme="{DynamicResource TransparentButton}" 
+                                                HorizontalAlignment="Left" Padding="0" Margin="0,2,0,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <material:MaterialIcon Kind="FileOutline" Width="14" Opacity="0.6"/>
+                                                <TextBlock Text="{Binding SelectedLog.Entry.SourcePath}" 
+                                                         FontWeight="SemiBold" TextWrapping="Wrap" 
+                                                         Foreground="{DynamicResource AccentColor}"/>
+                                            </StackPanel>
+                                        </Button>
                                     </StackPanel>
                                     <StackPanel>
                                         <TextBlock Text="{lcl:Lcl Destination}" FontSize="11" Opacity="0.5"/>
-                                        <TextBlock Text="{Binding SelectedLog.Entry.TargetPath}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                        <Button Command="{Binding SelectedLog.OpenTargetCommand}" 
+                                                Theme="{DynamicResource TransparentButton}" 
+                                                HorizontalAlignment="Left" Padding="0" Margin="0,2,0,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <material:MaterialIcon Kind="FolderOpenOutline" Width="14" Opacity="0.6"/>
+                                                <TextBlock Text="{Binding SelectedLog.Entry.TargetPath}" 
+                                                         FontWeight="SemiBold" TextWrapping="Wrap"
+                                                         Foreground="{DynamicResource AccentColor}"/>
+                                            </StackPanel>
+                                        </Button>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
