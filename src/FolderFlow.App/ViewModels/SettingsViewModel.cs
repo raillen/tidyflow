@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
@@ -52,6 +53,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IAuditService _auditService;
 
     [ObservableProperty] private string _databaseSize = "0 KB";
+    [ObservableProperty] private string _databaseSizeText = string.Empty;
     public ObservableCollection<int> RetentionOptions { get; } = new(new[] { 0, 7, 15, 30, 60, 90 });
 
     public SettingsViewModel(
@@ -65,6 +67,16 @@ public partial class SettingsViewModel : ViewModelBase
         _localizationService = localizationService;
         _auditService = auditService;
         
+        if (_localizationService is System.ComponentModel.INotifyPropertyChanged npc)
+        {
+            npc.PropertyChanged += (s, e) => {
+                if (e.PropertyName == "Item" || e.PropertyName == "Item[]" || string.IsNullOrEmpty(e.PropertyName))
+                {
+                    RefreshDatabaseStats();
+                }
+            };
+        }
+
         LoadSettingsCommand.Execute(null);
         RefreshDatabaseStats();
     }
@@ -77,6 +89,8 @@ public partial class SettingsViewModel : ViewModelBase
             if (bytes < 1024) DatabaseSize = $"{bytes} B";
             else if (bytes < 1024 * 1024) DatabaseSize = $"{bytes / 1024.0:F1} KB";
             else DatabaseSize = $"{bytes / (1024.0 * 1024.0):F1} MB";
+
+            DatabaseSizeText = string.Format(_localizationService["DatabaseSize"], DatabaseSize);
         }
     }
 

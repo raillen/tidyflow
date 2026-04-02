@@ -14,10 +14,12 @@ namespace FolderFlow.Application.Services;
 public class PreviewEngine
 {
     private readonly IFileOperator _fileOperator;
+    private readonly ILocalizationService _localizationService;
 
-    public PreviewEngine(IFileOperator fileOperator)
+    public PreviewEngine(IFileOperator fileOperator, ILocalizationService localizationService)
     {
         _fileOperator = fileOperator;
+        _localizationService = localizationService;
     }
 
     public async Task<PreviewSummary> GeneratePreviewAsync(Job job, CancellationToken cancellationToken = default)
@@ -28,7 +30,7 @@ public class PreviewEngine
 
             if (!_fileOperator.Exists(job.SourcePath))
             {
-                summary.AffectedPaths.Add($"[ERRO] Diretório de origem não encontrado: {job.SourcePath}");
+                summary.AffectedPaths.Add(string.Format(_localizationService["PreviewErrorSourceNotFound"], job.SourcePath));
                 return summary;
             }
 
@@ -45,7 +47,7 @@ public class PreviewEngine
                 else
                 {
                     summary.FilesToSkip++;
-                    summary.AffectedPaths.Add($"[IGNORADO] {Path.GetFileName(file)}");
+                    summary.AffectedPaths.Add(string.Format(_localizationService["PreviewIgnored"], Path.GetFileName(file)));
                 }
             }
 
@@ -99,7 +101,7 @@ public class PreviewEngine
                     Math.Abs((meta.LastWriteTimeUtc - targetMeta.LastWriteTimeUtc).TotalSeconds) < 2)
                 {
                     summary.FilesToSkip++;
-                    summary.AffectedPaths.Add($"[IGNORADO - SMART SYNC] {relativePath}");
+                    summary.AffectedPaths.Add(string.Format(_localizationService["PreviewIgnoredSmartSync"], relativePath));
                     return;
                 }
             }
@@ -108,16 +110,16 @@ public class PreviewEngine
             {
                 case ConflictMode.Skip:
                     summary.FilesToSkip++;
-                    summary.AffectedPaths.Add($"[IGNORADO - CONFLITO] {relativePath}");
+                    summary.AffectedPaths.Add(string.Format(_localizationService["PreviewIgnoredConflict"], relativePath));
                     break;
                 case ConflictMode.Overwrite:
                     summary.FilesToOverwrite++;
                     summary.TotalBytesToTransfer += fileSize;
-                    summary.AffectedPaths.Add($"[SOBRESCREVER] {relativePath}");
+                    summary.AffectedPaths.Add(string.Format(_localizationService["PreviewOverwrite"], relativePath));
                     break;
                 case ConflictMode.Rename:
                     summary.TotalBytesToTransfer += fileSize;
-                    summary.AffectedPaths.Add($"[RENOMEAR] {relativePath}");
+                    summary.AffectedPaths.Add(string.Format(_localizationService["PreviewRename"], relativePath));
                     break;
             }
         }
@@ -127,13 +129,13 @@ public class PreviewEngine
             {
                 summary.FilesToCopy++;
                 summary.TotalBytesToTransfer += fileSize;
-                summary.AffectedPaths.Add($"[COPIAR] {relativePath}");
+                summary.AffectedPaths.Add(string.Format(_localizationService["PreviewCopy"], relativePath));
             }
             else
             {
                 summary.FilesToMove++;
                 summary.TotalBytesToTransfer += fileSize;
-                summary.AffectedPaths.Add($"[MOVER] {relativePath}");
+                summary.AffectedPaths.Add(string.Format(_localizationService["PreviewMove"], relativePath));
             }
         }
     }

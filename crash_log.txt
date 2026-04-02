@@ -1,0 +1,8 @@
+Avalonia.Markup.Xaml.XamlLoadException: No precompiled XAML found for FolderFlow.App.App, make sure to specify x:Class and include your XAML file as AvaloniaResource
+   at Avalonia.Markup.Xaml.AvaloniaXamlLoader.Load(Object obj)
+   at FolderFlow.App.App.Initialize() in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\FolderFlow.App\App.axaml.cs:line 32
+   at Avalonia.AppBuilder.SetupUnsafe()
+   at Avalonia.AppBuilder.Setup()
+   at Avalonia.AppBuilder.SetupWithLifetime(IApplicationLifetime lifetime)
+   at Avalonia.ClassicDesktopStyleApplicationLifetimeExtensions.StartWithClassicDesktopLifetime(AppBuilder builder, String[] args, Action`1 lifetimeBuilder)
+   at FolderFlow.App.Program.Main(String[] args) in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\FolderFlow.App\Program.cs:line 16

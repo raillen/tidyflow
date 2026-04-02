@@ -1,12 +1,15 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FolderFlow.Domain.Entities;
+using FolderFlow.Application.Interfaces;
 using System;
 
 namespace FolderFlow.App.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    private readonly ILocalizationService _localizationService;
+
     [ObservableProperty]
     private ViewModelBase _currentPage;
 
@@ -19,12 +22,14 @@ public partial class MainWindowViewModel : ViewModelBase
         DashboardViewModel dashboard, 
         AutomationViewModel automation, 
         HistoryViewModel history,
-        SettingsViewModel settings)
+        SettingsViewModel settings,
+        ILocalizationService localizationService)
     {
         Dashboard = dashboard;
         Automation = automation;
         History = history;
         Settings = settings;
+        _localizationService = localizationService;
         _currentPage = Dashboard;
     }
 
@@ -56,11 +61,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Esta verso evita o loop infinito ao verificar se j estamos na Automation
         if (mode == "DirectCopy") 
         {
-            ShowEditor(new Job { WatchEnabled = false, Name = "Nova Cpia Direta" });
+            ShowEditor(new Job { WatchEnabled = false, Name = _localizationService["NewDirectCopy"] });
         }
         else if (mode == "WatchFolder")
         {
-            ShowEditor(new Job { WatchEnabled = true, Name = "Nova Watch Folder" });
+            ShowEditor(new Job { WatchEnabled = true, Name = _localizationService["NewWatchFolder"] });
         }
         else if (mode == "Edit")
         {

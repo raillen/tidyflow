@@ -3,6 +3,7 @@
              xmlns:vm="using:FolderFlow.App.ViewModels"
              xmlns:interfaces="using:FolderFlow.Application.Interfaces"
              xmlns:material="using:Material.Icons.Avalonia"
+             xmlns:lcl="using:FolderFlow.App.Localization"
              x:Class="FolderFlow.App.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
     <ScrollViewer>
@@ -10,20 +11,21 @@
             <!-- Header & Filters -->
             <Grid ColumnDefinitions="*, Auto">
                 <StackPanel Grid.Column="0" Spacing="5">
-                    <TextBlock Text="Painel de Controle" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                    <TextBlock Text="Viso geral do sistema e métricas de desempenho" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
+                    <TextBlock Text="{lcl:Lcl Greeting}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource AccentColor}"/>
+                    <TextBlock Text="{lcl:Lcl ControlPanel}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="{lcl:Lcl SystemOverview}" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
                 </StackPanel>
 
                 <Border Grid.Column="1" Background="{DynamicResource SidebarBackground}" CornerRadius="12" Padding="15,8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                     <StackPanel Orientation="Horizontal" Spacing="20">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <material:MaterialIcon Kind="FilterVariant" Width="16" Height="16" Foreground="{DynamicResource AccentColor}"/>
-                            <TextBlock Text="Tipo:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Text="{lcl:Lcl Type}" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"/>
                             <ComboBox ItemsSource="{Binding AvailableTypes}" SelectedItem="{Binding SelectedTypeFilter}" Width="130" Height="32" CornerRadius="6"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <material:MaterialIcon Kind="ClipboardListOutline" Width="16" Height="16" Foreground="{DynamicResource AccentColor}"/>
-                            <TextBlock Text="Tarefa:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Text="{lcl:Lcl Task}" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"/>
                             <ComboBox ItemsSource="{Binding AvailableTasks}" SelectedItem="{Binding SelectedTaskFilter}" Width="160" Height="32" CornerRadius="6"/>
                         </StackPanel>
                     </StackPanel>
@@ -37,7 +39,7 @@
                     <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
                             <material:MaterialIcon Grid.Column="0" Kind="HeartPulse" Foreground="{DynamicResource SuccessColor}" Width="20" Height="20"/>
-                            <TextBlock Grid.Column="1" Text="SADE DO SISTEMA" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+                            <TextBlock Grid.Column="1" Text="{lcl:Lcl SystemHealth}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
                         </Grid>
                         <StackPanel HorizontalAlignment="Center" Margin="0,5">
                             <TextBlock Text="{Binding HealthStatus}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
@@ -52,11 +54,11 @@
                     <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
                             <material:MaterialIcon Grid.Column="0" Kind="DatabaseOutline" Foreground="{DynamicResource AccentColor}" Width="20" Height="20"/>
-                            <TextBlock Grid.Column="1" Text="VOLUME TOTAL" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+                            <TextBlock Grid.Column="1" Text="{lcl:Lcl TotalVolume}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
                         </Grid>
                         <StackPanel HorizontalAlignment="Center" Margin="0,5">
                             <TextBlock Text="{Binding TotalDataVolume}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Dados processados" FontSize="11" Opacity="0.6" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{lcl:Lcl ProcessedData}" FontSize="11" Opacity="0.6" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -66,11 +68,11 @@
                     <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
                             <material:MaterialIcon Grid.Column="0" Kind="TimerOutline" Foreground="{DynamicResource WarningColor}" Width="20" Height="20"/>
-                            <TextBlock Grid.Column="1" Text="TEMPO ECONOMIZADO" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+                            <TextBlock Grid.Column="1" Text="{lcl:Lcl TimeSaved}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
                         </Grid>
                         <StackPanel HorizontalAlignment="Center" Margin="0,5">
                             <TextBlock Text="{Binding TimeSaved}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Trabalho automatizado" FontSize="11" Opacity="0.6" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{lcl:Lcl AutomatedWork}" FontSize="11" Opacity="0.6" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -80,20 +82,20 @@
                     <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
                             <material:MaterialIcon Grid.Column="0" Kind="Files" Foreground="{DynamicResource AccentColor}" Width="20" Height="20"/>
-                            <TextBlock Grid.Column="1" Text="ARQUIVOS" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+                            <TextBlock Grid.Column="1" Text="{lcl:Lcl Files}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
                         </Grid>
                         <Grid ColumnDefinitions="*, *, *">
                             <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                                 <TextBlock Text="{Binding TotalProcessed}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource SuccessColor}"/>
-                                <TextBlock Text="OK" FontSize="9" Opacity="0.6"/>
+                                <TextBlock Text="{lcl:Lcl SuccessBadge}" FontSize="9" Opacity="0.6"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                                 <TextBlock Text="{Binding TotalIgnored}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
-                                <TextBlock Text="IGN" FontSize="9" Opacity="0.6"/>
+                                <TextBlock Text="{lcl:Lcl IgnoredBadge}" FontSize="9" Opacity="0.6"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                                 <TextBlock Text="{Binding TotalErrors}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DangerColor}"/>
-                                <TextBlock Text="ERR" FontSize="9" Opacity="0.6"/>
+                                <TextBlock Text="{lcl:Lcl ErrorBadge}" FontSize="9" Opacity="0.6"/>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -107,19 +109,19 @@
                         <Button Command="{Binding NewDirectCopyCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="12,8">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <material:MaterialIcon Kind="PlusThick" Width="16" Height="16"/>
-                                <TextBlock Text="Cpia Direta" FontSize="12"/>
+                                <TextBlock Text="{lcl:Lcl DirectCopy}" FontSize="12"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding NewWatchFolderCommand}" Classes="Success" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="12,8">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <material:MaterialIcon Kind="Radar" Width="16" Height="16"/>
-                                <TextBlock Text="Watch Folder" FontSize="12"/>
+                                <TextBlock Text="{lcl:Lcl WatchFolder}" FontSize="12"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding ViewHistoryCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="12,8">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <material:MaterialIcon Kind="History" Width="16" Height="16"/>
-                                <TextBlock Text="Histrico" FontSize="12"/>
+                                <TextBlock Text="{lcl:Lcl History}" FontSize="12"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -128,7 +130,7 @@
                          <Button Command="{Binding ToggleAllJobsCommand}" Classes="Danger" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="12,8">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <material:MaterialIcon Kind="PauseOctagon" Width="16" Height="16"/>
-                                <TextBlock Text="Pausar Tudo" FontSize="12"/>
+                                <TextBlock Text="{lcl:Lcl PauseAll}" FontSize="12"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding OpenLogFolderCommand}" Classes="Secondary" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="12,8">
@@ -147,7 +149,7 @@
                             <Border Grid.Row="0" Padding="15,10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <material:MaterialIcon Kind="History" Width="18" Height="18" Foreground="{DynamicResource AccentColor}"/>
-                                    <TextBlock Text="ATIVIDADES RECENTES" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
+                                    <TextBlock Text="{lcl:Lcl RecentActivities}" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
                                 </StackPanel>
                             </Border>
                             <ScrollViewer Grid.Row="1">
@@ -173,7 +175,7 @@
                             <Border Grid.Row="0" Padding="15,10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <material:MaterialIcon Kind="Radar" Width="18" Height="18" Foreground="{DynamicResource SuccessColor}"/>
-                                    <TextBlock Text="RADAR DE AGENDAMENTOS" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
+                                    <TextBlock Text="{lcl:Lcl UpcomingRadar}" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
                                 </StackPanel>
                             </Border>
                             <ItemsControl Grid.Row="1" ItemsSource="{Binding UpcomingJobs}" Margin="15">
@@ -201,14 +203,14 @@
                         <Border Grid.Row="0" Padding="20,15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <material:MaterialIcon Kind="Monitor" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
-                                <TextBlock Text="MONITOR DO SISTEMA" FontSize="13" FontWeight="Bold" LetterSpacing="1"/>
+                                <TextBlock Text="{lcl:Lcl SystemMonitor}" FontSize="13" FontWeight="Bold" LetterSpacing="1"/>
                             </StackPanel>
                         </Border>
                         <StackPanel Grid.Row="1" Margin="20" Spacing="25">
                             <!-- Transfer Speed with Graph (NOVO) -->
                             <StackPanel Spacing="10">
                                 <Grid ColumnDefinitions="*, Auto">
-                                    <TextBlock Grid.Column="0" Text="Velocidade de Cpia" FontSize="12" Opacity="0.7"/>
+                                    <TextBlock Grid.Column="0" Text="{lcl:Lcl CopySpeed}" FontSize="12" Opacity="0.7"/>
                                     <TextBlock Grid.Column="1" Text="{Binding TransferSpeed}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
                                 </Grid>
                                 
@@ -236,7 +238,7 @@
                             <!-- CPU -->
                             <StackPanel Spacing="10">
                                 <Grid ColumnDefinitions="*, Auto">
-                                    <TextBlock Grid.Column="0" Text="Processador (CPU)" FontSize="12" Opacity="0.7"/>
+                                    <TextBlock Grid.Column="0" Text="{lcl:Lcl Processor}" FontSize="12" Opacity="0.7"/>
                                     <TextBlock Grid.Column="1" Text="{Binding CpuUsage, StringFormat='{}{0:F1}%'}" FontSize="12" FontWeight="Bold"/>
                                 </Grid>
                                 <ProgressBar Value="{Binding CpuUsage}" Maximum="100" Height="8" CornerRadius="4" Foreground="{DynamicResource AccentColor}"/>
@@ -245,7 +247,7 @@
                             <!-- RAM -->
                             <StackPanel Spacing="10">
                                 <Grid ColumnDefinitions="*, Auto">
-                                    <TextBlock Grid.Column="0" Text="Memria RAM" FontSize="12" Opacity="0.7"/>
+                                    <TextBlock Grid.Column="0" Text="{lcl:Lcl Ram}" FontSize="12" Opacity="0.7"/>
                                     <TextBlock Grid.Column="1" Text="{Binding RamUsage}" FontSize="12" FontWeight="Bold"/>
                                 </Grid>
                                 <ProgressBar Value="30" Height="8" CornerRadius="4" Foreground="{DynamicResource SuccessColor}"/>
@@ -256,7 +258,7 @@
                                 <Grid ColumnDefinitions="Auto, *">
                                     <material:MaterialIcon Kind="CloudCheck" Width="24" Height="24" Foreground="{DynamicResource SuccessColor}"/>
                                     <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Sincronizao Nuvem" FontSize="11" Opacity="0.6"/>
+                                        <TextBlock Text="{lcl:Lcl CloudSync}" FontSize="11" Opacity="0.6"/>
                                         <TextBlock Text="{Binding CloudSyncStatus}" FontSize="13" FontWeight="SemiBold"/>
                                     </StackPanel>
                                 </Grid>

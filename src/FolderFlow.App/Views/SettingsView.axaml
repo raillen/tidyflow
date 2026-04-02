@@ -11,8 +11,8 @@
     <ScrollViewer>
         <StackPanel Margin="25" Spacing="25">
             <StackPanel Spacing="5">
-                <TextBlock Text="Configuraes Avanadas" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock Text="Controle total sobre performance, integrao e visual" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
+                <TextBlock Text="{lcl:Lcl AdvancedSettings}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="{lcl:Lcl SettingsDesc}" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
             </StackPanel>
 
             <!-- Engine & Performance -->
@@ -20,30 +20,30 @@
                 <StackPanel Spacing="20">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <material:MaterialIcon Kind="Speedometer" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
-                        <TextBlock Text="MOTOR E PERFORMANCE" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                        <TextBlock Text="{lcl:Lcl EnginePerformance}" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
                     </StackPanel>
 
                     <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" Margin="0,10,0,0">
                         <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,15,15">
-                            <TextBlock Text="Paralelismo (Threads)" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="{lcl:Lcl Parallelism}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <ComboBox ItemsSource="{Binding Threads}" SelectedItem="{Binding Settings.MaxDegreeOfParallelism}" HorizontalAlignment="Stretch" CornerRadius="8"/>
-                            <TextBlock Text="Nmero de arquivos processados simultaneamente" FontSize="11" Opacity="0.5" Margin="0,5,0,0"/>
+                            <TextBlock Text="{lcl:Lcl ParallelismDesc}" FontSize="11" Opacity="0.5" Margin="0,5,0,0"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Grid.Row="0" Margin="15,0,0,15">
-                            <TextBlock Text="Prioridade do Processo" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="{lcl:Lcl ProcessPriority}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding Settings.ProcessPriority}" HorizontalAlignment="Stretch" CornerRadius="8"/>
-                            <TextBlock Text="Impacto do software no desempenho do Windows" FontSize="11" Opacity="0.5" Margin="0,5,0,0"/>
+                            <TextBlock Text="{lcl:Lcl PriorityDesc}" FontSize="11" Opacity="0.5" Margin="0,5,0,0"/>
                         </StackPanel>
                     </Grid>
 
                     <StackPanel Spacing="10">
-                        <TextBlock Text="Limite de Banda Global" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock Text="{lcl:Lcl GlobalBandwidth}" FontSize="12" FontWeight="SemiBold"/>
                         <Grid ColumnDefinitions="*, Auto">
                             <Slider Grid.Column="0" Value="{Binding Settings.BandwidthLimitBytes}" Minimum="0" Maximum="104857600" SmallChange="1048576"/>
                             <TextBlock Grid.Column="1" Text="{Binding Settings.BandwidthLimitBytes, Converter={StaticResource FileSizeConverter}, StringFormat='{}{0}/s'}" Margin="15,0,0,0" VerticalAlignment="Center" Width="80" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
                         </Grid>
-                        <TextBlock Text="Limite a velocidade de cpia para no saturar a rede (0 = Ilimitado)" FontSize="11" Opacity="0.5"/>
+                        <TextBlock Text="{lcl:Lcl BandwidthDesc}" FontSize="11" Opacity="0.5"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -53,23 +53,23 @@
                 <StackPanel Spacing="20">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <material:MaterialIcon Kind="ShieldLockOutline" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
-                        <TextBlock Text="SEGURANA E PRIVACIDADE" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                        <TextBlock Text="{lcl:Lcl SecurityPrivacy}" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
                     </StackPanel>
 
                     <Grid ColumnDefinitions="*, *">
                         <StackPanel Grid.Column="0" Spacing="15">
                             <StackPanel Spacing="5">
-                                <TextBlock Text="PIN de Acesso" FontSize="12" FontWeight="SemiBold"/>
-                                <TextBox Text="{Binding Settings.AppPin}" PasswordChar="*" Watermark="Defina um PIN numrico" CornerRadius="8"/>
-                                <TextBlock Text="Proteja a interface com uma senha" FontSize="11" Opacity="0.5"/>
+                                <TextBlock Text="{lcl:Lcl AccessPin}" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding Settings.AppPin}" PasswordChar="*" Watermark="{lcl:Lcl PinWatermark}" CornerRadius="8"/>
+                                <TextBlock Text="{lcl:Lcl PinDesc}" FontSize="11" Opacity="0.5"/>
                             </StackPanel>
-                            <CheckBox IsChecked="{Binding Settings.LockOnMinimize}" Content="Bloquear ao minimizar"/>
+                            <CheckBox IsChecked="{Binding Settings.LockOnMinimize}" Content="{lcl:Lcl LockOnMinimize}"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Margin="30,0,0,0" Spacing="5">
-                            <TextBlock Text="Chave de Criptografia Mestra" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBox Text="{Binding Settings.MasterEncryptionKey}" PasswordChar="*" Watermark="Sua chave global" CornerRadius="8"/>
-                            <TextBlock Text="Sugerida como padro para novos jobs seguros" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="{lcl:Lcl EncryptionKey}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding Settings.MasterEncryptionKey}" PasswordChar="*" Watermark="{lcl:Lcl EncryptionKeyWatermark}" CornerRadius="8"/>
+                            <TextBlock Text="{lcl:Lcl EncryptionDesc}" FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                     </Grid>
                 </StackPanel>
@@ -80,41 +80,41 @@
                 <StackPanel Spacing="20">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <material:MaterialIcon Kind="BellBadgeOutline" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
-                        <TextBlock Text="NOTIFICAES EXTERNAS (WEBHOOKS &amp; SMTP)" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                        <TextBlock Text="{lcl:Lcl ExternalNotifications}" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
                     </StackPanel>
 
                     <StackPanel Spacing="15">
                         <Grid ColumnDefinitions="*, 150" Margin="0,0,0,10">
                             <StackPanel Grid.Column="0" Spacing="5">
-                                <TextBlock Text="Webhook URL" FontSize="12" FontWeight="SemiBold"/>
-                                <TextBox Text="{Binding Settings.WebhookUrl}" Watermark="https://discord.com/api/webhooks/..." CornerRadius="8"/>
+                                <TextBlock Text="{lcl:Lcl WebhookUrl}" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding Settings.WebhookUrl}" Watermark="{lcl:Lcl WebhookUrlWatermark}" CornerRadius="8"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="15,0,0,0" Spacing="5">
-                                <TextBlock Text="Tipo" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock Text="{lcl:Lcl Type}" FontSize="12" FontWeight="SemiBold"/>
                                 <ComboBox ItemsSource="{Binding WebhookTypes}" SelectedItem="{Binding Settings.WebhookType}" HorizontalAlignment="Stretch" CornerRadius="8"/>
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="SMTP / E-mail" FontSize="12" FontWeight="Bold" Opacity="0.8" Margin="0,10,0,0"/>
+                        <TextBlock Text="{lcl:Lcl SmtpEmailHeader}" FontSize="12" FontWeight="Bold" Opacity="0.8" Margin="0,10,0,0"/>
                         <Grid ColumnDefinitions="*, *, *">
                             <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                <TextBlock Text="Servidor SMTP" FontSize="11" Opacity="0.6" Margin="0,0,0,5"/>
-                                <TextBox Text="{Binding Settings.SmtpHost}" Watermark="smtp.gmail.com" CornerRadius="8"/>
+                                <TextBlock Text="{lcl:Lcl SmtpServer}" FontSize="11" Opacity="0.6" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding Settings.SmtpHost}" Watermark="{lcl:Lcl SmtpHostWatermark}" CornerRadius="8"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="10,0,10,0">
-                                <TextBlock Text="Porta" FontSize="11" Opacity="0.6" Margin="0,0,0,5"/>
+                                <TextBlock Text="{lcl:Lcl Port}" FontSize="11" Opacity="0.6" Margin="0,0,0,5"/>
                                 <NumericUpDown Value="{Binding Settings.SmtpPort}" Minimum="1" Maximum="65535" CornerRadius="8"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Margin="10,0,0,0">
-                                <TextBlock Text="E-mail Destino" FontSize="11" Opacity="0.6" Margin="0,0,0,5"/>
-                                <TextBox Text="{Binding Settings.NotificationEmail}" Watermark="alertas@email.com" CornerRadius="8"/>
+                                <TextBlock Text="{lcl:Lcl DestEmail}" FontSize="11" Opacity="0.6" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding Settings.NotificationEmail}" Watermark="{lcl:Lcl DestEmailWatermark}" CornerRadius="8"/>
                             </StackPanel>
                         </Grid>
 
                         <StackPanel Orientation="Horizontal" Spacing="25" Margin="0,10,0,0">
-                            <CheckBox IsChecked="{Binding Settings.EnableSmtp}" Content="Ativar E-mail"/>
-                            <CheckBox IsChecked="{Binding Settings.NotifyOnSuccess}" Content="Notificar Sucessos"/>
-                            <CheckBox IsChecked="{Binding Settings.NotifyOnError}" Content="Notificar Erros"/>
+                            <CheckBox IsChecked="{Binding Settings.EnableSmtp}" Content="{lcl:Lcl EnableSmtp}"/>
+                            <CheckBox IsChecked="{Binding Settings.NotifyOnSuccess}" Content="{lcl:Lcl NotifyOnSuccess}"/>
+                            <CheckBox IsChecked="{Binding Settings.NotifyOnError}" Content="{lcl:Lcl NotifyOnError}"/>
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
@@ -125,22 +125,22 @@
                 <StackPanel Spacing="20">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <material:MaterialIcon Kind="MicrosoftWindows" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
-                        <TextBlock Text="AUTOMAO E SISTEMA" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                        <TextBlock Text="{lcl:Lcl AutomationSystem}" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
                     </StackPanel>
 
                     <StackPanel Spacing="15">
                         <Grid ColumnDefinitions="*, Auto">
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="Iniciar com o Windows" FontSize="12" FontWeight="SemiBold"/>
-                                <TextBlock Text="Abrir automaticamente ao ligar o computador" FontSize="11" Opacity="0.5"/>
+                                <TextBlock Text="{lcl:Lcl StartWithWindows}" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock Text="{lcl:Lcl StartWithWindowsDesc}" FontSize="11" Opacity="0.5"/>
                             </StackPanel>
                             <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.StartAtStartup}" OnContent="" OffContent="" />
                         </Grid>
 
                         <Grid ColumnDefinitions="*, Auto">
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="Fechar para a Bandeja (System Tray)" FontSize="12" FontWeight="SemiBold"/>
-                                <TextBlock Text="Manter o FolderFlow rodando ao fechar a janela principal" FontSize="11" Opacity="0.5"/>
+                                <TextBlock Text="{lcl:Lcl CloseToTray}" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock Text="{lcl:Lcl CloseToTrayDesc}" FontSize="11" Opacity="0.5"/>
                             </StackPanel>
                             <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.CloseToTray}" OnContent="" OffContent="" />
                         </Grid>
@@ -153,21 +153,21 @@
                 <StackPanel Spacing="20">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <material:MaterialIcon Kind="DatabaseSettingsOutline" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
-                        <TextBlock Text="MANUTENO E DADOS" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                        <TextBlock Text="{lcl:Lcl MaintenanceData}" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
                     </StackPanel>
 
                     <Grid ColumnDefinitions="*, Auto" Margin="0,10,0,0">
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="Reteno de Logs" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="{lcl:Lcl LogRetention}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <ComboBox ItemsSource="{Binding RetentionOptions}" SelectedItem="{Binding Settings.LogRetentionDays}" Width="150" CornerRadius="8"/>
-                            <TextBlock Text="Dias para manter os registros no histrico" FontSize="11" Opacity="0.5" Margin="0,5,0,0"/>
+                            <TextBlock Text="{lcl:Lcl LogRetentionDesc}" FontSize="11" Opacity="0.5" Margin="0,5,0,0"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Bottom">
-                            <TextBlock Text="{Binding DatabaseSize, StringFormat='Tamanho: {0}'}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                            <TextBlock Text="{Binding DatabaseSizeText}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Button Command="{Binding PurgeOldLogsCommand}" Theme="{DynamicResource OutlineButton}" Content="Limpar Agora" FontSize="11" Padding="15,5" CornerRadius="6"/>
-                                <Button Command="{Binding OptimizeDatabaseCommand}" Classes="Secondary" Theme="{DynamicResource SolidButton}" Content="Otimizar Banco" FontSize="11" Padding="15,5" CornerRadius="6"/>
+                                <Button Command="{Binding PurgeOldLogsCommand}" Theme="{DynamicResource OutlineButton}" Content="{lcl:Lcl ClearNow}" FontSize="11" Padding="15,5" CornerRadius="6"/>
+                                <Button Command="{Binding OptimizeDatabaseCommand}" Classes="Secondary" Theme="{DynamicResource SolidButton}" Content="{lcl:Lcl OptimizeDatabase}" FontSize="11" Padding="15,5" CornerRadius="6"/>
                             </StackPanel>
                         </StackPanel>
                     </Grid>
@@ -179,23 +179,23 @@
                 <StackPanel Spacing="20">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <material:MaterialIcon Kind="Palette" Width="20" Height="20" Foreground="{DynamicResource AccentColor}"/>
-                        <TextBlock Text="VISUAL E IDIOMA" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
+                        <TextBlock Text="{lcl:Lcl VisualLanguage}" FontSize="13" FontWeight="Bold" LetterSpacing="1" Opacity="0.7"/>
                     </StackPanel>
 
                     <Grid ColumnDefinitions="*, *" Margin="0,10,0,0">
                         <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                            <TextBlock Text="Tema da Interface" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="{lcl:Lcl InterfaceTheme}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Settings.Theme}" HorizontalAlignment="Stretch" CornerRadius="8"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Margin="15,0,0,0">
-                            <TextBlock Text="Idioma do Sistema" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="{lcl:Lcl SystemLanguage}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Settings.Language}" HorizontalAlignment="Stretch" CornerRadius="8"/>
                         </StackPanel>
                     </Grid>
 
                     <StackPanel Spacing="10">
-                        <TextBlock Text="Opacidade do Efeito Vidro (Mica/Acrylic)" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock Text="{lcl:Lcl GlassOpacity}" FontSize="12" FontWeight="SemiBold"/>
                         <Grid ColumnDefinitions="*, Auto">
                             <Slider Grid.Column="0" Value="{Binding GlassOpacity}" Minimum="0.1" Maximum="1.0" SmallChange="0.05"/>
                             <TextBlock Grid.Column="1" Text="{Binding GlassOpacity, StringFormat={}{0:P0}}" Margin="15,0,0,0" VerticalAlignment="Center" Width="40" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
@@ -206,8 +206,8 @@
 
             <!-- Footer Actions -->
             <StackPanel Orientation="Horizontal" Spacing="15" HorizontalAlignment="Right" Margin="0,10,0,0">
-                <Button Command="{Binding LoadSettingsCommand}" Theme="{DynamicResource OutlineButton}" Content="Descartar Alteraes" Padding="20,10" CornerRadius="8"/>
-                <Button Command="{Binding SaveSettingsCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" Content="Salvar Configuraes" Padding="25,10" CornerRadius="8" FontWeight="Bold"/>
+                <Button Command="{Binding LoadSettingsCommand}" Theme="{DynamicResource OutlineButton}" Content="{lcl:Lcl DiscardChanges}" Padding="20,10" CornerRadius="8"/>
+                <Button Command="{Binding SaveSettingsCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" Content="{lcl:Lcl SaveSettings}" Padding="25,10" CornerRadius="8" FontWeight="Bold"/>
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

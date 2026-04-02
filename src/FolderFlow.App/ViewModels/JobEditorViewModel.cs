@@ -27,6 +27,7 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty] private PreviewSummary? _currentPreview;
     [ObservableProperty] private bool _isPreviewLoading;
     [ObservableProperty] private bool _isWatchMode;
+    [ObservableProperty] private string _watchModeLabel = string.Empty;
     [ObservableProperty] private bool _hasPreview;
 
     // Time Components
@@ -48,22 +49,46 @@ public partial class JobEditorViewModel : ViewModelBase
     public event Action? Saved;
     public event Action? Cancelled;
 
+    private readonly ILocalizationService _localizationService;
+
+    // ... (rest of the fields)
+
     public JobEditorViewModel(
         JobAppService jobAppService, 
         IStorageService storageService, 
         PreviewEngine previewEngine,
-        ISettingsStore settingsStore)
+        ISettingsStore settingsStore,
+        ILocalizationService localizationService)
     {
         _jobAppService = jobAppService;
         _storageService = storageService;
         _previewEngine = previewEngine;
         _settingsStore = settingsStore;
+        _localizationService = localizationService;
+
+        if (_localizationService is System.ComponentModel.INotifyPropertyChanged npc)
+        {
+            npc.PropertyChanged += (s, e) => {
+                if (e.PropertyName == "Item" || e.PropertyName == "Item[]" || string.IsNullOrEmpty(e.PropertyName))
+                {
+                    UpdateWatchModeLabel();
+                }
+            };
+        }
+    }
+
+    partial void OnIsWatchModeChanged(bool value) => UpdateWatchModeLabel();
+
+    private void UpdateWatchModeLabel()
+    {
+        WatchModeLabel = IsWatchMode ? _localizationService["WatchFolder"] : _localizationService["DirectCopy"];
     }
 
     public async Task SetJob(Job job)
     {
         Job = job;
         IsWatchMode = job.WatchEnabled;
+        UpdateWatchModeLabel();
         SourcePathText = job.SourcePath;
         TargetPathText = job.TargetPath;
         ExtensionsText = string.Join(", ", job.IncludeExtensions);

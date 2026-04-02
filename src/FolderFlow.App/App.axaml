@@ -5,6 +5,7 @@
              xmlns:conv="using:FolderFlow.App.Converters"
              xmlns:materialIcons="using:Material.Icons.Avalonia"
              xmlns:semi="using:Semi.Avalonia"
+             xmlns:lcl="using:FolderFlow.App.Localization"
              RequestedThemeVariant="Default">
 
     <Application.Resources>
@@ -23,6 +24,7 @@
             <conv:StatusToPercentageConverter x:Key="StatusToPercentageConverter"/>
             <conv:SpeedToHeightConverter x:Key="SpeedToHeightConverter"/>
             <conv:FileSizeConverter x:Key="FileSizeConverter"/>
+            <conv:EnumLocalizationConverter x:Key="EnumLocalizationConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 
@@ -41,9 +43,9 @@
             <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="FolderFlow" Clicked="OnOpenClick">
                 <TrayIcon.Menu>
                     <NativeMenu>
-                        <NativeMenuItem Header="Abrir FolderFlow" Click="OnOpenClick"/>
+                        <NativeMenuItem Header="{lcl:Lcl OpenApp}" Click="OnOpenClick"/>
                         <NativeMenuItemSeparator/>
-                        <NativeMenuItem Header="Sair" Click="OnExitClick"/>
+                        <NativeMenuItem Header="{lcl:Lcl Exit}" Click="OnExitClick"/>
                     </NativeMenu>
                 </TrayIcon.Menu>
             </TrayIcon>

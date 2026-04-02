@@ -28,10 +28,10 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
     private readonly DispatcherTimer _timer;
     private readonly Process _currentProcess;
 
-    [ObservableProperty] private string _selectedTypeFilter = "Todos";
-    [ObservableProperty] private string _selectedTaskFilter = "Todos";
-    public ObservableCollection<string> AvailableTypes { get; } = new(new[] { "Todos", "Cpia Direta", "Watch Folder" });
-    [ObservableProperty] private ObservableCollection<string> _availableTasks = new(new[] { "Todos" });
+    [ObservableProperty] private string _selectedTypeFilter = "";
+    [ObservableProperty] private string _selectedTaskFilter = "";
+    public ObservableCollection<string> AvailableTypes { get; } = new();
+    [ObservableProperty] private ObservableCollection<string> _availableTasks = new();
 
     // Cpia Direta Stats
     [ObservableProperty] private int _directActive;
@@ -52,7 +52,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string _transferSpeed = "0 KB/s";
     [ObservableProperty] private double _cpuUsage;
     [ObservableProperty] private string _ramUsage = "0 MB";
-    [ObservableProperty] private string _cloudSyncStatus = "Sincronizado";
+    [ObservableProperty] private string _cloudSyncStatus = "";
 
     [ObservableProperty] private ObservableCollection<SystemActivity> _recentActivities = new();
 
@@ -67,6 +67,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
 
     private readonly IAuditService _auditService;
     private readonly ISchedulerService _schedulerService;
+    private readonly ILocalizationService _localizationService;
     [ObservableProperty] private ObservableCollection<UpcomingJobInfo> _upcomingJobs = new();
     [ObservableProperty] private ObservableCollection<double> _performancePoints = new(); // ltimos 60 segundos
 
@@ -77,7 +78,8 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
         QueueProcessor queueProcessor,
         GlobalProgressService globalProgressService,
         ISettingsStore settingsStore,
-        ISchedulerService schedulerService)
+        ISchedulerService schedulerService,
+        ILocalizationService localizationService)
     {
         _jobAppService = jobAppService;
         _auditService = auditService;
@@ -86,7 +88,31 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
         _globalProgressService = globalProgressService;
         _settingsStore = settingsStore;
         _schedulerService = schedulerService;
+        _localizationService = localizationService;
         
+        UpdateFilterLabels();
+        _selectedTypeFilter = _localizationService["All"];
+        _selectedTaskFilter = _localizationService["All"];
+        _availableTasks = new(new[] { _localizationService["All"] });
+        _cloudSyncStatus = _localizationService["Synced"];
+        _healthStatus = _localizationService["NoData"];
+
+        if (_localizationService is System.ComponentModel.INotifyPropertyChanged npc)
+        {
+            npc.PropertyChanged += (s, e) => {
+                if (e.PropertyName == "Item" || e.PropertyName == "Item[]" || string.IsNullOrEmpty(e.PropertyName))
+                {
+                    UpdateFilterLabels();
+                    
+                    // Atualiza labels de status que s mudam via cdigo
+                    if (_healthStatus == _localizationService["Excellent"] || _healthStatus == _localizationService["Good"] || _healthStatus == _localizationService["Attention"] || _healthStatus == _localizationService["Critical"] || _healthStatus == _localizationService["NoData"])
+                    {
+                         _ = UpdateStatsAsync(); // Recalcula strings de status
+                    }
+                }
+            };
+        }
+
         for (int i = 0; i < 60; i++) PerformancePoints.Add(0);
         
         var dataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
@@ -123,6 +149,16 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
         _ = InitialLoad();
     }
 
+    private void UpdateFilterLabels()
+    {
+        var currentType = SelectedTypeFilter;
+        AvailableTypes.Clear();
+        AvailableTypes.Add(_localizationService["All"]);
+        AvailableTypes.Add(_localizationService["DirectCopy"]);
+        AvailableTypes.Add(_localizationService["WatchFolder"]);
+        SelectedTypeFilter = AvailableTypes.Contains(currentType) ? currentType : _localizationService["All"];
+    }
+
     private void HandleOnProgressReported(JobProgressInfo p)
     {
         Dispatcher.UIThread.Post(() => HandleRealTimeProgress(p));
@@ -131,18 +167,18 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
     private void HandleRealTimeProgress(JobProgressInfo p)
     {
         // Verifica filtros
-        bool typeMatch = SelectedTypeFilter == "Todos";
+        bool typeMatch = SelectedTypeFilter == _localizationService["All"];
         if (!typeMatch)
         {
             var job = _allJobs.FirstOrDefault(j => j.Id == p.JobId);
             if (job != null)
             {
-                if (SelectedTypeFilter == "Cpia Direta" && !job.WatchEnabled) typeMatch = true;
-                else if (SelectedTypeFilter == "Watch Folder" && job.WatchEnabled) typeMatch = true;
+                if (SelectedTypeFilter == _localizationService["DirectCopy"] && !job.WatchEnabled) typeMatch = true;
+                else if (SelectedTypeFilter == _localizationService["WatchFolder"] && job.WatchEnabled) typeMatch = true;
             }
         }
 
-        bool taskMatch = SelectedTaskFilter == "Todos" || SelectedTaskFilter == p.JobName;
+        bool taskMatch = SelectedTaskFilter == _localizationService["All"] || SelectedTaskFilter == p.JobName;
 
         if (typeMatch && taskMatch)
         {
@@ -152,21 +188,21 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
             foreach (var aj in activeJobs)
             {
                 // Aplica filtro no cálculo da velocidade também
-                bool ajTypeMatch = SelectedTypeFilter == "Todos";
+                bool ajTypeMatch = SelectedTypeFilter == _localizationService["All"];
                 if (!ajTypeMatch)
                 {
                     var j = _allJobs.FirstOrDefault(job => job.Id == aj.JobId);
-                    if (j != null && ((SelectedTypeFilter == "Cpia Direta" && !j.WatchEnabled) || (SelectedTypeFilter == "Watch Folder" && j.WatchEnabled)))
+                    if (j != null && ((SelectedTypeFilter == _localizationService["DirectCopy"] && !j.WatchEnabled) || (SelectedTypeFilter == _localizationService["WatchFolder"] && j.WatchEnabled)))
                         ajTypeMatch = true;
                 }
-                if (ajTypeMatch && (SelectedTaskFilter == "Todos" || SelectedTaskFilter == aj.JobName))
+                if (ajTypeMatch && (SelectedTaskFilter == _localizationService["All"] || SelectedTaskFilter == aj.JobName))
                     totalSpeed += aj.TransferSpeed;
             }
             TransferSpeed = FormatSpeed(totalSpeed);
 
             // Cloud Sync Status: se algum arquivo está sendo processado e veio da nuvem
-            if (p.Status == "HIDRATANDO") CloudSyncStatus = "Baixando...";
-            else CloudSyncStatus = "Sincronizado";
+            if (p.Status == "HIDRATANDO") CloudSyncStatus = _localizationService["Downloading"];
+            else CloudSyncStatus = _localizationService["Synced"];
 
             UpdateFilesStatsFromLive();
         }
@@ -206,20 +242,20 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
         _allJobs = jobs;
 
         var jobNames = jobs.Select(j => j.Name).OrderBy(n => n).ToList();
-        var currentNames = AvailableTasks.Where(n => n != "Todos").OrderBy(n => n).ToList();
+        var currentNames = AvailableTasks.Where(n => n != _localizationService["All"]).OrderBy(n => n).ToList();
 
         if (!jobNames.SequenceEqual(currentNames))
         {
             var currentSelection = SelectedTaskFilter;
 
             AvailableTasks.Clear();
-            AvailableTasks.Add("Todos");
+            AvailableTasks.Add(_localizationService["All"]);
             foreach (var name in jobNames) AvailableTasks.Add(name);
 
             if (AvailableTasks.Contains(currentSelection))
                 SelectedTaskFilter = currentSelection;
             else
-                SelectedTaskFilter = "Todos";
+                SelectedTaskFilter = _localizationService["All"];
         }
     }
 
@@ -236,10 +272,10 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
             await LoadJobsListAsync();
 
             var filteredJobs = _allJobs.AsEnumerable();
-            if (SelectedTypeFilter == "Cpia Direta") filteredJobs = filteredJobs.Where(j => !j.WatchEnabled);
-            else if (SelectedTypeFilter == "Watch Folder") filteredJobs = filteredJobs.Where(j => j.WatchEnabled);
+            if (SelectedTypeFilter == _localizationService["DirectCopy"]) filteredJobs = filteredJobs.Where(j => !j.WatchEnabled);
+            else if (SelectedTypeFilter == _localizationService["WatchFolder"]) filteredJobs = filteredJobs.Where(j => j.WatchEnabled);
 
-            if (SelectedTaskFilter != "Todos") filteredJobs = filteredJobs.Where(j => j.Name == SelectedTaskFilter);
+            if (SelectedTaskFilter != _localizationService["All"]) filteredJobs = filteredJobs.Where(j => j.Name == SelectedTaskFilter);
 
             var jobsList = filteredJobs.ToList();
 
@@ -273,7 +309,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
             // Monitoramento Real via P/Invoke e PerformanceCounter
             var ram = FolderFlow.Infrastructure.Helpers.SystemMonitor.GetRamStatus();
             CpuUsage = FolderFlow.Infrastructure.Helpers.SystemMonitor.GetCpuUsage();
-            RamUsage = $"{ram.used / 1024 / 1024 / 1024} GB / {ram.total / 1024 / 1024 / 1024} GB";
+            RamUsage = string.Format(_localizationService["RamUsageFormat"], ram.used / 1024 / 1024 / 1024, ram.total / 1024 / 1024 / 1024);
 
             // Grfico de Performance
             var activeJobs = _globalProgressService.GetActiveJobs();
@@ -286,8 +322,8 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
 
             if (_queueProcessor.ActiveCount == 0)
             {
-                TransferSpeed = "0 KB/s";
-                CloudSyncStatus = "Sincronizado";
+                TransferSpeed = $"0 KB/s";
+                CloudSyncStatus = _localizationService["Synced"];
             }
         }
         catch { }
@@ -297,7 +333,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string _totalDataVolume = "0 B";
     [ObservableProperty] private string _timeSaved = "0h 0m";
     [ObservableProperty] private double _healthScore = 100.0;
-    [ObservableProperty] private string _healthStatus = "Excelente";
+    [ObservableProperty] private string _healthStatus = "";
 
     private async Task CalculateAuditStats(List<string> jobNames)
     {
@@ -308,7 +344,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
             var sqliteAudit = _auditService as SqliteAuditService;
             if (sqliteAudit == null) return;
 
-            string? jobFilter = SelectedTaskFilter == "Todos" ? null : SelectedTaskFilter;
+            string? jobFilter = SelectedTaskFilter == _localizationService["All"] ? null : SelectedTaskFilter;
             
             var stats = await sqliteAudit.GetStatsAsync(jobFilter);
             var bytes = await sqliteAudit.GetTotalBytesProcessedAsync(jobFilter);
@@ -327,22 +363,22 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
                 var totalSecondsSaved = stats.success * 3; 
                 var hours = totalSecondsSaved / 3600;
                 var minutes = (totalSecondsSaved % 3600) / 60;
-                TimeSaved = $"{hours}h {minutes}m";
+                TimeSaved = string.Format(_localizationService["TimeSavedFormat"], hours, minutes);
 
                 // Clculo de Health Score
                 int total = stats.success + stats.errors;
                 if (total > 0)
                 {
                     HealthScore = (double)stats.success / total * 100.0;
-                    if (HealthScore > 95) HealthStatus = "Excelente";
-                    else if (HealthScore > 80) HealthStatus = "Bom";
-                    else if (HealthScore > 60) HealthStatus = "Ateno";
-                    else HealthStatus = "Crtico";
+                    if (HealthScore > 95) HealthStatus = _localizationService["Excellent"];
+                    else if (HealthScore > 80) HealthStatus = _localizationService["Good"];
+                    else if (HealthScore > 60) HealthStatus = _localizationService["Attention"];
+                    else HealthStatus = _localizationService["Critical"];
                 }
                 else
                 {
                     HealthScore = 100;
-                    HealthStatus = "Sem dados";
+                    HealthStatus = _localizationService["NoData"];
                 }
             });
         }
@@ -372,7 +408,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
     private void ToggleAllJobs()
     {
         _queueProcessor.TogglePause();
-        _activityService.LogActivityAsync(_queueProcessor.IsPaused ? "Processamento global pausado." : "Processamento global retomado.");
+        _activityService.LogActivityAsync(_queueProcessor.IsPaused ? _localizationService["GlobalPaused"] : _localizationService["GlobalResumed"]);
         _ = UpdateStatsAsync();
     }
     [RelayCommand] private void ViewHistory() => (App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel)?.NavigateToPage("History");

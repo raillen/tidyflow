@@ -1,6 +1,8 @@
 using System;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Data;
+using Avalonia.Data.Converters;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using FolderFlow.Application.Interfaces;
@@ -22,6 +24,9 @@ public class LclExtension : MarkupExtension
         var localizationService = App.Services?.GetService<ILocalizationService>();
         if (localizationService == null) return Key;
 
+        // Criamos um binding que observa o indexador do serviço
+        // Quando o serviço dispara PropertyChanged para "Item" ou "Item[]", 
+        // o Avalonia reavalia o binding.
         var binding = new Binding
         {
             Source = localizationService,

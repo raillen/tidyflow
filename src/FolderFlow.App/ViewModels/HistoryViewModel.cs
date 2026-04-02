@@ -18,23 +18,65 @@ public partial class HistoryViewModel : ViewModelBase
 {
     private readonly IAuditService _auditService;
     private readonly JobAppService _jobAppService;
+    private readonly ILocalizationService _localizationService;
 
     [ObservableProperty] private ObservableCollection<AuditEntryViewModel> _logs = new();
     [ObservableProperty] private AuditEntryViewModel? _selectedLog;
     [ObservableProperty] private string _searchText = string.Empty;
-    [ObservableProperty] private string _selectedJobFilter = "Todos";
-    [ObservableProperty] private string _selectedStatusFilter = "Todos";
+    [ObservableProperty] private string _selectedJobFilter = "";
+    [ObservableProperty] private string _selectedStatusFilter = "";
 
     public ObservableCollection<string> AvailableJobs { get; } = new();
-    public ObservableCollection<string> AvailableStatuses { get; } = new(new[] { "Todos", "COPIADO", "MOVIDO", "IGNORADO", "FALHA" });
+    public ObservableCollection<string> AvailableStatuses { get; } = new();
 
-    public HistoryViewModel(IAuditService auditService, JobAppService jobAppService)
+    public HistoryViewModel(IAuditService auditService, JobAppService jobAppService, ILocalizationService localizationService)
     {
         _auditService = auditService;
         _jobAppService = jobAppService;
+        _localizationService = localizationService;
         
-        AvailableJobs.Add("Todos");
+        _selectedJobFilter = _localizationService["All"];
+        _selectedStatusFilter = _localizationService["All"];
+        AvailableJobs.Add(_localizationService["All"]);
+        AvailableStatuses.Add(_localizationService["All"]);
+        AvailableStatuses.Add(_localizationService["Copied"]);
+        AvailableStatuses.Add(_localizationService["Moved"]);
+        AvailableStatuses.Add(_localizationService["Ignored"]);
+        AvailableStatuses.Add(_localizationService["FailedStatus"]);
+
+        if (_localizationService is System.ComponentModel.INotifyPropertyChanged npc)
+        {
+            npc.PropertyChanged += (s, e) => {
+                if (e.PropertyName == "Item" || e.PropertyName == "Item[]" || string.IsNullOrEmpty(e.PropertyName))
+                {
+                    UpdateLabels();
+                }
+            };
+        }
+
         _ = InitialLoad();
+    }
+
+    private void UpdateLabels()
+    {
+        var currentJob = SelectedJobFilter;
+        var currentStatus = SelectedStatusFilter;
+
+        AvailableStatuses.Clear();
+        AvailableStatuses.Add(_localizationService["All"]);
+        AvailableStatuses.Add(_localizationService["Copied"]);
+        AvailableStatuses.Add(_localizationService["Moved"]);
+        AvailableStatuses.Add(_localizationService["Ignored"]);
+        AvailableStatuses.Add(_localizationService["FailedStatus"]);
+
+        var oldAll = AvailableJobs.FirstOrDefault(); // "Todos" or localized
+        AvailableJobs.RemoveAt(0);
+        AvailableJobs.Insert(0, _localizationService["All"]);
+
+        SelectedJobFilter = (currentJob == oldAll) ? _localizationService["All"] : currentJob;
+        SelectedStatusFilter = (currentStatus == oldAll) ? _localizationService["All"] : currentStatus;
+        
+        _ = LoadLogs();
     }
 
     private async Task InitialLoad()
@@ -52,7 +94,17 @@ public partial class HistoryViewModel : ViewModelBase
             var sqliteAudit = _auditService as SqliteAuditService;
             if (sqliteAudit == null) return;
 
-            var entries = await sqliteAudit.GetLogsAsync(SelectedJobFilter, SelectedStatusFilter, SearchText);
+            string jobFilter = SelectedJobFilter == _localizationService["All"] ? "Todos" : SelectedJobFilter;
+            string statusFilter = SelectedStatusFilter == _localizationService["All"] ? "Todos" : SelectedStatusFilter;
+            
+            // Map localized status back to DB status if needed, but here we assume the DB uses the same strings or we handle it.
+            // Actually, "COPIADO" etc are likely what's in the DB.
+            if (SelectedStatusFilter == _localizationService["Copied"]) statusFilter = "COPIADO";
+            else if (SelectedStatusFilter == _localizationService["Moved"]) statusFilter = "MOVIDO";
+            else if (SelectedStatusFilter == _localizationService["Ignored"]) statusFilter = "IGNORADO";
+            else if (SelectedStatusFilter == _localizationService["FailedStatus"]) statusFilter = "FALHA";
+
+            var entries = await sqliteAudit.GetLogsAsync(jobFilter, statusFilter, SearchText);
             
             Logs.Clear();
             foreach (var entry in entries)

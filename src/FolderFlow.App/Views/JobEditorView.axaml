@@ -3,6 +3,7 @@
              xmlns:vm="using:FolderFlow.App.ViewModels"
              xmlns:material="using:Material.Icons.Avalonia"
              xmlns:enums="using:FolderFlow.Domain.Enums"
+             xmlns:lcl="using:FolderFlow.App.Localization"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="750"
@@ -15,8 +16,8 @@
         <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Background="{DynamicResource SidebarBackground}" Padding="30,25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="*, Auto">
                 <StackPanel Grid.Column="0" Spacing="5">
-                    <TextBlock Text="Configurar Automao" FontSize="28" FontWeight="Black" Foreground="{DynamicResource TextPrimary}" LetterSpacing="-0.5"/>
-                    <TextBlock Text="Defina as regras, filtros e destinos para o fluxo de dados" FontSize="14" Foreground="{DynamicResource TextSecondary}" Opacity="0.6"/>
+                    <TextBlock Text="{lcl:Lcl ConfigureAutomation}" FontSize="28" FontWeight="Black" Foreground="{DynamicResource TextPrimary}" LetterSpacing="-0.5"/>
+                    <TextBlock Text="{lcl:Lcl AutomationRules}" FontSize="14" Foreground="{DynamicResource TextSecondary}" Opacity="0.6"/>
                 </StackPanel>
                 <Border Grid.Column="1" VerticalAlignment="Center" 
                         Background="{Binding IsWatchMode, Converter={StaticResource PageToColorConverter}, ConverterParameter='TypeBackground'}" 
@@ -24,7 +25,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <material:MaterialIcon Kind="{Binding IsWatchMode, Converter={StaticResource BoolToIconConverter}, ConverterParameter='Radar:FileMoveOutline'}" 
                                               Foreground="White" Width="16"/>
-                        <TextBlock Text="{Binding IsWatchMode, Converter={StaticResource EqualsConverter}, ConverterParameter='True:Watch Folder;False:Cpia Direta'}" 
+                        <TextBlock Text="{Binding WatchModeLabel}" 
                                    Foreground="White" FontWeight="Bold" FontSize="12"/>
                     </StackPanel>
                 </Border>
@@ -47,11 +48,11 @@
                     </Style>
                 </ListBox.Styles>
                 
-                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="Tune"/><TextBlock Text="Geral" FontSize="11"/></StackPanel></ListBoxItem>
-                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="FilterVariant"/><TextBlock Text="Filtros" FontSize="11"/></StackPanel></ListBoxItem>
-                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="CalendarClock"/><TextBlock Text="Agenda" FontSize="11"/></StackPanel></ListBoxItem>
-                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="ShieldLock"/><TextBlock Text="Segurana" FontSize="11"/></StackPanel></ListBoxItem>
-                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="LightningBolt"/><TextBlock Text="Avanado" FontSize="11"/></StackPanel></ListBoxItem>
+                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="Tune"/><TextBlock Text="{lcl:Lcl General}" FontSize="11"/></StackPanel></ListBoxItem>
+                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="FilterVariant"/><TextBlock Text="{lcl:Lcl Filters}" FontSize="11"/></StackPanel></ListBoxItem>
+                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="CalendarClock"/><TextBlock Text="{lcl:Lcl Schedule}" FontSize="11"/></StackPanel></ListBoxItem>
+                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="ShieldLock"/><TextBlock Text="{lcl:Lcl Security}" FontSize="11"/></StackPanel></ListBoxItem>
+                <ListBoxItem><StackPanel Spacing="5"><material:MaterialIcon Kind="LightningBolt"/><TextBlock Text="{lcl:Lcl Advanced}" FontSize="11"/></StackPanel></ListBoxItem>
             </ListBox>
         </Border>
 
@@ -65,33 +66,45 @@
                         <Border Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                             <StackPanel Spacing="20">
                                 <StackPanel Spacing="8">
-                                    <TextBlock Text="Nome da Tarefa" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
-                                    <TextBox Text="{Binding Job.Name}" Watermark="Ex: Backup de Documentos" Height="42" CornerRadius="10"/>
+                                    <TextBlock Text="{lcl:Lcl JobName}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                    <TextBox Text="{Binding Job.Name}" Watermark="{lcl:Lcl JobNameWatermark}" Height="42" CornerRadius="10"/>
                                 </StackPanel>
                                 <StackPanel Spacing="8">
-                                    <TextBlock Text="Caminho de Origem" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                    <TextBlock Text="{lcl:Lcl SourcePath}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
                                     <Grid ColumnDefinitions="*, Auto">
                                         <TextBox Text="{Binding SourcePathText}" Height="42" CornerRadius="10,0,0,10" Background="{DynamicResource SidebarBackground}"/>
-                                        <Button Grid.Column="1" Command="{Binding SelectSourcePathCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Content="Procurar" Height="42" CornerRadius="0,10,10,0" Padding="15,0"/>
+                                        <Button Grid.Column="1" Command="{Binding SelectSourcePathCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Content="{lcl:Lcl Browse}" Height="42" CornerRadius="0,10,10,0" Padding="15,0"/>
                                     </Grid>
                                 </StackPanel>
                                 <StackPanel Spacing="8">
-                                    <TextBlock Text="Caminho de Destino" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                    <TextBlock Text="{lcl:Lcl DestPath}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
                                     <Grid ColumnDefinitions="*, Auto">
                                         <TextBox Text="{Binding TargetPathText}" Height="42" CornerRadius="10,0,0,10" Background="{DynamicResource SidebarBackground}"/>
-                                        <Button Grid.Column="1" Command="{Binding SelectTargetPathCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Content="Procurar" Height="42" CornerRadius="0,10,10,0" Padding="15,0"/>
+                                        <Button Grid.Column="1" Command="{Binding SelectTargetPathCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Content="{lcl:Lcl Browse}" Height="42" CornerRadius="0,10,10,0" Padding="15,0"/>
                                     </Grid>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
                         <Grid ColumnDefinitions="*, *">
                             <StackPanel Grid.Column="0" Margin="0,0,10,0" Spacing="8">
-                                <TextBlock Text="Modo de Trabalho" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
-                                <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding Job.Mode}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                                <TextBlock Text="{lcl:Lcl WorkMode}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding Job.Mode}" HorizontalAlignment="Stretch" CornerRadius="8">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Converter={StaticResource EnumLocalizationConverter}}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="8">
-                                <TextBlock Text="Conflitos de Arquivo" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
-                                <ComboBox ItemsSource="{Binding ConflictModes}" SelectedItem="{Binding Job.ConflictMode}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                                <TextBlock Text="{lcl:Lcl FileConflicts}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                <ComboBox ItemsSource="{Binding ConflictModes}" SelectedItem="{Binding Job.ConflictMode}" HorizontalAlignment="Stretch" CornerRadius="8">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Converter={StaticResource EnumLocalizationConverter}}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -105,24 +118,24 @@
                             <StackPanel Spacing="20">
                                 <Grid ColumnDefinitions="*, *">
                                     <StackPanel Grid.Column="0" Margin="0,0,10,0" Spacing="8">
-                                        <TextBlock Text="Extenses (Incluso)" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
-                                        <TextBox Text="{Binding ExtensionsText}" Watermark=".jpg, .png, .pdf" CornerRadius="8"/>
+                                        <TextBlock Text="{lcl:Lcl IncludeExtensions}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                        <TextBox Text="{Binding ExtensionsText}" Watermark="{lcl:Lcl ExtensionsWatermark}" CornerRadius="8"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="8">
-                                        <TextBlock Text="Padres a Ignorar" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
-                                        <TextBox Text="{Binding ExcludePatternsText}" Watermark="node_modules, temp" CornerRadius="8"/>
+                                        <TextBlock Text="{lcl:Lcl IgnorePatterns}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                        <TextBox Text="{Binding ExcludePatternsText}" Watermark="{lcl:Lcl IgnoreWatermark}" CornerRadius="8"/>
                                     </StackPanel>
                                 </Grid>
                                 <StackPanel Spacing="8">
-                                    <TextBlock Text="Expressão Regular (REGEX)" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
-                                    <TextBox Text="{Binding Job.NameRegex}" Watermark="Ex: ^[0-9]{4}.*" FontFamily="Consolas" CornerRadius="8"/>
+                                    <TextBlock Text="{lcl:Lcl RegexExpression}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                    <TextBox Text="{Binding Job.NameRegex}" Watermark="{lcl:Lcl RegexWatermark}" FontFamily="Consolas" CornerRadius="8"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
                         <Border Background="{DynamicResource SidebarBackground}" CornerRadius="12" Padding="20" Opacity="0.8">
                             <UniformGrid Columns="2">
-                                <CheckBox IsChecked="{Binding Job.Recursive}" Content="Processar Subpastas"/>
-                                <CheckBox IsChecked="{Binding Job.SmartSync}" Content="Smart Sync (Pular idnticos)"/>
+                                <CheckBox IsChecked="{Binding Job.Recursive}" Content="{lcl:Lcl ProcessSubfolders}"/>
+                                <CheckBox IsChecked="{Binding Job.SmartSync}" Content="{lcl:Lcl SmartSyncLabel}"/>
                             </UniformGrid>
                         </Border>
                     </StackPanel>
@@ -136,15 +149,21 @@
                             <StackPanel Spacing="20">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <material:MaterialIcon Kind="Radar" Foreground="{DynamicResource SuccessColor}" Width="20"/>
-                                    <TextBlock Text="CONFIGURAES DO WATCHER" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lcl:Lcl WatcherConfigs}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <Grid ColumnDefinitions="*, *">
                                     <StackPanel Grid.Column="0" Margin="0,0,10,0" Spacing="8">
-                                        <TextBlock Text="Mtodo de Deteco" FontSize="11" Opacity="0.6"/>
-                                        <ComboBox ItemsSource="{Binding MonitoringModes}" SelectedItem="{Binding Job.MonitoringMode}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                                        <TextBlock Text="{lcl:Lcl DetectionMethod}" FontSize="11" Opacity="0.6"/>
+                                        <ComboBox ItemsSource="{Binding MonitoringModes}" SelectedItem="{Binding Job.MonitoringMode}" HorizontalAlignment="Stretch" CornerRadius="8">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Converter={StaticResource EnumLocalizationConverter}}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="8">
-                                        <TextBlock Text="Tempo de Estabilizao" FontSize="11" Opacity="0.6"/>
+                                        <TextBlock Text="{lcl:Lcl StabilizationTime}" FontSize="11" Opacity="0.6"/>
                                         <Grid ColumnDefinitions="*, Auto">
                                             <Slider Value="{Binding Job.SettleTimeSeconds}" Minimum="1" Maximum="60"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Job.SettleTimeSeconds, StringFormat='{}{0}s'}" FontWeight="Bold" Margin="10,0,0,0" VerticalAlignment="Center"/>
@@ -156,25 +175,31 @@
                         <Border IsVisible="{Binding !IsWatchMode}" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                             <StackPanel Spacing="20">
                                 <StackPanel Spacing="8">
-                                    <TextBlock Text="Tipo de Agendamento" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
-                                    <ComboBox ItemsSource="{Binding ScheduleTypes}" SelectedItem="{Binding Job.ScheduleType}" HorizontalAlignment="Stretch" CornerRadius="10"/>
+                                    <TextBlock Text="{lcl:Lcl ScheduleType}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                    <ComboBox ItemsSource="{Binding ScheduleTypes}" SelectedItem="{Binding Job.ScheduleType}" HorizontalAlignment="Stretch" CornerRadius="10">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Converter={StaticResource EnumLocalizationConverter}}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
                                 </StackPanel>
                                 <StackPanel IsVisible="{Binding Job.ScheduleType, Converter={StaticResource NotEqualsConverter}, ConverterParameter={x:Static enums:ScheduleType.None}}" Spacing="20">
                                     <Separator Opacity="0.2"/>
                                     <StackPanel IsVisible="{Binding Job.ScheduleType, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Static enums:ScheduleType.Weekly}}" Spacing="10">
-                                        <TextBlock Text="Repetir nos dias:" FontSize="11" Opacity="0.6"/>
+                                        <TextBlock Text="{lcl:Lcl RepeatOnDays}" FontSize="11" Opacity="0.6"/>
                                         <UniformGrid Columns="7">
-                                            <ToggleButton Content="D" IsChecked="{Binding IsSun}" Height="36" Margin="0,0,4,0"/>
-                                            <ToggleButton Content="S" IsChecked="{Binding IsMon}" Height="36" Margin="0,0,4,0"/>
-                                            <ToggleButton Content="T" IsChecked="{Binding IsTue}" Height="36" Margin="0,0,4,0"/>
-                                            <ToggleButton Content="Q" IsChecked="{Binding IsWed}" Height="36" Margin="0,0,4,0"/>
-                                            <ToggleButton Content="Q" IsChecked="{Binding IsThu}" Height="36" Margin="0,0,4,0"/>
-                                            <ToggleButton Content="S" IsChecked="{Binding IsFri}" Height="36" Margin="0,0,4,0"/>
-                                            <ToggleButton Content="S" IsChecked="{Binding IsSat}" Height="36"/>
+                                            <ToggleButton Content="{lcl:Lcl Sun}" IsChecked="{Binding IsSun}" Height="36" Margin="0,0,4,0"/>
+                                            <ToggleButton Content="{lcl:Lcl Mon}" IsChecked="{Binding IsMon}" Height="36" Margin="0,0,4,0"/>
+                                            <ToggleButton Content="{lcl:Lcl Tue}" IsChecked="{Binding IsTue}" Height="36" Margin="0,0,4,0"/>
+                                            <ToggleButton Content="{lcl:Lcl Wed}" IsChecked="{Binding IsWed}" Height="36" Margin="0,0,4,0"/>
+                                            <ToggleButton Content="{lcl:Lcl Thu}" IsChecked="{Binding IsThu}" Height="36" Margin="0,0,4,0"/>
+                                            <ToggleButton Content="{lcl:Lcl Fri}" IsChecked="{Binding IsFri}" Height="36" Margin="0,0,4,0"/>
+                                            <ToggleButton Content="{lcl:Lcl Sat}" IsChecked="{Binding IsSat}" Height="36"/>
                                         </UniformGrid>
                                     </StackPanel>
                                     <StackPanel Spacing="10">
-                                        <TextBlock Text="Horrio de Execuo" FontSize="11" Opacity="0.6"/>
+                                        <TextBlock Text="{lcl:Lcl ExecutionTime}" FontSize="11" Opacity="0.6"/>
                                         <Grid ColumnDefinitions="*, *, *">
                                             <NumericUpDown Grid.Column="0" Value="{Binding ScheduleHour}" Minimum="0" Maximum="23" FormatString="00" Margin="0,0,8,0"/>
                                             <NumericUpDown Grid.Column="1" Value="{Binding ScheduleMinute}" Minimum="0" Maximum="59" FormatString="00" Margin="0,0,8,0"/>
@@ -195,13 +220,13 @@
                             <StackPanel Spacing="20">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <material:MaterialIcon Kind="ShieldLock" Foreground="{DynamicResource SuccessColor}" Width="20"/>
-                                    <TextBlock Text="PROTEO DE DADOS (AES-256)" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lcl:Lcl DataProtection}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Spacing="8">
-                                    <TextBlock Text="Chave de Criptografia" FontSize="11" Opacity="0.6"/>
-                                    <TextBox Text="{Binding Job.EncryptionKey}" PasswordChar="●" Watermark="Chave para proteger os arquivos no destino" CornerRadius="10"/>
+                                    <TextBlock Text="{lcl:Lcl EncryptionKeyLabel}" FontSize="11" Opacity="0.6"/>
+                                    <TextBox Text="{Binding Job.EncryptionKey}" PasswordChar="●" Watermark="{lcl:Lcl EncryptionKeyWatermarkEditor}" CornerRadius="10"/>
                                 </StackPanel>
-                                <CheckBox IsChecked="{Binding Job.VerifyHash}" Content="Validar Integridade Ps-Cpia (Hash)"/>
+                                <CheckBox IsChecked="{Binding Job.VerifyHash}" Content="{lcl:Lcl VerifyHashLabel}"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -215,10 +240,16 @@
                             <StackPanel Spacing="20">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <material:MaterialIcon Kind="Webhook" Foreground="{DynamicResource AccentColor}" Width="20"/>
-                                    <TextBlock Text="WEBHOOKS DE TAREFA" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lcl:Lcl JobWebhooks}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBox Text="{Binding Job.WebhookUrl}" Watermark="URL especfica para esta tarefa (Opcional)" CornerRadius="10"/>
-                                <ComboBox ItemsSource="{Binding NotificationTriggers}" SelectedItem="{Binding Job.NotifyOn}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                                <TextBox Text="{Binding Job.WebhookUrl}" Watermark="{lcl:Lcl WebhookUrlWatermarkEditor}" CornerRadius="10"/>
+                                <ComboBox ItemsSource="{Binding NotificationTriggers}" SelectedItem="{Binding Job.NotifyOn}" HorizontalAlignment="Stretch" CornerRadius="8">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Converter={StaticResource EnumLocalizationConverter}}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -233,24 +264,24 @@
                 BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
             <ScrollViewer>
                 <StackPanel Margin="25" Spacing="20">
-                    <TextBlock Text="RESUMO DA SIMULAO" FontSize="12" FontWeight="Black" Opacity="0.5" LetterSpacing="1"/>
+                    <TextBlock Text="{lcl:Lcl SimulationSummary}" FontSize="12" FontWeight="Black" Opacity="0.5" LetterSpacing="1"/>
                     
                     <Border Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                         <StackPanel Spacing="15">
                             <StackPanel>
-                                <TextBlock Text="Arquivos Identificados" FontSize="10" Opacity="0.5"/>
+                                <TextBlock Text="{lcl:Lcl FilesIdentified}" FontSize="10" Opacity="0.5"/>
                                 <TextBlock Text="{Binding CurrentPreview.TotalFiles}" FontSize="24" FontWeight="Bold"/>
                             </StackPanel>
                             <StackPanel>
-                                <TextBlock Text="Volume de Dados" FontSize="10" Opacity="0.5"/>
+                                <TextBlock Text="{lcl:Lcl DataVolume}" FontSize="10" Opacity="0.5"/>
                                 <TextBlock Text="{Binding CurrentPreview.TotalBytes, Converter={StaticResource FileSizeConverter}}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="A simulao foi concluda com sucesso. Os filtros definidos capturaram os dados acima." FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+                    <TextBlock Text="{lcl:Lcl SimulationSuccess}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                     
-                    <Button Command="{Binding ClearPreviewCommand}" Content="Limpar Preview" Theme="{DynamicResource OutlineButton}" HorizontalAlignment="Stretch" Margin="0,10,0,0"/>
+                    <Button Command="{Binding ClearPreviewCommand}" Content="{lcl:Lcl ClearPreview}" Theme="{DynamicResource OutlineButton}" HorizontalAlignment="Stretch" Margin="0,10,0,0"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -261,13 +292,13 @@
                 <Button Grid.Column="0" Command="{Binding GeneratePreviewCommand}" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="15,8">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <material:MaterialIcon Kind="EyeOutline" Width="16"/>
-                        <TextBlock Text="Simular (Preview)"/>
+                        <TextBlock Text="{lcl:Lcl Simulate}"/>
                     </StackPanel>
                 </Button>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
-                    <Button Command="{Binding CancelCommand}" Content="Cancelar" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="20,8"/>
-                    <Button Command="{Binding SaveCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" Content="Salvar Automao" CornerRadius="8" Padding="25,8" FontWeight="Bold"/>
+                    <Button Command="{Binding CancelCommand}" Content="{lcl:Lcl Cancel}" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="20,8"/>
+                    <Button Command="{Binding SaveCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" Content="{lcl:Lcl SaveAutomation}" CornerRadius="8" Padding="25,8" FontWeight="Bold"/>
                 </StackPanel>
             </Grid>
         </Border>

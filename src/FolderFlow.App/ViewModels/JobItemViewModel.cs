@@ -18,11 +18,35 @@ public partial class JobItemViewModel : ViewModelBase
 {
     private readonly JobAppService _jobAppService;
     private readonly INotificationService _notificationService;
+    private readonly ILocalizationService _localizationService;
 
     [ObservableProperty] private bool _isSelected;
     [ObservableProperty] private bool _isExpanded;
-    [ObservableProperty] private string _status = "Ocioso";
+    [ObservableProperty] 
+    [NotifyPropertyChangedFor(nameof(LocalizedStatus))]
+    private string _status = "";
     [ObservableProperty] private double _progress;
+
+    public string LocalizedStatus
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Status)) return "";
+            
+            var upper = Status.ToUpper();
+            if (upper == "OCIOSO") return _localizationService["Idle"];
+            if (upper == "PROCESSANDO...") return _localizationService["Processing"];
+            if (upper == "NA FILA...") return _localizationService["Queued"];
+            if (upper == "HIDRATANDO") return _localizationService["Downloading"];
+            if (upper == "COPIADO") return _localizationService["Copied"];
+            if (upper == "MOVIDO") return _localizationService["Moved"];
+            if (upper == "IGNORADO") return _localizationService["Ignored"];
+            if (upper == "FALHA") return _localizationService["FailedStatus"];
+            
+            return Status;
+        }
+    }
+
     [ObservableProperty] private string _currentFile = string.Empty;
     [ObservableProperty] private string _speedText = "0 KB/s";
     [ObservableProperty] private ObservableCollection<string> _recentFilesLog = new();
@@ -39,11 +63,13 @@ public partial class JobItemViewModel : ViewModelBase
         return path.Substring(0, 15) + "..." + path.Substring(path.Length - 25);
     }
 
-    public JobItemViewModel(Job job, JobAppService jobAppService, INotificationService notificationService)
+    public JobItemViewModel(Job job, JobAppService jobAppService, INotificationService notificationService, ILocalizationService localizationService)
     {
         Job = job;
         _jobAppService = jobAppService;
         _notificationService = notificationService;
+        _localizationService = localizationService;
+        _status = _localizationService["Idle"];
     }
 
     partial void OnIsSelectedChanged(bool value)
@@ -84,7 +110,7 @@ public partial class JobItemViewModel : ViewModelBase
     [RelayCommand]
     public async Task RunNow()
     {
-        Status = "Na Fila...";
+        Status = _localizationService["Queued"];
         await _jobAppService.RunJobAsync(Job.Id);
     }
 

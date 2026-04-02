@@ -21,42 +21,80 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
     private readonly QueueProcessor _queueProcessor;
     private readonly GlobalProgressService _globalProgressService;
     private readonly INotificationService _notificationService;
+    private readonly ILocalizationService _localizationService;
     private readonly DispatcherTimer _timer;
 
     [ObservableProperty] private ObservableCollection<JobItemViewModel> _allJobs = new();
     [ObservableProperty] private ObservableCollection<JobProgressInfo> _activeExecutions = new();
     [ObservableProperty] private bool _isQueuePaused;
     [ObservableProperty] private string _searchText = string.Empty;
-    [ObservableProperty] private string _selectedFilter = "Todos";
+    [ObservableProperty] private string _selectedFilter = "";
 
-    public ObservableCollection<string> Filters { get; } = new(new[] { "Todos", "Ativos", "Pendentes", "Watch Folder", "Cpia Direta" });
+    partial void OnSelectedFilterChanged(string value)
+    {
+        // Se o valor selecionado for a traduo de "Todos", mapeamos internamente se necessrio
+        // Mas o melhor  usar a prpria traduo para comparar se ela vier do combo.
+        // Como o RadioButton no XAML usa EqualsConverter com string fixa 'Todos',
+        // precisamos atualizar o XAML ou o ViewModel.
+    }
+
+    public ObservableCollection<string> Filters { get; } = new();
 
     public AutomationViewModel(
         JobAppService jobAppService,
         IJobQueue jobQueue,
         QueueProcessor queueProcessor,
         GlobalProgressService globalProgressService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        ILocalizationService localizationService)
     {
         _jobAppService = jobAppService;
         _jobQueue = jobQueue;
         _queueProcessor = queueProcessor;
         _globalProgressService = globalProgressService;
         _notificationService = notificationService;
+        _localizationService = localizationService;
+
+        _selectedFilter = _localizationService["All"];
+        UpdateFilters();
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += (s, e) => RefreshAutomationState();
         _timer.Start();
 
+        if (_localizationService is System.ComponentModel.INotifyPropertyChanged npc)
+        {
+            npc.PropertyChanged += (s, e) => {
+                if (e.PropertyName == "Item" || e.PropertyName == "Item[]" || string.IsNullOrEmpty(e.PropertyName))
+                {
+                    UpdateFilters();
+                    UpdateSelectionState();
+                    RefreshAutomationState();
+                }
+            };
+        }
+
         IsQueuePaused = _jobQueue.IsPaused;
         _ = LoadJobsAsync();
+    }
+
+    private void UpdateFilters()
+    {
+        var current = SelectedFilter;
+        Filters.Clear();
+        Filters.Add("All");
+        Filters.Add("Active");
+        Filters.Add("Pending");
+        Filters.Add("WatchFolder");
+        Filters.Add("DirectCopy");
+        SelectedFilter = Filters.Contains(current) ? current : "All";
     }
 
     [RelayCommand]
     public async Task LoadJobsAsync()
     {
         var jobs = await _jobAppService.GetAllJobsAsync();
-        var vms = jobs.Select(j => new JobItemViewModel(j, _jobAppService, _notificationService)).ToList();
+        var vms = jobs.Select(j => new JobItemViewModel(j, _jobAppService, _notificationService, _localizationService)).ToList();
         
         AllJobs.Clear();
         foreach (var vm in vms) AllJobs.Add(vm);
@@ -67,11 +105,14 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _isSelectedAll;
     [ObservableProperty] private bool _hasSelection;
     [ObservableProperty] private int _selectedCount;
+    [ObservableProperty] private string _selectedCountText = string.Empty;
+    [ObservableProperty] private string _activeBadgeText = string.Empty;
 
     public void UpdateSelectionState()
     {
         SelectedCount = AllJobs.Count(j => j.IsSelected);
         HasSelection = SelectedCount > 0;
+        SelectedCountText = string.Format(_localizationService["SelectedCount"], SelectedCount);
         
         var shouldBeAll = AllJobs.Any() && SelectedCount == AllJobs.Count;
         if (IsSelectedAll != shouldBeAll)
@@ -85,12 +126,14 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         var active = _globalProgressService.GetActiveJobs().ToList();
         ActiveExecutions.Clear();
         foreach (var job in active) ActiveExecutions.Add(job);
+        
+        ActiveBadgeText = string.Format(_localizationService["ActiveBadge"], ActiveExecutions.Count);
 
         foreach (var jobVm in AllJobs)
         {
             var p = active.FirstOrDefault(a => a.JobId == jobVm.Job.Id);
             if (p != null) jobVm.UpdateFromProgress(p);
-            else jobVm.Status = _queueProcessor.IsJobActive(jobVm.Job.Id) ? "Processando..." : "Ocioso";
+            else jobVm.Status = _queueProcessor.IsJobActive(jobVm.Job.Id) ? _localizationService["Processing"] : _localizationService["Idle"];
         }
 
         UpdateSelectionState();
@@ -137,14 +180,14 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
     private void CreateDirectCopy() 
     {
         var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
-        mainVm?.ShowEditor(new Job { WatchEnabled = false, Name = "Nova Cpia Direta" });
+        mainVm?.ShowEditor(new Job { WatchEnabled = false, Name = _localizationService["NewDirectCopy"] });
     }
 
     [RelayCommand] 
     private void CreateWatchFolder() 
     {
         var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
-        mainVm?.ShowEditor(new Job { WatchEnabled = true, Name = "Nova Watch Folder" });
+        mainVm?.ShowEditor(new Job { WatchEnabled = true, Name = _localizationService["NewWatchFolder"] });
     }
 
     // Comandos de Orquestrao

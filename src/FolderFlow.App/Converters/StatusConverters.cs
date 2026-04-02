@@ -47,6 +47,19 @@ public class BoolToIconConverter : IValueConverter
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         bool b = value is bool && (bool)value;
+        string paramStr = parameter?.ToString() ?? "";
+
+        // Suporte para "TrueIcon:FalseIcon"
+        if (paramStr.Contains(':'))
+        {
+            var parts = paramStr.Split(':');
+            if (parts.Length == 2)
+            {
+                var iconName = b ? parts[0] : parts[1];
+                if (Enum.TryParse<MaterialIconKind>(iconName, out var kind)) return kind;
+            }
+        }
+
         return b ? MaterialIconKind.ChevronUp : MaterialIconKind.ChevronDown;
     }
 
