@@ -15,7 +15,7 @@ public class QueueProcessor
     private readonly ISettingsStore _settingsStore;
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _activeJobs = new();
     private CancellationTokenSource? _cts;
-    private SemaphoreSlim? _semaphore;
+    private SemaphoreSlim _semaphore;
 
     public int ActiveCount => _activeJobs.Count;
 
@@ -24,6 +24,7 @@ public class QueueProcessor
         _jobQueue = jobQueue;
         _executionEngine = executionEngine;
         _settingsStore = settingsStore;
+        _semaphore = new SemaphoreSlim(2);
     }
 
     public bool IsJobActive(Guid jobId) => _activeJobs.ContainsKey(jobId);
@@ -73,6 +74,11 @@ public class QueueProcessor
                 await _semaphore.WaitAsync(cancellationToken);
 
                 var job = await _jobQueue.DequeueAsync();
+                if (job == null)
+                {
+                    _semaphore.Release();
+                    continue;
+                }
 
                 // Evitar rodar o mesmo Job em paralelo
                 var jobCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -88,13 +94,13 @@ public class QueueProcessor
                         finally
                         {
                             _activeJobs.TryRemove(job.Id, out _);
-                            _semaphore?.Release();
+                            _semaphore.Release();
                         }
                     }, cancellationToken);
                 }
                 else
                 {
-                    _semaphore?.Release();
+                    _semaphore.Release();
                 }
             }
         }
