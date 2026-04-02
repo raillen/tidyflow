@@ -55,7 +55,7 @@ public partial class BlueprintEditorViewModel : ViewModelBase
     [RelayCommand]
     private async Task BrowsePath()
     {
-        var result = await _storageService.OpenFolderPickerAsync();
+        var result = await _storageService.SelectFolderAsync();
         if (result != null) Path = result;
     }
 
