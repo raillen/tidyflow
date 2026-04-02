@@ -130,19 +130,6 @@
                         </Button>
                         
                         <Separator Width="1" Height="20" Background="{DynamicResource CardBorderBrush}" Margin="5,0"/>
-                        
-                        <Button Command="{Binding CreateFileBlueprintCommand}" Theme="{DynamicResource OutlineButton}" Height="32" CornerRadius="8" Padding="14,0" ToolTip.Tip="{lcl:Lcl NewFileBlueprint}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <material:MaterialIcon Kind="FileDocumentOutline" Width="16" Height="16"/>
-                                <TextBlock Text="FILE" FontWeight="Bold" FontSize="10"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding CreateFolderBlueprintCommand}" Theme="{DynamicResource OutlineButton}" Height="32" CornerRadius="8" Padding="14,0" ToolTip.Tip="{lcl:Lcl NewFolderBlueprint}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <material:MaterialIcon Kind="FolderOutline" Width="16" Height="16"/>
-                                <TextBlock Text="FOLDER" FontWeight="Bold" FontSize="10"/>
-                            </StackPanel>
-                        </Button>
 
                         <Button Command="{Binding StopAllCommand}" Classes="Danger" Theme="{DynamicResource OutlineButton}" Width="32" Height="32" CornerRadius="8" ToolTip.Tip="{lcl:Lcl StopAllTip}">
                             <material:MaterialIcon Kind="Power" Width="18"/>
@@ -324,78 +311,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
-
-                <!-- ORGANIZAÇÃO (BLUEPRINTS) -->
-                <StackPanel Spacing="30">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <material:MaterialIcon Kind="FileTree" Foreground="{DynamicResource AccentColor}" Width="22" Height="22"/>
-                        <TextBlock Text="{lcl:Lcl ActiveBlueprints}" FontSize="12" FontWeight="Black" LetterSpacing="1.5" Opacity="0.4"/>
-                    </StackPanel>
-
-                    <Grid ColumnDefinitions="*, *">
-                        <!-- FILES -->
-                        <StackPanel Grid.Column="0" Spacing="15" Margin="0,0,15,0">
-                            <StackPanel Orientation="Horizontal" Spacing="10" Opacity="0.6">
-                                <material:MaterialIcon Kind="FileDocumentOutline" Width="14"/>
-                                <TextBlock Text="{lcl:Lcl FileOrganization}" FontSize="11" FontWeight="Bold"/>
-                            </StackPanel>
-                            
-                            <ItemsControl ItemsSource="{Binding FileBlueprints}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:BlueprintItemViewModel">
-                                        <Border Classes="JobCard" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15" Margin="0,0,0,10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                                            <Grid ColumnDefinitions="Auto, *, Auto">
-                                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#1A2196F3" Margin="0,0,12,0">
-                                                    <material:MaterialIcon Kind="FileDocumentOutline" Foreground="#2196F3" Width="18"/>
-                                                </Border>
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Blueprint.Name}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Text="{Binding Blueprint.Path}" FontSize="10" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5">
-                                                    <ToggleSwitch IsChecked="{Binding Blueprint.IsActive}" Command="{Binding ToggleActiveCommand}" OnContent="" OffContent=""/>
-                                                    <Button Command="{Binding EditCommand}" Theme="{DynamicResource TransparentButton}" Padding="5"><material:MaterialIcon Kind="Pencil" Width="14" Opacity="0.5"/></Button>
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-
-                        <!-- FOLDERS -->
-                        <StackPanel Grid.Column="1" Spacing="15" Margin="15,0,0,0">
-                            <StackPanel Orientation="Horizontal" Spacing="10" Opacity="0.6">
-                                <material:MaterialIcon Kind="FolderOutline" Width="14"/>
-                                <TextBlock Text="{lcl:Lcl FolderStructure}" FontSize="11" FontWeight="Bold"/>
-                            </StackPanel>
-                            
-                            <ItemsControl ItemsSource="{Binding FolderBlueprints}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:BlueprintItemViewModel">
-                                        <Border Classes="JobCard" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15" Margin="0,0,0,10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                                            <Grid ColumnDefinitions="Auto, *, Auto">
-                                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="#1A4CAF50" Margin="0,0,12,0">
-                                                    <material:MaterialIcon Kind="FolderOutline" Foreground="#4CAF50" Width="18"/>
-                                                </Border>
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Blueprint.Name}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Text="{Binding Blueprint.Path}" FontSize="10" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5">
-                                                    <ToggleSwitch IsChecked="{Binding Blueprint.IsActive}" Command="{Binding ToggleActiveCommand}" OnContent="" OffContent=""/>
-                                                    <Button Command="{Binding EditCommand}" Theme="{DynamicResource TransparentButton}" Padding="5"><material:MaterialIcon Kind="Pencil" Width="14" Opacity="0.5"/></Button>
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Grid>
                 </StackPanel>
-
-            </StackPanel>
-        </ScrollViewer>
-    </Grid>
-</UserControl>
+                </ScrollViewer>
+                </Grid>
+                </UserControl>
