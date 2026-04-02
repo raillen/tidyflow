@@ -414,3 +414,14 @@
    -> MainWindow Opened.
    -> MainWindow Closed.
    -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Normal
+   -> WindowState changed to: Minimized
+   -> closeToTray: False

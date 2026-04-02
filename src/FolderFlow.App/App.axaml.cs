@@ -50,7 +50,9 @@ public partial class App : Avalonia.Application
             // Inicializa Servios
             await InitializeServicesAsync();
             
-            mainWindow.DataContext = Services.GetRequiredService<MainWindowViewModel>();
+            var mainVm = Services.GetRequiredService<MainWindowViewModel>();
+            mainVm.CurrentPage = mainVm.Dashboard; // Inicializa a primeira pgina aqui para evitar loops
+            mainWindow.DataContext = mainVm;
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -65,6 +67,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ILocalizationService, JsonLocalizationService>();
         services.AddSingleton<ISettingsStore, SettingsJsonStore>();
         services.AddSingleton<IJobStore, JobJsonStore>();
+        services.AddSingleton<IFailureStore, JsonFailureStore>();
         services.AddSingleton<IBlueprintStore, JsonBlueprintStore>();
         services.AddSingleton<IHashService, Sha256HashService>();
         services.AddSingleton<IEncryptionService, EncryptionService>();
@@ -86,18 +89,20 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ExecutionEngine>();
         services.AddSingleton<PreviewEngine>();
         services.AddSingleton<IOrganizationService, OrganizationService>();
+        services.AddSingleton<GlobalProgressService>();
         services.AddSingleton<QueueProcessor>();
         services.AddSingleton<WatchAppService>();
 
         // Presentation
         services.AddSingleton<MainWindowViewModel>();
-        services.AddTransient<DashboardViewModel>();
-        services.AddTransient<AutomationViewModel>();
-        services.AddTransient<BlueprintViewModel>();
-        services.AddTransient<HistoryViewModel>();
-        services.AddTransient<SettingsViewModel>();
+        services.AddSingleton<DashboardViewModel>();
+        services.AddSingleton<AutomationViewModel>();
+        services.AddSingleton<BlueprintViewModel>();
+        services.AddSingleton<HistoryViewModel>();
+        services.AddSingleton<SettingsViewModel>();
         services.AddTransient<JobEditorViewModel>();
         services.AddTransient<BlueprintEditorViewModel>();
+        services.AddTransient<DonateViewModel>();
     }
 
     private async Task InitializeServicesAsync()
