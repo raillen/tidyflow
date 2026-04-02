@@ -103,7 +103,7 @@
                                     <Button Grid.Column="1" Command="{Binding ToggleToolboxCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" Padding="15,5">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <material:MaterialIcon Kind="AutoFix" Width="16"/>
-                                            <TextBlock Text="MAGIC TOOLS" FontWeight="Black" FontSize="10"/>
+                                            <TextBlock Text="{lcl:Lcl MagicTools}" FontWeight="Black" FontSize="10"/>
                                         </StackPanel>
                                     </Button>
                                 </Grid>
@@ -155,7 +155,7 @@
                 <Grid RowDefinitions="Auto, *">
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
                         <material:MaterialIcon Kind="AutoFix" Foreground="{DynamicResource AccentColor}" Width="20"/>
-                        <TextBlock Text="SMART TOOLBOX" FontWeight="Black" FontSize="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="{lcl:Lcl SmartToolbox}" FontWeight="Black" FontSize="14" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <TabControl Grid.Row="1">
@@ -178,21 +178,20 @@
                                     </ItemsControl>
                                 </ScrollViewer>
 
-                                <!-- NEW COUNTER OPTIONS MOVED HERE -->
                                 <Border Grid.Row="1" Background="{DynamicResource SidebarBackground}" CornerRadius="8" Padding="15" Margin="0,10,0,0">
                                     <StackPanel Spacing="10">
-                                        <TextBlock Text="Configurar Contador:" FontSize="12" FontWeight="Bold"/>
+                                        <TextBlock Text="{lcl:Lcl ConfigureCounter}" FontSize="12" FontWeight="Bold"/>
                                         <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto">
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{lcl:Lcl CounterStart}" FontSize="10" Opacity="0.5" Margin="0,0,5,2"/>
                                             <NumericUpDown Grid.Row="1" Grid.Column="0" Value="{Binding CounterStart}" Minimum="1" Height="32" Margin="0,0,5,0"/>
                                             
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Zeros (Padding)" FontSize="10" Opacity="0.5" Margin="5,0,0,2"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{lcl:Lcl ZerosPadding}" FontSize="10" Opacity="0.5" Margin="5,0,0,2"/>
                                             <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding CounterPadding}" Minimum="1" Maximum="10" Height="32" Margin="5,0,0,0"/>
                                         </Grid>
                                         <Button Command="{Binding InsertCounterCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" HorizontalAlignment="Stretch" Height="32">
                                             <StackPanel Orientation="Horizontal" Spacing="5">
                                                 <material:MaterialIcon Kind="Plus" Width="14"/>
-                                                <TextBlock Text="Counter" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Text="{lcl:Lcl InsertCounter}" FontSize="11" FontWeight="Bold"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -210,7 +209,7 @@
                                             <Flyout Placement="BottomEdgeAlignedRight">
                                                 <Border Background="{DynamicResource CardBackground}" Padding="15" CornerRadius="8" Width="300">
                                                     <StackPanel Spacing="10">
-                                                        <TextBlock Text="Guia de Estilos e Limpeza" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
+                                                        <TextBlock Text="{lcl:Lcl StylesGuideTitle}" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
                                                         <TextBlock Text="{Binding StylesHelp}" FontSize="11" TextWrapping="Wrap"/>
                                                     </StackPanel>
                                                 </Border>
@@ -268,7 +267,7 @@
                                             <Flyout Placement="BottomEdgeAlignedRight">
                                                 <Border Background="{DynamicResource CardBackground}" Padding="15" CornerRadius="8" Width="300">
                                                     <StackPanel Spacing="10">
-                                                        <TextBlock Text="Dicas de Regex Avançado" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
+                                                        <TextBlock Text="{lcl:Lcl RegexTipsTitle}" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
                                                         <TextBlock Text="{Binding RegexHelp}" FontSize="11" TextWrapping="Wrap"/>
                                                     </StackPanel>
                                                 </Border>

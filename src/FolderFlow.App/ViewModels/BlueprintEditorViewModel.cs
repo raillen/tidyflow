@@ -35,12 +35,15 @@ public partial class BlueprintEditorViewModel : ViewModelBase
     [ObservableProperty] private double _windowWidth = 600;
     [ObservableProperty] private int _takeN = 10;
     [ObservableProperty] private int _skipN = 5;
+    [ObservableProperty] private int _counterStart = 1;
     [ObservableProperty] private int _counterPadding = 1;
     [ObservableProperty] private BlueprintType _type;
     [ObservableProperty] private bool _isFolderType;
     [ObservableProperty] private bool _toolboxVisible;
     [ObservableProperty] private bool _isNameInvalid;
     [ObservableProperty] private string _validationMessage = string.Empty;
+    [ObservableProperty] private string _regexHelp = string.Empty;
+    [ObservableProperty] private string _stylesHelp = string.Empty;
 
     public ObservableCollection<TokenInfo> AvailableTokens { get; } = new();
     public ObservableCollection<PresetInfo> Presets { get; } = new();
@@ -90,16 +93,6 @@ public partial class BlueprintEditorViewModel : ViewModelBase
         RegexRecipes.Add(new RegexRecipe(_localizationService["RegexRemoveParentheses"], @"\s*\(.*?\)", ""));
     }
 
-    [RelayCommand]
-    private void InsertCounter()
-    {
-        string token = CounterPadding > 1 ? $"{{Counter:{CounterPadding}}}" : "{Counter}";
-        RenameTemplate += token;
-    }
-
-    [ObservableProperty] private string _regexHelp = string.Empty;
-    [ObservableProperty] private string _stylesHelp = string.Empty;
-
     [RelayCommand] 
     private void ToggleToolbox() 
     {
@@ -111,10 +104,17 @@ public partial class BlueprintEditorViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void InsertCounter()
+    {
+        string token = CounterPadding > 1 ? $"{{Counter:{CounterPadding}}}" : "{Counter}";
+        RenameTemplate += token;
+    }
+
+    [RelayCommand]
     private void ApplyRegexRecipe(RegexRecipe recipe)
     {
         string target = RenameTemplate.Contains("{Original}") ? "{Original}" : "";
-        string mod = $"{{Original:regex({recipe.Pattern},{recipe.Replacement})}}";
+        string mod = $"{{Original:regex({recipe.Pattern}|{recipe.Replacement})}}";
         
         if (!string.IsNullOrEmpty(target))
             RenameTemplate = RenameTemplate.Replace(target, mod);
@@ -173,8 +173,6 @@ public partial class BlueprintEditorViewModel : ViewModelBase
         }
     }
 
-    [ObservableProperty] private int _counterStart = 1;
-
     public void SetBlueprint(Blueprint blueprint)
     {
         _originalBlueprint = blueprint;
@@ -186,6 +184,7 @@ public partial class BlueprintEditorViewModel : ViewModelBase
         AutoScaffoldingEnabled = blueprint.AutoScaffoldingEnabled;
         AutoRenamingEnabled = blueprint.AutoRenamingEnabled;
         CounterStart = blueprint.CounterStart;
+        CounterPadding = blueprint.CounterPadding;
         IsActive = blueprint.IsActive;
         
         Folders.Clear();
@@ -216,7 +215,7 @@ public partial class BlueprintEditorViewModel : ViewModelBase
         var dummyPath = System.IO.Path.Combine(string.IsNullOrEmpty(Path) ? "C:\\Work\\FolderFlow" : Path, OriginalNamePreview);
 
         _ = Task.Run(async () => {
-            var result = await _organizationService.GetRenamedPathAsync(RenameTemplate, Name, dummyPath, IsFolderType);
+            var result = await _organizationService.GetRenamedPathAsync(RenameTemplate, Name, dummyPath, IsFolderType, CounterStart);
             var resultName = System.IO.Path.GetFileName(result);
             
             Avalonia.Threading.Dispatcher.UIThread.Post(() => {
@@ -273,6 +272,7 @@ public partial class BlueprintEditorViewModel : ViewModelBase
         _originalBlueprint.AutoScaffoldingEnabled = AutoScaffoldingEnabled;
         _originalBlueprint.AutoRenamingEnabled = AutoRenamingEnabled;
         _originalBlueprint.CounterStart = CounterStart;
+        _originalBlueprint.CounterPadding = CounterPadding;
         _originalBlueprint.IsActive = IsActive;
         _originalBlueprint.BlueprintFolders = new System.Collections.Generic.List<string>(Folders);
 

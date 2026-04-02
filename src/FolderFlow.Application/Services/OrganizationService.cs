@@ -163,12 +163,11 @@ public class OrganizationService : IOrganizationService
         var now = DateTime.Now;
         
         // 1. Unifica atalhos para formato padrão {Counter:N} antes do processamento principal
-        var normalizedTemplate = template.Replace("{01}", "{Counter:2}")
-                                         .Replace("{001}", "{Counter:3}");
+        var result = template.Replace("{01}", "{Counter:2}")
+                             .Replace("{001}", "{Counter:3}");
 
         // 2. Processa Token {Counter}
-        // Suporta: {Counter}, {Counter:padding}
-        var result = Regex.Replace(normalizedTemplate, @"\{Counter(?::(?<padding>\d+))?\}", m =>
+        result = Regex.Replace(result, @"\{Counter(?::(?<padding>\d+))?\}", m =>
         {
             int padding = 1;
             if (m.Groups["padding"].Success) int.TryParse(m.Groups["padding"].Value, out padding);
@@ -179,13 +178,13 @@ public class OrganizationService : IOrganizationService
             return finalNumber.ToString().PadLeft(padding, '0');
         });
 
-        // 3. Processa Todos os Tokens com Modificadores Avançados
-        // Suporta: {Token}, {Token:modifier}, {Token:modifier(param)}
-        result = Regex.Replace(result, @"\{(?<token>\w+)(?::(?<modifier>\w+)(?:\((?<params>.*?)\))?)?\}", m => 
+        // 3. Processa Todos os Tokens com Suporte a Múltiplos Modificadores Encadeados
+        // Regex: {TOKEN:mod1(params):mod2...}
+        // Captura o token e a string bruta de modificadores
+        result = Regex.Replace(result, @"\{(?<token>\w+)(?<modifiers>(?::\w+(?:\(.*?\))?)*)\}", m => 
         {
             var token = m.Groups["token"].Value;
-            var modifier = m.Groups["modifier"].Success ? m.Groups["modifier"].Value : null;
-            var parameters = m.Groups["params"].Success ? m.Groups["params"].Value : null;
+            var modifiersRaw = m.Groups["modifiers"].Value;
             
             string? value = token switch
             {
@@ -209,7 +208,22 @@ public class OrganizationService : IOrganizationService
             };
 
             if (value == null) return m.Value;
-            return ApplyAdvancedModifier(value, modifier, parameters);
+
+            // Processa a cadeia de modificadores: :mod1(p):mod2
+            if (string.IsNullOrEmpty(modifiersRaw)) return value;
+
+            var currentResult = value;
+            // Split por ':' mas ignora os que estão dentro de parênteses (Regex complexo para split balanceado)
+            // Abordagem mais simples: Iterar os modificadores um a um
+            var matches = Regex.Matches(modifiersRaw, @":(?<name>\w+)(?:\((?<params>.*?)\))?");
+            foreach (Match modMatch in matches)
+            {
+                var modName = modMatch.Groups["name"].Value;
+                var modParams = modMatch.Groups["params"].Success ? modMatch.Groups["params"].Value : null;
+                currentResult = ApplyAdvancedModifier(currentResult, modName, modParams);
+            }
+
+            return currentResult;
         });
 
         return result;
@@ -243,10 +257,20 @@ public class OrganizationService : IOrganizationService
     {
         if (string.IsNullOrEmpty(parameters)) return value;
 
-        // Tenta separar pattern e replacement. Ex: ( \d+ , ) ou ( \d+ )
-        var parts = parameters.Split(',');
-        var pattern = parts[0].Trim();
-        var replacement = parts.Length > 1 ? parts[1].Trim() : "";
+        // USA PIPELINE | PARA SEPARAR PATTERN DE REPLACEMENT (Mais seguro que vírgula)
+        var separatorIdx = parameters.LastIndexOf('|');
+        string pattern, replacement;
+
+        if (separatorIdx >= 0)
+        {
+            pattern = parameters.Substring(0, separatorIdx);
+            replacement = parameters.Substring(separatorIdx + 1);
+        }
+        else
+        {
+            pattern = parameters;
+            replacement = "";
+        }
 
         try
         {

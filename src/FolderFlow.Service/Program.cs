@@ -46,7 +46,7 @@ public class Program
                 services.AddSingleton<IAppLogger, FileLogger>();
                 services.AddSingleton<IAuditService, CsvAuditService>();
                 services.AddSingleton<IFailureStore, JsonFailureStore>();
-                services.AddSingleton<IJobQueue, ChannelJobQueue>();
+                services.AddSingleton<IJobQueue, ObservableJobQueue>();
                 services.AddSingleton<IHashService, Sha256HashService>();
                 services.AddSingleton<ICloudHydrationService, WindowsCloudHydrationService>();
                 services.AddSingleton<ILocalizationService, JsonLocalizationService>();

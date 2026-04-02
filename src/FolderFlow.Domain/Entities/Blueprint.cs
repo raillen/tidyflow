@@ -19,6 +19,7 @@ public class Blueprint
     public string? RenameTemplate { get; set; }
     public bool AutoRenamingEnabled { get; set; } = false;
     public int CounterStart { get; set; } = 1;
+    public int CounterPadding { get; set; } = 1;
     
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.Now;

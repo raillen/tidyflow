@@ -15,13 +15,14 @@ namespace FolderFlow.Tests.Unit;
 
 public class ExecutionEngineTests
 {
-    private class MockFileOperator : IFileOperator
+    private class LocalFileOperator : IFileOperator
     {
         public List<string> CreatedDirectories = new();
         public List<(string Source, string Target)> CopiedFiles = new();
         public List<string> DeletedFiles = new();
         public List<string> Files = new();
 
+        public long BandwidthLimit { get; set; }
         public Task CopyAsync(string source, string target, CancellationToken cancellationToken = default, IProgress<double>? progress = null, string? encryptionKey = null, bool deltaSync = false)
         {
             CopiedFiles.Add((source, target));
@@ -63,6 +64,8 @@ public class ExecutionEngineTests
     private class MockAuditService : IAuditService
     {
         public Task SaveReportAsync(string jobName, IEnumerable<AuditEntry> entries) => Task.CompletedTask;
+        public Task<int> PurgeOldLogsAsync(int days) => Task.FromResult(0);
+        public Task<string> GetDailySummaryAsync() => Task.FromResult(string.Empty);
     }
 
     private class MockFailureStore : IFailureStore
@@ -93,6 +96,19 @@ public class ExecutionEngineTests
         public Stream GetEncryptStream(Stream targetStream, string password) => targetStream;
     }
 
+    private class MockSettingsStore : ISettingsStore
+    {
+        public Task<AppSettings> LoadAsync() => Task.FromResult(new AppSettings());
+        public Task SaveAsync(AppSettings settings) => Task.CompletedTask;
+    }
+
+    private class MockLocalizationService : ILocalizationService
+    {
+        public string this[string key] => key;
+        public string GetString(string key) => key;
+        public void SetLanguage(string cultureCode) { }
+    }
+
     [Fact]
     public async Task RunJobAsync_ShouldCopyFiles_WhenFiltersMatch()
     {
@@ -102,7 +118,7 @@ public class ExecutionEngineTests
         var sourceFile = Path.Combine(sourceDir, "file1.txt");
         var targetFile = Path.Combine(targetDir, "file1.txt");
 
-        var fileOp = new MockFileOperator();
+        var fileOp = new LocalFileOperator();
         fileOp.Files.Add(sourceFile);
         fileOp.Files.Add(Path.Combine(sourceDir, "file2.pdf"));
         fileOp.CreatedDirectories.Add(sourceDir);
@@ -120,8 +136,24 @@ public class ExecutionEngineTests
         var extNotificationService = new MockExternalNotificationService();
         var scriptRunner = new MockScriptRunner();
         var encryptionService = new MockEncryptionService();
+        var settingsStore = new MockSettingsStore();
+        var localizationService = new MockLocalizationService();
         
-        var engine = new ExecutionEngine(fileOperatorFactory, logger, hashService, notificationService, cloudService, auditService, failureStore, activityService, globalProgressService, extNotificationService, scriptRunner, encryptionService);
+        var engine = new ExecutionEngine(
+            fileOperatorFactory, 
+            logger, 
+            hashService, 
+            notificationService, 
+            cloudService, 
+            auditService, 
+            failureStore, 
+            activityService, 
+            globalProgressService, 
+            extNotificationService, 
+            scriptRunner, 
+            encryptionService,
+            settingsStore,
+            localizationService);
 
         var job = new Job
         {
