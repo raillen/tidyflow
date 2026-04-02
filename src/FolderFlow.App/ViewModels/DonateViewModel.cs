@@ -6,7 +6,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FolderFlow.Application.Interfaces;
-using Net.Codecrete.QrCodeGenerator;
+using QrGen = Net.Codecrete.QrCodeGenerator.QrCode;
 
 namespace FolderFlow.App.ViewModels;
 
@@ -28,18 +28,11 @@ public partial class DonateViewModel : ViewModelBase
     {
         try
         {
-            // Gera QR Code para a chave PIX
-            var qr = QrCode.EncodeText(PixKey, QrCode.Ecc.Medium);
-            var size = 300;
-            var scale = size / qr.Size;
-            
-            // Criamos um bitmap simples (Preto e Branco)
-            // Para simplificar no Avalonia sem depender de System.Drawing,
-            // vamos gerar um array de pixels ou usar um WriteableBitmap se fosse complexo.
-            // Aqui vamos usar a estratégia de gerar um SVG e carregar se possível, 
-            // ou melhor, gerar um WriteableBitmap manualmente.
-            
+            // Gera QR Code para a chave PIX usando o alias QrGen
+            var qr = QrGen.EncodeText(PixKey, QrGen.Ecc.Medium);
             var pixelSize = qr.Size;
+            
+            // Usamos WriteableBitmap do Avalonia
             var bitmap = new WriteableBitmap(new PixelSize(pixelSize, pixelSize), new Vector(96, 96), Avalonia.Platform.PixelFormat.Rgba8888, Avalonia.Platform.AlphaFormat.Opaque);
             
             using (var lockedBitmap = bitmap.Lock())
@@ -52,6 +45,7 @@ public partial class DonateViewModel : ViewModelBase
                         for (int x = 0; x < pixelSize; x++)
                         {
                             bool black = qr.GetModule(x, y);
+                            // RGBA: 0xFF000000  Preto, 0xFFFFFFFF  Branco
                             ptr[y * pixelSize + x] = black ? 0xFF000000 : 0xFFFFFFFF;
                         }
                     }
@@ -66,7 +60,7 @@ public partial class DonateViewModel : ViewModelBase
     [RelayCommand]
     private async Task CopyPixKey()
     {
-        if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
             var clipboard = desktop.MainWindow?.Clipboard;
             if (clipboard != null)
