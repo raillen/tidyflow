@@ -261,7 +261,20 @@
                                     <StackPanel Spacing="10">
                                         <TextBlock Text="{lcl:Lcl Renaming}" FontSize="14" FontWeight="Bold"/>
                                         <TextBlock Text="{lcl:Lcl RenamingDesc}" FontSize="11" Opacity="0.6"/>
-                                        <TextBox Text="{Binding Job.RenameTemplate}" Watermark="{lcl:Lcl RenameTemplateLabel}" CornerRadius="8"/>
+                                        
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBox Text="{Binding RenameTemplateText}" Watermark="{lcl:Lcl RenameTemplateLabel}" CornerRadius="8" Margin="0,0,10,0"/>
+                                            <Button Grid.Column="1" Command="{Binding TestRenameCommand}" Theme="{DynamicResource OutlineButton}" Content="{lcl:Lcl Simulate}" CornerRadius="8"/>
+                                        </Grid>
+
+                                        <Border IsVisible="{Binding RenamePreviewResult, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" 
+                                                Background="{DynamicResource SidebarBackground}" CornerRadius="8" Padding="15,10" BorderBrush="{DynamicResource AccentColor}" BorderThickness="1">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <material:MaterialIcon Kind="AutoFix" Foreground="{DynamicResource AccentColor}"/>
+                                                <TextBlock Text="{Binding RenamePreviewResult}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+
                                         <TextBlock Text="{lcl:Lcl TokensAvailable}" FontSize="10" Opacity="0.4" FontStyle="Italic"/>
                                     </StackPanel>
                                 </StackPanel>

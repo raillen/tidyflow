@@ -28,6 +28,7 @@ public class ExecutionEngine
     private readonly IEncryptionService _encryptionService;
     private readonly ISettingsStore _settingsStore;
     private readonly ILocalizationService _localizationService;
+    private readonly IOrganizationService _organizationService;
 
     public ExecutionEngine(
         FileOperatorFactory fileOperatorFactory, 
@@ -43,7 +44,8 @@ public class ExecutionEngine
         IScriptRunner scriptRunner,
         IEncryptionService encryptionService,
         ISettingsStore settingsStore,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        IOrganizationService organizationService)
     {
         _fileOperatorFactory = fileOperatorFactory;
         _logger = logger;
@@ -59,6 +61,7 @@ public class ExecutionEngine
         _encryptionService = encryptionService;
         _settingsStore = settingsStore;
         _localizationService = localizationService;
+        _organizationService = organizationService;
     }
 
     public async Task RunJobAsync(Job job, CancellationToken cancellationToken = default, bool isRetry = false, IProgress<JobProgressInfo>? progress = null)
@@ -321,8 +324,21 @@ public class ExecutionEngine
         try
         {
             await _cloudHydrationService.EnsureFileIsLocalAsync(sourceFile, cancellationToken);
-            var relativePath = Path.GetRelativePath(job.SourcePath, sourceFile);
+            
+            // Aplica Renomeao se habilitado
+            var processedSource = sourceFile;
+            if (job.OrganizationEnabled && !string.IsNullOrWhiteSpace(job.RenameTemplate))
+            {
+                var renamedPath = await _organizationService.GetRenamedPathAsync(job, sourceFile);
+                if (renamedPath != sourceFile && !File.Exists(renamedPath))
+                {
+                    try { File.Move(sourceFile, renamedPath); processedSource = renamedPath; } catch { }
+                }
+            }
+
+            var relativePath = Path.GetRelativePath(job.SourcePath, processedSource);
             targetFile = Path.Combine(job.TargetPath, relativePath);
+            entry.SourcePath = processedSource;
             entry.TargetPath = targetFile;
 
             fileOperator.CreateDirectory(Path.GetDirectoryName(targetFile)!);

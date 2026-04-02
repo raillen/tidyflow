@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -19,6 +20,7 @@ public partial class JobEditorViewModel : ViewModelBase
     private readonly PreviewEngine _previewEngine;
     private readonly ISettingsStore _settingsStore;
     private readonly ILocalizationService _localizationService;
+    private readonly IOrganizationService _organizationService;
 
     [ObservableProperty] private Job _job = new();
     [ObservableProperty] private string _sourcePathText = string.Empty;
@@ -34,6 +36,8 @@ public partial class JobEditorViewModel : ViewModelBase
     // Organization
     [ObservableProperty] private ObservableCollection<string> _blueprintFolders = new();
     [ObservableProperty] private string _newFolderName = string.Empty;
+    [ObservableProperty] private string _renameTemplateText = string.Empty;
+    [ObservableProperty] private string _renamePreviewResult = string.Empty;
 
     // Time Components
     [ObservableProperty] private int _scheduleHour = 3;
@@ -59,13 +63,15 @@ public partial class JobEditorViewModel : ViewModelBase
         IStorageService storageService, 
         PreviewEngine previewEngine,
         ISettingsStore settingsStore,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        IOrganizationService organizationService)
     {
         _jobAppService = jobAppService;
         _storageService = storageService;
         _previewEngine = previewEngine;
         _settingsStore = settingsStore;
         _localizationService = localizationService;
+        _organizationService = organizationService;
 
         if (_localizationService is System.ComponentModel.INotifyPropertyChanged npc)
         {
@@ -95,6 +101,8 @@ public partial class JobEditorViewModel : ViewModelBase
         ExtensionsText = string.Join(", ", job.IncludeExtensions);
         ExcludePatternsText = string.Join(", ", job.ExcludePatterns);
         BlueprintFolders = new ObservableCollection<string>(job.BlueprintFolders);
+        RenameTemplateText = job.RenameTemplate ?? "";
+        RenamePreviewResult = string.Empty;
         
         if (TimeSpan.TryParse(job.ScheduleTime, out var ts))
         {
@@ -134,6 +142,7 @@ public partial class JobEditorViewModel : ViewModelBase
         Job.WatchEnabled = IsWatchMode;
         Job.ScheduleTime = $"{ScheduleHour:D2}:{ScheduleMinute:D2}:{ScheduleSecond:D2}";
         Job.SpecificDate = SelectedDateOffset?.DateTime;
+        Job.RenameTemplate = RenameTemplateText;
         
         Job.IncludeExtensions = ExtensionsText.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
         Job.ExcludePatterns = ExcludePatternsText.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
@@ -167,6 +176,18 @@ public partial class JobEditorViewModel : ViewModelBase
     private void RemoveBlueprintFolder(string folderName)
     {
         BlueprintFolders.Remove(folderName);
+    }
+
+    [RelayCommand]
+    private async Task TestRename()
+    {
+        if (string.IsNullOrWhiteSpace(RenameTemplateText)) return;
+        
+        // Simula com um arquivo fictcio
+        var mockPath = Path.Combine(SourcePathText, "projeto_v1_final.mp4");
+        var job = new Job { Name = Job.Name, RenameTemplate = RenameTemplateText, SourcePath = SourcePathText };
+        RenamePreviewResult = await _organizationService.GetRenamedPathAsync(job, mockPath);
+        RenamePreviewResult = Path.GetFileName(RenamePreviewResult);
     }
 
     [RelayCommand]
