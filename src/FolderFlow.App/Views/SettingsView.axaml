@@ -9,7 +9,7 @@
              x:Class="FolderFlow.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
     
-    <Grid RowDefinitions="*, Auto" Margin="0,35,0,0">
+    <Grid RowDefinitions="*, Auto" Margin="0,20,0,0">
         <!-- Main Tab Control -->
         <TabControl Grid.Row="0" TabStripPlacement="Left">
             <TabControl.Styles>
@@ -280,7 +280,7 @@
                             <StackPanel Spacing="20">
                                 <StackPanel Spacing="10">
                                     <TextBlock Text="FolderFlow Pro" FontSize="22" FontWeight="Black" Foreground="{DynamicResource AccentColor}"/>
-                                    <TextBlock Text="v1.3.3 (April 2026)" FontSize="12" Opacity="0.5"/>
+                                    <TextBlock Text="v1.3.4 (April 2026)" FontSize="12" Opacity="0.5"/>
                                 </StackPanel>
 
                                 <TextBlock Text="O FolderFlow nasceu para simplificar o gerenciamento de backups e a organização de arquivos em larga escala, unindo performance industrial com uma interface moderna e intuitiva." 

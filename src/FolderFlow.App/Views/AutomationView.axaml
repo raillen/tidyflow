@@ -10,7 +10,7 @@
     
     <Grid ColumnDefinitions="Auto, *">
         <!-- Main Master-Detail TabControl -->
-        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left">
+        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left" Margin="0,20,0,0">
             <TabControl.Styles>
                 <Style Selector="TabItem">
                     <Setter Property="Width" Value="220"/>

@@ -36,10 +36,10 @@
         <Border Background="{DynamicResource AppBackground}" IsHitTestVisible="False" />
         
         <Grid>
-            <!-- Padding para compensar botões nativos e DragArea (45px) -->
+            <!-- Padding para compensar botões nativos e DragArea (60px) -->
             <Grid.Styles>
                 <Style Selector="SplitView.MainContent">
-                    <Setter Property="Padding" Value="0,45,0,0"/>
+                    <Setter Property="Padding" Value="0,60,0,0"/>
                 </Style>
             </Grid.Styles>
 
