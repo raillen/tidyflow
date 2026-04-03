@@ -73,7 +73,13 @@ public class LocalFileOperator : IFileOperator
         var totalBytes = new FileInfo(source).Length;
         long totalRead = 0;
 
-        await using var sourceStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+        await using var rawSourceStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+        
+        // Aplica Throttling
+        Stream sourceStream = BandwidthLimit > 0 
+            ? new ThrottledStream(rawSourceStream, BandwidthLimit) 
+            : rawSourceStream;
+
         await using var targetStream = new FileStream(target, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 4096, true);
 
         // If target is larger, truncate it to match source size

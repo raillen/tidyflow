@@ -21,6 +21,24 @@ public class SettingsJsonStore : ISettingsStore
         _filePath = Path.Combine(dataFolder, "settings.json");
     }
 
+    public AppSettings Load()
+    {
+        if (!File.Exists(_filePath))
+        {
+            return new AppSettings();
+        }
+
+        try
+        {
+            var json = File.ReadAllText(_filePath);
+            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+        }
+        catch
+        {
+            return new AppSettings();
+        }
+    }
+
     public async Task<AppSettings> LoadAsync()
     {
         if (!File.Exists(_filePath))

@@ -22,16 +22,12 @@ public partial class MainWindow : Window
         // Monitora mudanças de estado (Minimizar)
         this.GetObservable(Window.WindowStateProperty).Subscribe(new AnonymousObserver<WindowState>(state =>
         {
-            System.IO.File.AppendAllText("trace.txt", $"   -> WindowState changed to: {state}\n");
-            if (state == WindowState.Minimized)
+            // Só esconde se o DataContext (ViewModel) já estiver carregado e pronto
+            if (state == WindowState.Minimized && DataContext is MainWindowViewModel viewModel)
             {
-                var viewModel = DataContext as MainWindowViewModel;
-                bool closeToTray = viewModel?.Settings?.Settings?.CloseToTray ?? true;
-                
-                System.IO.File.AppendAllText("trace.txt", $"   -> closeToTray: {closeToTray}\n");
+                bool closeToTray = viewModel.Settings?.Settings?.CloseToTray ?? true;
                 if (closeToTray)
                 {
-                    System.IO.File.AppendAllText("trace.txt", $"   -> Calling Hide()...\n");
                     Hide();
                 }
             }

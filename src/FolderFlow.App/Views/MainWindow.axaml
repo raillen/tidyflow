@@ -32,26 +32,27 @@
     </Window.DataTemplates>
 
     <Panel>
-        <!-- Background com Mica/Acrylic effect simulado -->
+        <!-- Background -->
         <Border Background="{DynamicResource AppBackground}" IsHitTestVisible="False" />
         
         <SplitView IsPaneOpen="True"
-                   DisplayMode="CompactInline"
-                   CompactPaneLength="70"
+                   DisplayMode="Inline"
                    OpenPaneLength="260"
                    Background="Transparent"
                    PaneBackground="Transparent">
             <SplitView.Pane>
-                <Grid RowDefinitions="Auto, *, Auto" Margin="0,0,0,0">
+                <Grid RowDefinitions="Auto, *, Auto">
                     <Border Grid.RowSpan="3" Background="{DynamicResource SidebarBackground}" Opacity="{Binding Settings.Settings.GlassOpacity}" IsHitTestVisible="False"/>
                     
-                    <!-- Logo Premium -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="16" Margin="20,45,20,40">
-                        <Border Background="{DynamicResource AccentColor}" CornerRadius="8" Width="40" Height="40">
-                            <material:MaterialIcon Kind="CloudSync" Width="24" Height="24" Foreground="White"/>
-                        </Border>
-                        <TextBlock Text="FolderFlow" Classes="H4" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
-                    </StackPanel>
+                    <!-- Header Sidebar (Logo) -->
+                    <Grid Grid.Row="0" Margin="20,45,15,40">
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <Border Background="{DynamicResource AccentColor}" CornerRadius="8" Width="40" Height="40">
+                                <material:MaterialIcon Kind="CloudSync" Width="24" Height="24" Foreground="White"/>
+                            </Border>
+                            <TextBlock Text="FolderFlow" Classes="H4" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
+                        </StackPanel>
+                    </Grid>
 
                     <!-- Menu de Navegação -->
                     <StackPanel Grid.Row="1" Spacing="4" Margin="12,0">
@@ -63,7 +64,7 @@
                                     <Setter Property="Background" Value="Transparent"/>
                                     <Setter Property="BorderThickness" Value="0"/>
                                     <Setter Property="CornerRadius" Value="8"/>
-                                    <Setter Property="Padding" Value="12,10"/>
+                                    <Setter Property="Padding" Value="15,12"/>
                                     <Setter Property="Margin" Value="0,2"/>
                                 </Style>
                                 <Style Selector="Button:pointerover">
@@ -117,7 +118,7 @@
                     <StackPanel Grid.Row="2" Margin="12,0,12,30" Spacing="4">
                         <Button Command="{Binding ShowDonateCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="12,10">
+                                Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="15,12">
                             <StackPanel Orientation="Horizontal" Spacing="16">
                                 <material:MaterialIcon Kind="Heart" Width="22" Height="22" Foreground="#EF4444"/>
                                 <TextBlock Text="{lcl:Lcl Donate}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
@@ -127,7 +128,7 @@
                         <Button Command="{Binding NavigateToSettingsCommand}"
                                 Background="{Binding CurrentPage, Converter={StaticResource ActivePageBackgroundConverter}, ConverterParameter='Settings'}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                BorderThickness="0" CornerRadius="8" Padding="12,10">
+                                BorderThickness="0" CornerRadius="8" Padding="15,12">
                             <StackPanel Orientation="Horizontal" Spacing="16">
                                 <material:MaterialIcon Kind="SettingsOutline" Width="22" Height="22" 
                                                       Foreground="{Binding CurrentPage, Converter={StaticResource ActivePageForegroundConverter}, ConverterParameter='Settings', FallbackValue={DynamicResource TextSecondary}}"/>
@@ -142,7 +143,7 @@
             <TransitioningContentControl Content="{Binding CurrentPage}" />
       </SplitView>
 
-        <!-- Custom Draggable Area (TitleBar) - GARANTIDO NO TOPO -->
+        <!-- Custom Draggable Area (TitleBar) -->
         <Border Name="DragArea" Height="45" VerticalAlignment="Top" Background="#00000000" IsHitTestVisible="True" />
     </Panel>
 </Window>

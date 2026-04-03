@@ -51,6 +51,7 @@ public partial class SettingsViewModel : ViewModelBase
     public ObservableCollection<string> WebhookTypes { get; } = new(new[] { "Generic", "Discord", "Slack" });
 
     private readonly IAuditService _auditService;
+    private readonly INotificationService _notificationService;
 
     [ObservableProperty] private string _databaseSize = "0 KB";
     [ObservableProperty] private string _databaseSizeText = string.Empty;
@@ -60,12 +61,14 @@ public partial class SettingsViewModel : ViewModelBase
         ISettingsStore settingsStore, 
         ThemeService themeService,
         ILocalizationService localizationService,
-        IAuditService auditService)
+        IAuditService auditService,
+        INotificationService notificationService)
     {
         _settingsStore = settingsStore;
         _themeService = themeService;
         _localizationService = localizationService;
         _auditService = auditService;
+        _notificationService = notificationService;
         
         if (_localizationService is System.ComponentModel.INotifyPropertyChanged npc)
         {
@@ -122,6 +125,36 @@ public partial class SettingsViewModel : ViewModelBase
 
     public ObservableCollection<string> Priorities { get; } = new(new[] { "BelowNormal", "Normal", "High" });
     public ObservableCollection<int> Threads { get; } = new(new[] { 1, 2, 3, 4, 5, 8, 10 });
+
+    [RelayCommand]
+    private void OpenLink(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    private void ShowChangelog()
+    {
+        var window = new FolderFlow.App.Views.ChangelogWindow();
+        
+        // Tenta pegar a janela principal para centralizar o modal
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            window.ShowDialog(desktop.MainWindow!);
+        }
+        else
+        {
+            window.Show();
+        }
+    }
 
     [RelayCommand]
     private async Task SaveSettings()

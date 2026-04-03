@@ -51,7 +51,13 @@ public class SftpFileOperator : IFileOperator
         {
             // Download do SFTP para Local
             var sftpPath = ExtractPath(source);
-            using var remoteStream = client.OpenRead(sftpPath);
+            var rawRemoteStream = client.OpenRead(sftpPath);
+            
+            // Aplica Throttling
+            Stream remoteStream = BandwidthLimit > 0 
+                ? new ThrottledStream(rawRemoteStream, BandwidthLimit) 
+                : rawRemoteStream;
+
             await using var targetFileStream = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
             
             Stream targetStream = targetFileStream;
@@ -68,7 +74,7 @@ public class SftpFileOperator : IFileOperator
                     return;
                 }
 
-                await TransferWithProgressAsync(remoteStream, targetStream, remoteStream.Length, progress, cancellationToken);
+                await TransferWithProgressAsync(remoteStream, targetStream, rawRemoteStream.Length, progress, cancellationToken);
             }
             finally
             {
@@ -76,13 +82,20 @@ public class SftpFileOperator : IFileOperator
                 {
                     await targetStream.DisposeAsync();
                 }
+                rawRemoteStream.Dispose();
             }
         }
         else if (!sourceIsSftp && targetIsSftp)
         {
             // Upload Local para SFTP
             var sftpPath = ExtractPath(target);
-            await using var sourceStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+            await using var sourceFileStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+            
+            // Aplica Throttling
+            Stream sourceStream = BandwidthLimit > 0 
+                ? new ThrottledStream(sourceFileStream, BandwidthLimit) 
+                : sourceFileStream;
+
             using var remoteStream = client.OpenWrite(sftpPath);
             
             // Note: encryptionKey is typically for encrypting the target, which would mean we need to wrap the remoteStream
@@ -100,7 +113,7 @@ public class SftpFileOperator : IFileOperator
                     return;
                 }
 
-                await TransferWithProgressAsync(sourceStream, finalRemoteStream, sourceStream.Length, progress, cancellationToken);
+                await TransferWithProgressAsync(sourceStream, finalRemoteStream, sourceFileStream.Length, progress, cancellationToken);
             }
             finally
             {

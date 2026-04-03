@@ -54,4 +54,7 @@ public class Job
     public string? EncryptionKey { get; set; }
     public RetentionPolicy RetentionPolicy { get; set; } = RetentionPolicy.None;
     public int RetentionCount { get; set; } = 0;
+    
+    // Conectividade e Performance (Fase 3)
+    public int MaxBandwidthMBps { get; set; } = 0; // 0 = Unlimited
 }

@@ -99,8 +99,10 @@ public class ExecutionEngineTests
     private class MockSettingsStore : ISettingsStore
     {
         public Task<AppSettings> LoadAsync() => Task.FromResult(new AppSettings());
+        public AppSettings Load() => new AppSettings();
         public Task SaveAsync(AppSettings settings) => Task.CompletedTask;
     }
+
 
     private class MockLocalizationService : ILocalizationService
     {

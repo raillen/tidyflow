@@ -468,16 +468,40 @@ public class ExecutionEngine
                         long totalRead = 0;
                         int bytesRead;
 
+                        var throttledStartTime = DateTime.Now;
+                        long throttledBytesRead = 0;
+                        long bandwidthLimit = (long)job.MaxBandwidthMBps * 1024 * 1024;
+
                         while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
                         {
                             await entryStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
                             totalRead += bytesRead;
+                            throttledBytesRead += bytesRead;
                             progressInfo.ProcessedBytes += bytesRead;
 
-                            var elapsed = sw.Elapsed.TotalSeconds;
-                            if (elapsed > 0)
+                            // Apply Throttling logic
+                            if (bandwidthLimit > 0)
                             {
-                                progressInfo.TransferSpeed = progressInfo.ProcessedBytes / elapsed;
+                                double elapsed = (DateTime.Now - throttledStartTime).TotalSeconds;
+                                if (elapsed > 0)
+                                {
+                                    double currentBps = throttledBytesRead / elapsed;
+                                    if (currentBps > bandwidthLimit)
+                                    {
+                                        double expectedDuration = (double)throttledBytesRead / bandwidthLimit;
+                                        double sleepTime = expectedDuration - elapsed;
+                                        if (sleepTime > 0.01)
+                                        {
+                                            await Task.Delay((int)(sleepTime * 1000), cancellationToken);
+                                        }
+                                    }
+                                }
+                            }
+
+                            var elapsedTotal = sw.Elapsed.TotalSeconds;
+                            if (elapsedTotal > 0)
+                            {
+                                progressInfo.TransferSpeed = progressInfo.ProcessedBytes / elapsedTotal;
                                 var remainingBytes = progressInfo.TotalBytes - progressInfo.ProcessedBytes;
                                 progressInfo.EstimatedTimeRemaining = TimeSpan.FromSeconds(remainingBytes / progressInfo.TransferSpeed);
                             }

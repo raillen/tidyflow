@@ -34,7 +34,7 @@ public partial class App : Avalonia.Application
         AvaloniaXamlLoader.Load(this);
     }
 
-    public override async void OnFrameworkInitializationCompleted()
+    public override void OnFrameworkInitializationCompleted()
     {
         try 
         {
@@ -44,27 +44,46 @@ public partial class App : Avalonia.Application
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                // Remove Avalonia data validation so that native DataAnnotations validation will be used
-                DisableAvaloniaDataAnnotationValidation();
+                // Carrega configurações sincronamente para o startup
+                var settingsStore = Services.GetRequiredService<ISettingsStore>();
+                var settings = settingsStore.Load();
                 
-                var mainWindow = new MainWindow();
-                desktop.MainWindow = mainWindow;
-                
-                // Inicializa Servios
-                await InitializeServicesAsync();
-                
+                var localizationService = Services.GetRequiredService<ILocalizationService>();
+                localizationService.SetLanguage(settings.Language);
+
+                var themeService = Services.GetRequiredService<ThemeService>();
+                themeService.SetTheme(settings.Theme);
+
                 var mainVm = Services.GetRequiredService<MainWindowViewModel>();
-                mainVm.CurrentPage = mainVm.Dashboard; // Inicializa a primeira pgina aqui para evitar loops
-                mainWindow.DataContext = mainVm;
+                mainVm.CurrentPage = mainVm.Dashboard; 
+
+                var mainWindow = new MainWindow
+                {
+                    DataContext = mainVm,
+                    WindowState = WindowState.Normal
+                };
+                desktop.MainWindow = mainWindow;
+                mainWindow.Show();
+
+                // Inicializa serviços pesados em background
+                _ = Task.Run(async () => {
+                    try 
+                    {
+                        var watchAppService = Services.GetRequiredService<WatchAppService>();
+                        await watchAppService.InitializeAsync();
+
+                        var scheduler = Services.GetRequiredService<ISchedulerService>();
+                        scheduler.Start(default);
+                    }
+                    catch { /* Log silently or handle background failure */ }
+                });
             }
 
             base.OnFrameworkInitializationCompleted();
         }
         catch (Exception ex)
         {
-            // Log crash to file for diagnosis
             File.WriteAllText("crash_log.txt", $"CRASH AT STARTUP: {ex.Message}\n{ex.StackTrace}");
-            
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.Shutdown();
@@ -113,28 +132,15 @@ public partial class App : Avalonia.Application
         services.AddSingleton<AutomationViewModel>();
         services.AddSingleton<BlueprintViewModel>();
         services.AddSingleton<HistoryViewModel>();
-        services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<SettingsViewModel>(sp => new SettingsViewModel(
+            sp.GetRequiredService<ISettingsStore>(),
+            sp.GetRequiredService<ThemeService>(),
+            sp.GetRequiredService<ILocalizationService>(),
+            sp.GetRequiredService<IAuditService>(),
+            sp.GetRequiredService<INotificationService>()));
         services.AddTransient<JobEditorViewModel>();
         services.AddTransient<BlueprintEditorViewModel>();
         services.AddTransient<DonateViewModel>();
-    }
-
-    private async Task InitializeServicesAsync()
-    {
-        var settingsStore = Services!.GetRequiredService<ISettingsStore>();
-        var settings = await settingsStore.LoadAsync();
-        
-        var localizationService = Services!.GetRequiredService<ILocalizationService>();
-        localizationService.SetLanguage(settings.Language);
-
-        var themeService = Services!.GetRequiredService<ThemeService>();
-        themeService.SetTheme(settings.Theme);
-
-        var watchAppService = Services!.GetRequiredService<WatchAppService>();
-        await watchAppService.InitializeAsync();
-
-        var scheduler = Services!.GetRequiredService<ISchedulerService>();
-        scheduler.Start(default);
     }
 
     private void DisableAvaloniaDataAnnotationValidation()
@@ -152,8 +158,12 @@ public partial class App : Avalonia.Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow?.Show();
-            desktop.MainWindow?.Activate();
+            if (desktop.MainWindow != null)
+            {
+                desktop.MainWindow.Show();
+                desktop.MainWindow.WindowState = WindowState.Normal;
+                desktop.MainWindow.Activate();
+            }
         }
     }
 
