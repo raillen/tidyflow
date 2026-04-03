@@ -24,6 +24,11 @@ public partial class BlueprintViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private ObservableCollection<BlueprintItemViewModel> _folderBlueprints = new();
     [ObservableProperty] private string _searchText = string.Empty;
 
+    [ObservableProperty] private int _totalBlueprintsCount;
+    [ObservableProperty] private int _activeBlueprintsCount;
+    [ObservableProperty] private int _fileBlueprintsCount;
+    [ObservableProperty] private int _folderBlueprintsCount;
+
     public BlueprintViewModel(
         BlueprintAppService blueprintService,
         ILocalizationService localizationService,
@@ -33,7 +38,7 @@ public partial class BlueprintViewModel : ViewModelBase, IDisposable
         _localizationService = localizationService;
         _watchAppService = watchAppService;
 
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _timer.Tick += (s, e) => _ = LoadBlueprintsAsync();
         _timer.Start();
 
@@ -44,22 +49,25 @@ public partial class BlueprintViewModel : ViewModelBase, IDisposable
     public async Task LoadBlueprintsAsync()
     {
         var blueprints = await _blueprintService.GetAllBlueprintsAsync();
-        
-        // Simples refresh por enquanto
         var vms = blueprints.Select(b => new BlueprintItemViewModel(b, _blueprintService, _localizationService, _watchAppService)).ToList();
         
         AllBlueprints.Clear();
         FileBlueprints.Clear();
         FolderBlueprints.Clear();
-
+        
         foreach (var vm in vms) 
         {
             AllBlueprints.Add(vm);
-            if (vm.Blueprint.Type == FolderFlow.Domain.Enums.BlueprintType.File)
+            if (vm.Blueprint.Type == BlueprintType.File)
                 FileBlueprints.Add(vm);
             else
                 FolderBlueprints.Add(vm);
         }
+
+        TotalBlueprintsCount = AllBlueprints.Count;
+        ActiveBlueprintsCount = AllBlueprints.Count(b => b.Blueprint.IsActive);
+        FileBlueprintsCount = FileBlueprints.Count;
+        FolderBlueprintsCount = FolderBlueprints.Count;
     }
 
     [RelayCommand]
@@ -85,46 +93,4 @@ public partial class BlueprintViewModel : ViewModelBase, IDisposable
     }
 
     public void Dispose() => _timer.Stop();
-}
-
-public partial class BlueprintItemViewModel : ViewModelBase
-{
-    private readonly BlueprintAppService _blueprintService;
-    private readonly ILocalizationService _localizationService;
-    private readonly WatchAppService _watchAppService;
-
-    public Blueprint Blueprint { get; }
-    public string TypeLabel => Blueprint.Type == BlueprintType.File ? "FILE" : "FOLDER";
-    public string IconPath => Blueprint.Type == BlueprintType.File ? "file_regular" : "folder_regular";
-
-    public BlueprintItemViewModel(Blueprint blueprint, BlueprintAppService blueprintService, ILocalizationService localizationService, WatchAppService watchAppService)
-    {
-        Blueprint = blueprint;
-        _blueprintService = blueprintService;
-        _localizationService = localizationService;
-        _watchAppService = watchAppService;
-    }
-
-    [RelayCommand]
-    private void Edit()
-    {
-        var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
-        mainVm?.ShowBlueprintEditor(Blueprint);
-    }
-
-    [RelayCommand]
-    private async Task Delete()
-    {
-        await _blueprintService.DeleteBlueprintAsync(Blueprint.Id);
-        var mainVm = App.Services?.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
-        _ = mainVm?.Blueprint.LoadBlueprintsAsync();
-    }
-
-    [RelayCommand]
-    private async Task ToggleActive()
-    {
-        Blueprint.IsActive = !Blueprint.IsActive;
-        await _blueprintService.SaveBlueprintAsync(Blueprint);
-        _watchAppService.UpdateBlueprintWatching(Blueprint);
-    }
 }

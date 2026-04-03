@@ -8,7 +8,7 @@
     
     <Grid ColumnDefinitions="Auto, *">
         <!-- Main Master-Detail TabControl -->
-        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left" Margin="0,35,0,0">
+        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left">
             <TabControl.Styles>
                 <Style Selector="TabItem">
                     <Setter Property="Width" Value="220"/>
@@ -18,7 +18,76 @@
                 </Style>
             </TabControl.Styles>
 
-            <!-- 1. FILES -->
+            <!-- 1. PAINEL DE CONTROLE -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <material:MaterialIcon Kind="ViewDashboardOutline" Width="18"/>
+                        <TextBlock Text="{lcl:Lcl ControlPanel}"/>
+                    </StackPanel>
+                </TabItem.Header>
+                
+                <Grid RowDefinitions="Auto, *">
+                    <Border Grid.Row="0" Padding="25,20" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="{lcl:Lcl BlueprintHub}" FontSize="24" FontWeight="Black"/>
+                            <TextBlock Text="Visão geral dos modelos de organização" Opacity="0.5" FontSize="12"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" Padding="30">
+                        <StackPanel Spacing="30">
+                            <!-- Stats Cards -->
+                            <Grid ColumnDefinitions="*, *, *">
+                                <Border Grid.Column="0" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" Margin="0,0,15,0" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="10">
+                                        <material:MaterialIcon Kind="FileTree" Foreground="{DynamicResource AccentColor}" Width="24"/>
+                                        <TextBlock Text="Total de Blueprints" FontSize="12" Opacity="0.6"/>
+                                        <TextBlock Text="{Binding TotalBlueprintsCount}" FontSize="28" FontWeight="Black"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" Margin="15,0,15,0" BorderBrush="{DynamicResource SuccessColor}" BorderThickness="1" Opacity="0.9">
+                                    <StackPanel Spacing="10">
+                                        <material:MaterialIcon Kind="CheckCircleOutline" Foreground="{DynamicResource SuccessColor}" Width="24"/>
+                                        <TextBlock Text="Ativos" FontSize="12" Opacity="0.6"/>
+                                        <TextBlock Text="{Binding ActiveBlueprintsCount}" FontSize="28" FontWeight="Black" Foreground="{DynamicResource SuccessColor}"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="20" Margin="15,0,0,0" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="10">
+                                        <material:MaterialIcon Kind="FileDocumentOutline" Foreground="{DynamicResource AccentColor}" Width="24"/>
+                                        <TextBlock Text="Templates de Arquivo" FontSize="12" Opacity="0.6"/>
+                                        <TextBlock Text="{Binding FileBlueprintsCount}" FontSize="28" FontWeight="Black"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- Actions Shortcut -->
+                            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="20">
+                                    <TextBlock Text="Ações Rápidas" FontSize="14" FontWeight="Bold" Opacity="0.7"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="15">
+                                        <Button Command="{Binding CreateFileBlueprintCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" CornerRadius="8" Padding="20,12">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <material:MaterialIcon Kind="Plus" Width="18"/>
+                                                <TextBlock Text="{lcl:Lcl NewFileBlueprint}" FontWeight="Bold"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding CreateFolderBlueprintCommand}" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="20,12">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <material:MaterialIcon Kind="Plus" Width="18"/>
+                                                <TextBlock Text="{lcl:Lcl NewFolderBlueprint}"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- 2. FILES -->
             <TabItem>
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -70,7 +139,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- 2. FOLDERS -->
+            <!-- 3. FOLDERS -->
             <TabItem>
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" Spacing="12">

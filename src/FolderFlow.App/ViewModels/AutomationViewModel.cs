@@ -12,6 +12,7 @@ using FolderFlow.Application.Services;
 using FolderFlow.Domain.Entities;
 using FolderFlow.Domain.ValueObjects;
 using FolderFlow.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FolderFlow.App.ViewModels;
 
@@ -24,6 +25,7 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
     private readonly INotificationService _notificationService;
     private readonly ILocalizationService _localizationService;
     private readonly WatchAppService _watchAppService;
+    private readonly IAuditService _auditService;
     private readonly DispatcherTimer _timer;
 
     [ObservableProperty] private ObservableCollection<JobItemViewModel> _allJobs = new();
@@ -36,6 +38,13 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
 
     public ObservableCollection<string> Filters { get; } = new();
 
+    [ObservableProperty] private string _activeBadgeText = string.Empty;
+    [ObservableProperty] private int _totalJobsCount;
+    [ObservableProperty] private int _activeJobsCount;
+    [ObservableProperty] private int _successTodayCount;
+    [ObservableProperty] private int _failedTodayCount;
+    [ObservableProperty] private string _totalDataProcessed = "0 MB";
+
     public AutomationViewModel(
         JobAppService jobAppService,
         IJobQueue jobQueue,
@@ -43,7 +52,8 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         GlobalProgressService globalProgressService,
         INotificationService notificationService,
         ILocalizationService localizationService,
-        WatchAppService watchAppService)
+        WatchAppService watchAppService,
+        IAuditService auditService)
     {
         _jobAppService = jobAppService;
         _jobQueue = jobQueue;
@@ -52,6 +62,7 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         _notificationService = notificationService;
         _localizationService = localizationService;
         _watchAppService = watchAppService;
+        _auditService = auditService;
 
         _selectedFilter = _localizationService["All"];
         UpdateFilters();
@@ -104,7 +115,6 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _hasSelection;
     [ObservableProperty] private int _selectedCount;
     [ObservableProperty] private string _selectedCountText = string.Empty;
-    [ObservableProperty] private string _activeBadgeText = string.Empty;
 
     public void UpdateSelectionState()
     {
@@ -130,19 +140,34 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         WatchJobs.Clear();
         DirectJobs.Clear();
 
+        TotalJobsCount = AllJobs.Count;
+        ActiveJobsCount = ActiveExecutions.Count;
+
         foreach (var jobVm in AllJobs)
         {
             var p = active.FirstOrDefault(a => a.JobId == jobVm.Job.Id);
             if (p != null) jobVm.UpdateFromProgress(p);
             else jobVm.Status = _queueProcessor.IsJobActive(jobVm.Job.Id) ? _localizationService["Processing"] : _localizationService["Idle"];
 
-            // Distribui para colees filtradas
             if (jobVm.Job.WatchEnabled) WatchJobs.Add(jobVm);
             else DirectJobs.Add(jobVm);
         }
 
         UpdateSelectionState();
         IsQueuePaused = _jobQueue.IsPaused;
+        
+        // Atualiza stats de hoje (simplificado)
+        _ = UpdateTodayStats();
+    }
+
+    private async Task UpdateTodayStats()
+    {
+        if (_auditService is FolderFlow.Infrastructure.Logging.SqliteAuditService sqliteAudit)
+        {
+            var summary = await sqliteAudit.GetDailySummaryAsync();
+            // Parse do summary se necessrio, mas aqui vamos apenas simular para o rascunho
+            // Uma implementao real buscaria Counts agregados por dia
+        }
     }
 
     [RelayCommand]
@@ -180,7 +205,6 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         foreach (var jobVm in selected) _queueProcessor.StopJob(jobVm.Job.Id);
     }
 
-    // Comandos de Gesto - Corrigidos para evitar loop
     [RelayCommand] 
     private void CreateDirectCopy() 
     {
@@ -195,7 +219,6 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         mainVm?.ShowEditor(new Job { WatchEnabled = true, Name = _localizationService["NewWatchFolder"] });
     }
 
-    // Comandos de Orquestrao
     [RelayCommand] private void TogglePauseQueue() { _queueProcessor.TogglePause(); IsQueuePaused = _jobQueue.IsPaused; }
     [RelayCommand] private void StopAll() => _queueProcessor.StopAll();
     
