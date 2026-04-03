@@ -17,7 +17,7 @@ Organizar o módulo de configurações em abas laterais, corrigir a acessibilida
 ## 3. Mudanças no ViewModel (SettingsViewModel.cs)
 - Implementar `OpenLinkCommand` para abrir URLs externas.
 - Implementar `ShowChangelogCommand` para exibir o histórico de versões.
-- Atualizar a versão do sistema para v1.3.1.
+- Atualizar a versão do sistema para v1.3.2.
 
 ## 4. Localização (JsonLocalizationService.cs)
 - Adicionar chaves para os títulos das novas abas: `General`, `Performance`, `Security`, `Notifications`, `Maintenance`, `About`.
