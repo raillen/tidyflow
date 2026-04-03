@@ -27,6 +27,8 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
     private readonly DispatcherTimer _timer;
 
     [ObservableProperty] private ObservableCollection<JobItemViewModel> _allJobs = new();
+    [ObservableProperty] private ObservableCollection<JobItemViewModel> _watchJobs = new();
+    [ObservableProperty] private ObservableCollection<JobItemViewModel> _directJobs = new();
     [ObservableProperty] private ObservableCollection<JobProgressInfo> _activeExecutions = new();
     [ObservableProperty] private bool _isQueuePaused;
     [ObservableProperty] private string _searchText = string.Empty;
@@ -125,11 +127,18 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
         
         ActiveBadgeText = string.Format(_localizationService["ActiveBadge"], ActiveExecutions.Count);
 
+        WatchJobs.Clear();
+        DirectJobs.Clear();
+
         foreach (var jobVm in AllJobs)
         {
             var p = active.FirstOrDefault(a => a.JobId == jobVm.Job.Id);
             if (p != null) jobVm.UpdateFromProgress(p);
             else jobVm.Status = _queueProcessor.IsJobActive(jobVm.Job.Id) ? _localizationService["Processing"] : _localizationService["Idle"];
+
+            // Distribui para colees filtradas
+            if (jobVm.Job.WatchEnabled) WatchJobs.Add(jobVm);
+            else DirectJobs.Add(jobVm);
         }
 
         UpdateSelectionState();

@@ -22,6 +22,8 @@ public partial class HistoryViewModel : ViewModelBase
     private readonly ILocalizationService _localizationService;
 
     [ObservableProperty] private ObservableCollection<AuditEntryViewModel> _logs = new();
+    [ObservableProperty] private ObservableCollection<AuditEntryViewModel> _incidentLogs = new();
+    [ObservableProperty] private ObservableCollection<AuditEntryViewModel> _systemLogs = new();
     [ObservableProperty] private AuditEntryViewModel? _selectedLog;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private string _selectedJobFilter = "";
@@ -111,9 +113,23 @@ public partial class HistoryViewModel : ViewModelBase
             var entries = await sqliteAudit.GetLogsAsync(jobFilter, statusFilter, SearchText);
             
             Logs.Clear();
+            IncidentLogs.Clear();
+            SystemLogs.Clear();
+
             foreach (var entry in entries)
             {
-                Logs.Add(new AuditEntryViewModel(entry));
+                var vm = new AuditEntryViewModel(entry);
+                Logs.Add(vm);
+
+                if (entry.Status == "FALHA" || entry.Status == "ERRO")
+                {
+                    IncidentLogs.Add(vm);
+                }
+                
+                if (entry.JobName == "System" || entry.JobName == "Engine")
+                {
+                    SystemLogs.Add(vm);
+                }
             }
         }
         catch (Exception ex)

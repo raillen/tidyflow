@@ -3,153 +3,145 @@
              xmlns:vm="using:FolderFlow.App.ViewModels"
              xmlns:material="using:Material.Icons.Avalonia"
              xmlns:lcl="using:FolderFlow.App.Localization"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
              x:Class="FolderFlow.App.Views.HistoryView"
              x:DataType="vm:HistoryViewModel">
-    <Grid RowDefinitions="Auto,*">
-        
-        <!-- Header & Filters Area -->
-        <Border Grid.Row="0" Background="{DynamicResource SidebarBackground}" Padding="25,20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
-            <StackPanel Spacing="20">
-                <Grid ColumnDefinitions="*, Auto">
-                    <StackPanel Grid.Column="0" Spacing="5">
-                        <TextBlock Text="{lcl:Lcl AuditHistory}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                        <TextBlock Text="{lcl:Lcl ForenseTracking}" FontSize="14" Foreground="{DynamicResource TextSecondary}"/>
-                    </StackPanel>
-                    
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <Button Command="{Binding ExportToCsvCommand}" Theme="{DynamicResource OutlineButton}" CornerRadius="8" Padding="15,8">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <material:MaterialIcon Kind="FileExportOutline" Width="18" Height="18"/>
-                                <TextBlock Text="{lcl:Lcl ExportCsv}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding LoadLogsCommand}" Background="{DynamicResource AccentColor}" Foreground="White" CornerRadius="8" Padding="15,8">
-                            <material:MaterialIcon Kind="Refresh" Width="18" Height="18"/>
-                        </Button>
-                    </StackPanel>
-                </Grid>
+    
+    <Grid ColumnDefinitions="Auto, *">
+        <!-- Main Master-Detail TabControl -->
+        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left" Margin="0,35,0,0">
+            <TabControl.Styles>
+                <Style Selector="TabItem">
+                    <Setter Property="Width" Value="220"/>
+                    <Setter Property="Padding" Value="15,12"/>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                </Style>
+            </TabControl.Styles>
 
-                <WrapPanel Orientation="Horizontal">
-                    <TextBox Text="{Binding SearchText}" Watermark="{lcl:Lcl SearchWatermark}" Width="250" Margin="0,0,15,0" VerticalAlignment="Center" CornerRadius="8">
-                        <TextBox.InnerLeftContent>
-                            <material:MaterialIcon Kind="Magnify" Margin="10,0" Foreground="{DynamicResource TextSecondary}"/>
-                        </TextBox.InnerLeftContent>
-                    </TextBox>
-
-                    <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-                        <ComboBox ItemsSource="{Binding AvailableJobs}" SelectedItem="{Binding SelectedJobFilter}" Width="180" Height="36" CornerRadius="8"/>
-                        <ComboBox ItemsSource="{Binding AvailableStatuses}" SelectedItem="{Binding SelectedStatusFilter}" Width="140" Height="36" CornerRadius="8"/>
+            <!-- 1. EXECUTIONS -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <material:MaterialIcon Kind="History" Width="18"/>
+                        <TextBlock Text="{lcl:Lcl AuditHistory}"/>
                     </StackPanel>
-                </WrapPanel>
-            </StackPanel>
-        </Border>
-
-        <!-- Main Content: Grid + Details Panel -->
-        <Grid Grid.Row="1" ColumnDefinitions="*, 380">
-            <!-- Logs DataGrid -->
-            <DataGrid Grid.Column="0" ItemsSource="{Binding Logs}" 
-                      SelectedItem="{Binding SelectedLog}"
-                      AutoGenerateColumns="False" 
-                      IsReadOnly="True"
-                      CanUserResizeColumns="True"
-                      BorderThickness="0"
-                      Background="Transparent">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Binding="{Binding Entry.Timestamp, StringFormat={}{0:HH:mm:ss}}" Header="{lcl:Lcl Time}" Width="80"/>
-                    <DataGridTemplateColumn Header="{lcl:Lcl Status}" Width="110">
-                        <DataTemplate>
-                            <Border Background="{Binding StatusColor}" CornerRadius="12" Padding="8,2" HorizontalAlignment="Left" Margin="5">
-                                <TextBlock Text="{Binding LocalizedStatus}" FontSize="10" FontWeight="Bold" Foreground="White"/>
-                            </Border>
-                        </DataTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="{lcl:Lcl Task}" Width="120"/>
-                    <DataGridTextColumn Binding="{Binding Entry.SourcePath}" Header="{lcl:Lcl Origin}" Width="*"/>
-                </DataGrid.Columns>
+                </TabItem.Header>
                 
-                <DataGrid.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem Header="{lcl:Lcl OpenSourceFolder}" Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding SelectedLog.Entry.SourcePath}"/>
-                        <MenuItem Header="{lcl:Lcl OpenDestFolder}" Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding SelectedLog.Entry.TargetPath}"/>
-                        <Separator/>
-                        <MenuItem Header="{lcl:Lcl ClearHistory}" Command="{Binding ClearLogsCommand}" Foreground="{DynamicResource DangerColor}"/>
-                    </ContextMenu>
-                </DataGrid.ContextMenu>
-            </DataGrid>
+                <Grid RowDefinitions="Auto, *">
+                    <!-- Toolbar -->
+                    <Border Grid.Row="0" Padding="25,15" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBox Text="{Binding SearchText}" Watermark="{lcl:Lcl SearchWatermark}" Width="300" HorizontalAlignment="Left" CornerRadius="8">
+                                <TextBox.InnerLeftContent><material:MaterialIcon Kind="Magnify" Margin="10,0" Opacity="0.3"/></TextBox.InnerLeftContent>
+                            </TextBox>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                                <Button Command="{Binding ExportToCsvCommand}" Theme="{DynamicResource OutlineButton}" Content="{lcl:Lcl ExportCsv}" CornerRadius="8"/>
+                                <Button Command="{Binding LoadLogsCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="15,5">
+                                    <material:MaterialIcon Kind="Refresh" Width="18"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-            <!-- Side Details Panel -->
-            <Border Grid.Column="1" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
-                <ScrollViewer>
-                    <StackPanel Margin="20" Spacing="25">
-                        <TextBlock Text="{lcl:Lcl OpDetails}" FontSize="12" FontWeight="Bold" Opacity="0.6" LetterSpacing="1"/>
-                        
-                        <StackPanel IsVisible="{Binding SelectedLog, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <!-- Info Cards -->
-                            <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15" Margin="0,0,0,15">
-                                <StackPanel Spacing="15">
-                                    <StackPanel>
-                                        <TextBlock Text="{lcl:Lcl File}" FontSize="11" Opacity="0.5"/>
-                                        <Button Command="{Binding SelectedLog.OpenSourceCommand}" 
-                                                Theme="{DynamicResource TransparentButton}" 
-                                                HorizontalAlignment="Left" Padding="0" Margin="0,2,0,0">
-                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <material:MaterialIcon Kind="FileOutline" Width="14" Opacity="0.6"/>
-                                                <TextBlock Text="{Binding SelectedLog.Entry.SourcePath}" 
-                                                         FontWeight="SemiBold" TextWrapping="Wrap" 
-                                                         Foreground="{DynamicResource AccentColor}"/>
-                                            </StackPanel>
-                                        </Button>
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Text="{lcl:Lcl Destination}" FontSize="11" Opacity="0.5"/>
-                                        <Button Command="{Binding SelectedLog.OpenTargetCommand}" 
-                                                Theme="{DynamicResource TransparentButton}" 
-                                                HorizontalAlignment="Left" Padding="0" Margin="0,2,0,0">
-                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <material:MaterialIcon Kind="FolderOpenOutline" Width="14" Opacity="0.6"/>
-                                                <TextBlock Text="{Binding SelectedLog.Entry.TargetPath}" 
-                                                         FontWeight="SemiBold" TextWrapping="Wrap"
-                                                         Foreground="{DynamicResource AccentColor}"/>
-                                            </StackPanel>
-                                        </Button>
-                                    </StackPanel>
+                    <!-- DataGrid Area -->
+                    <Grid Grid.Row="1" ColumnDefinitions="*, 350">
+                        <DataGrid Grid.Column="0" ItemsSource="{Binding Logs}" SelectedItem="{Binding SelectedLog}" IsReadOnly="True" BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding Entry.Timestamp, StringFormat={}{0:HH:mm:ss}}" Header="{lcl:Lcl Time}" Width="80"/>
+                                <DataGridTemplateColumn Header="{lcl:Lcl Status}" Width="110">
+                                    <DataTemplate>
+                                        <Border Background="{Binding StatusColor}" CornerRadius="12" Padding="8,2" HorizontalAlignment="Left" Margin="5">
+                                            <TextBlock Text="{Binding LocalizedStatus}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="{lcl:Lcl Task}" Width="120"/>
+                                <DataGridTextColumn Binding="{Binding Entry.SourcePath}" Header="{lcl:Lcl Origin}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Details Panel -->
+                        <Border Grid.Column="1" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
+                            <ScrollViewer Padding="20">
+                                <StackPanel Spacing="20">
+                                    <TextBlock Text="{lcl:Lcl OpDetails}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                    <ContentControl Content="{Binding SelectedLog}">
+                                        <ContentControl.DataTemplates>
+                                            <DataTemplate DataType="{x:Type vm:AuditEntryViewModel}">
+                                                <StackPanel Spacing="15">
+                                                    <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15">
+                                                        <StackPanel Spacing="10">
+                                                            <TextBlock Text="{Binding Entry.SourcePath}" FontSize="12" FontWeight="Bold" TextWrapping="Wrap" Foreground="{DynamicResource AccentColor}"/>
+                                                            <material:MaterialIcon Kind="ArrowDown" Width="14" Opacity="0.3"/>
+                                                            <TextBlock Text="{Binding Entry.TargetPath}" FontSize="12" FontWeight="Bold" TextWrapping="Wrap" Foreground="{DynamicResource AccentColor}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <Grid ColumnDefinitions="*, *">
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="{lcl:Lcl Size}" FontSize="10" Opacity="0.5"/>
+                                                            <TextBlock Text="{Binding Entry.FileSize, Converter={StaticResource FileSizeConverter}}" FontWeight="Bold"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{lcl:Lcl Duration}" FontSize="10" Opacity="0.5"/>
+                                                            <TextBlock Text="{Binding Entry.DurationMs, StringFormat={}{0:F0}ms}" FontWeight="Bold"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Entry.Details}" FontSize="11" TextWrapping="Wrap" FontStyle="Italic" Opacity="0.7"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ContentControl.DataTemplates>
+                                    </ContentControl>
                                 </StackPanel>
-                            </Border>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
 
-                            <Grid ColumnDefinitions="*, *" Margin="0,0,0,15">
-                                <Border Grid.Column="0" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="12" Margin="0,0,5,0">
-                                    <StackPanel>
-                                        <TextBlock Text="{lcl:Lcl Size}" FontSize="10" Opacity="0.5"/>
-                                        <TextBlock Text="{Binding SelectedLog.Entry.FileSize, Converter={StaticResource FileSizeConverter}}" FontWeight="Bold"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="1" Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="12" Margin="5,0,0,0">
-                                    <StackPanel>
-                                        <TextBlock Text="{lcl:Lcl Duration}" FontSize="10" Opacity="0.5"/>
-                                        <TextBlock Text="{Binding SelectedLog.Entry.DurationMs, StringFormat={}{0:F0}ms}" FontWeight="Bold"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15">
-                                <StackPanel Spacing="10">
-                                    <TextBlock Text="{lcl:Lcl EngineLogs}" FontSize="11" Opacity="0.5"/>
-                                    <TextBlock Text="{Binding SelectedLog.Entry.Details}" FontSize="12" TextWrapping="Wrap" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-
-                        <!-- Empty State -->
-                        <StackPanel IsVisible="{Binding SelectedLog, Converter={x:Static ObjectConverters.IsNull}}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,100">
-                            <material:MaterialIcon Kind="CursorPointer" Width="48" Height="48" Opacity="0.2"/>
-                            <TextBlock Text="{lcl:Lcl SelectEntry}" Opacity="0.4" FontSize="12" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,10"/>
-                        </StackPanel>
+            <!-- 2. INCIDENTES -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <material:MaterialIcon Kind="AlertCircleOutline" Width="18" Foreground="{DynamicResource DangerColor}"/>
+                        <TextBlock Text="Incidentes"/>
                     </StackPanel>
-                </ScrollViewer>
-            </Border>
-        </Grid>
+                </TabItem.Header>
+                
+                <Grid RowDefinitions="Auto, *">
+                    <Border Grid.Row="0" Padding="25,15" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                        <TextBlock Text="Registros de Falhas e Erros Críticos" FontSize="20" FontWeight="Black"/>
+                    </Border>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding IncidentLogs}" IsReadOnly="True" BorderThickness="0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Binding="{Binding Entry.Timestamp}" Header="{lcl:Lcl Time}" Width="150"/>
+                            <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="{lcl:Lcl Task}" Width="120"/>
+                            <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Erro" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 3. SISTEMA -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <material:MaterialIcon Kind="CogOutline" Width="18"/>
+                        <TextBlock Text="Sistema"/>
+                    </StackPanel>
+                </TabItem.Header>
+                
+                <Grid RowDefinitions="Auto, *">
+                    <Border Grid.Row="0" Padding="25,15" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                        <TextBlock Text="Logs de Infraestrutura e Engine" FontSize="20" FontWeight="Black"/>
+                    </Border>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding SystemLogs}" IsReadOnly="True" BorderThickness="0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Binding="{Binding Entry.Timestamp}" Header="{lcl:Lcl Time}" Width="150"/>
+                            <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Evento" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </UserControl>
