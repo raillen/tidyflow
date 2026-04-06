@@ -26,21 +26,23 @@
 
 ## 📦 Instalação
 
-### Pré-requisitos
+### Usuário (Executáveis Prontos)
+1. Acesse a pasta `release/` e baixe o arquivo ZIP para o seu sistema:
+   - **Windows:** `AutoFlow_Portable_win-x64.zip`
+   - **Linux:** `AutoFlow_Portable_linux-x64.zip`
+2. Extraia o conteúdo e execute o arquivo `AutoFlow.App`.
+
+### Scripts de Instalação (Automático)
+Você também pode usar os scripts na pasta `installer/`:
+- **Windows:** Clique com o botão direito em `install.ps1` -> Executar com o PowerShell. Isso instalará o app em `AppData/Local` e criará um atalho na Área de Trabalho.
+- **Linux:** Execute `chmod +x install.sh && ./install.sh`. Isso adicionará o `autoflow` ao seu `/usr/local/bin`.
+
+### Desenvolvedor (Compilar do Zero)
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 
-### Clonando o repositório
 ```bash
 git clone https://gitlab.com/raillendossantos/autoflow.git
 cd autoflow
-```
-
-### Compilando e Executando
-```bash
-# Restaurar dependências
-dotnet restore
-
-# Compilar e rodar a aplicação
 dotnet run --project src/AutoFlow.App/AutoFlow.App.csproj
 ```
 
