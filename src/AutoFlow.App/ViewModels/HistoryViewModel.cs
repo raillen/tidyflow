@@ -20,6 +20,8 @@ public partial class HistoryViewModel : ViewModelBase
     private readonly IAuditService _auditService;
     private readonly JobAppService _jobAppService;
     private readonly ILocalizationService _localizationService;
+    private readonly RollbackEngine _rollbackEngine;
+    private readonly INotificationService _notificationService;
 
     [ObservableProperty] private ObservableCollection<AuditEntryViewModel> _logs = new();
     [ObservableProperty] private ObservableCollection<AuditEntryViewModel> _incidentLogs = new();
@@ -38,11 +40,13 @@ public partial class HistoryViewModel : ViewModelBase
     public ObservableCollection<string> AvailableJobs { get; } = new();
     public ObservableCollection<string> AvailableStatuses { get; } = new();
 
-    public HistoryViewModel(IAuditService auditService, JobAppService jobAppService, ILocalizationService localizationService)
+    public HistoryViewModel(IAuditService auditService, JobAppService jobAppService, ILocalizationService localizationService, RollbackEngine rollbackEngine, INotificationService notificationService)
     {
         _auditService = auditService;
         _jobAppService = jobAppService;
         _localizationService = localizationService;
+        _rollbackEngine = rollbackEngine;
+        _notificationService = notificationService;
         
         _selectedJobFilter = _localizationService["All"];
         _selectedStatusFilter = _localizationService["All"];
@@ -194,5 +198,29 @@ public partial class HistoryViewModel : ViewModelBase
 
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Export_AutoFlow_{DateTime.Now:yyyyMMdd_HHmm}.csv");
         await File.WriteAllTextAsync(path, sb.ToString(), Encoding.UTF8);
+    }
+
+    [RelayCommand]
+    private async Task RollbackAsync()
+    {
+        if (SelectedLog == null) return;
+        var jobName = SelectedLog.Entry.JobName;
+        var job = (await _jobAppService.GetAllJobsAsync()).FirstOrDefault(j => j.Name == jobName);
+        if (job == null)
+        {
+            _notificationService.Show("Erro", $"Job '{jobName}' não encontrado.", true);
+            return;
+        }
+
+        var success = await _rollbackEngine.RollbackAsync(job.Id);
+        if (success)
+        {
+            _notificationService.Show("Rollback Concluído", $"As operações recentes do Job '{jobName}' foram revertidas com sucesso.");
+            _ = LoadLogs();
+        }
+        else
+        {
+            _notificationService.Show("Aviso", $"Nenhum estado reversível recente encontrado para '{jobName}'.", true);
+        }
     }
 }

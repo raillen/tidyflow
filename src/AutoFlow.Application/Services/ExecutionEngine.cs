@@ -28,6 +28,7 @@ public class ExecutionEngine
     private readonly IEncryptionService _encryptionService;
     private readonly ISettingsStore _settingsStore;
     private readonly ILocalizationService _localizationService;
+    private readonly IRollbackStore _rollbackStore;
 
     public ExecutionEngine(
         FileOperatorFactory fileOperatorFactory, 
@@ -43,7 +44,8 @@ public class ExecutionEngine
         IScriptRunner scriptRunner,
         IEncryptionService encryptionService,
         ISettingsStore settingsStore,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        IRollbackStore rollbackStore)
     {
         _fileOperatorFactory = fileOperatorFactory;
         _logger = logger;
@@ -59,6 +61,7 @@ public class ExecutionEngine
         _encryptionService = encryptionService;
         _settingsStore = settingsStore;
         _localizationService = localizationService;
+        _rollbackStore = rollbackStore;
     }
 
     public async Task RunJobAsync(Job job, CancellationToken cancellationToken = default, bool isRetry = false, IProgress<JobProgressInfo>? progress = null)
@@ -72,6 +75,7 @@ public class ExecutionEngine
         var auditEntries = new System.Collections.Generic.List<AuditEntry>();
         var failedPaths = new System.Collections.Generic.List<string>();
         var progressInfo = new JobProgressInfo { JobId = job.Id, JobName = job.Name };
+        var rollbackManifest = new RollbackManifest { JobId = job.Id, JobName = job.Name };
         var lastReportTime = DateTime.MinValue;
         bool hasCriticalError = false;
         string? errorMessage = null;
@@ -204,7 +208,14 @@ public class ExecutionEngine
                         {
                             auditEntries.Add(entry);
                             if (entry.Status == "FALHA") failedPaths.Add(file);
-                            else if (entry.Status != "IGNORADO") processedCount++;
+                            else if (entry.Status != "IGNORADO") 
+                            {
+                                processedCount++;
+                                if ((entry.Status == "MOVIDO" || entry.Status == "COPIADO") && !string.IsNullOrWhiteSpace(entry.SourcePath) && !string.IsNullOrWhiteSpace(entry.TargetPath))
+                                {
+                                    rollbackManifest.Items.Add(new RollbackItem { SourcePath = entry.SourcePath, TargetPath = entry.TargetPath, Action = entry.Status });
+                                }
+                            }
 
                             progressInfo.Status = entry.Status;
                             progressInfo.Details = entry.Details ?? "";
@@ -229,6 +240,15 @@ public class ExecutionEngine
 
             if (failedPaths.Any()) await _failureStore.SaveFailuresAsync(job.Id, failedPaths);
             else await _failureStore.ClearFailuresAsync(job.Id);
+
+            if (rollbackManifest.Items.Any())
+            {
+                await _rollbackStore.SaveManifestAsync(rollbackManifest);
+            }
+            else
+            {
+                await _rollbackStore.ClearManifestAsync(job.Id);
+            }
 
             await _auditService.SaveReportAsync(job.Name, auditEntries);
             await _logger.LogAsync(string.Format(_localizationService["JobFinished"], job.Name, processedCount));

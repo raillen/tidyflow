@@ -107,6 +107,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IFileOperator, LocalFileOperator>();
         services.AddSingleton<FileOperatorFactory>();
         services.AddSingleton<IScriptRunner, LocalScriptRunner>();
+        services.AddSingleton<IRollbackStore, JsonRollbackStore>();
         services.AddSingleton<IWatchService, NativeWatchService>();
         services.AddSingleton<INotificationService, AvaloniaNotificationService>();
         services.AddSingleton<IExternalNotificationService, WebhookNotificationService>();
@@ -121,6 +122,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<BlueprintAppService>();
         services.AddSingleton<ExecutionEngine>();
         services.AddSingleton<PreviewEngine>();
+        services.AddSingleton<RollbackEngine>();
         services.AddSingleton<IOrganizationService, OrganizationService>();
         services.AddSingleton<GlobalProgressService>();
         services.AddSingleton<QueueProcessor>();

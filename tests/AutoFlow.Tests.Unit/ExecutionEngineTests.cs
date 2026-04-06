@@ -113,6 +113,13 @@ public class ExecutionEngineTests
         public void SetLanguage(string cultureCode) { }
     }
 
+    private class MockRollbackStore : IRollbackStore
+    {
+        public Task SaveManifestAsync(RollbackManifest manifest) => Task.CompletedTask;
+        public Task<RollbackManifest?> GetLatestManifestAsync(Guid jobId) => Task.FromResult<RollbackManifest?>(null);
+        public Task ClearManifestAsync(Guid jobId) => Task.CompletedTask;
+    }
+
     [Fact]
     public async Task RunJobAsync_ShouldCopyFiles_WhenFiltersMatch()
     {
@@ -142,6 +149,7 @@ public class ExecutionEngineTests
         var encryptionService = new MockEncryptionService();
         var settingsStore = new MockSettingsStore();
         var localizationService = new MockLocalizationService();
+        var rollbackStore = new MockRollbackStore();
         
         var engine = new ExecutionEngine(
             fileOperatorFactory, 
@@ -157,7 +165,8 @@ public class ExecutionEngineTests
             scriptRunner, 
             encryptionService,
             settingsStore,
-            localizationService);
+            localizationService,
+            rollbackStore);
 
         var job = new Job
         {
