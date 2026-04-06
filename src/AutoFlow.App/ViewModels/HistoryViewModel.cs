@@ -25,9 +25,15 @@ public partial class HistoryViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<AuditEntryViewModel> _incidentLogs = new();
     [ObservableProperty] private ObservableCollection<AuditEntryViewModel> _systemLogs = new();
     [ObservableProperty] private AuditEntryViewModel? _selectedLog;
+    [ObservableProperty] private bool _isLogSelected;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private string _selectedJobFilter = "";
     [ObservableProperty] private string _selectedStatusFilter = "";
+
+    partial void OnSelectedLogChanged(AuditEntryViewModel? value)
+    {
+        IsLogSelected = value != null;
+    }
 
     public ObservableCollection<string> AvailableJobs { get; } = new();
     public ObservableCollection<string> AvailableStatuses { get; } = new();
@@ -145,6 +151,12 @@ public partial class HistoryViewModel : ViewModelBase
     partial void OnSearchTextChanged(string value) => _ = LoadLogs();
     partial void OnSelectedJobFilterChanged(string value) => _ = LoadLogs();
     partial void OnSelectedStatusFilterChanged(string value) => _ = LoadLogs();
+
+    [RelayCommand]
+    private void CloseDetails()
+    {
+        SelectedLog = null;
+    }
 
     [RelayCommand]
     private async Task ClearLogs()
