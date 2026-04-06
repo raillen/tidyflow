@@ -16,7 +16,7 @@ public class LocalScriptRunner : IScriptRunner
         _logger = logger;
     }
 
-    public async Task<bool> RunScriptAsync(string scriptPath, CancellationToken cancellationToken = default)
+    public async Task<bool> RunScriptAsync(string scriptPath, string arguments = "", CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(scriptPath) || !File.Exists(scriptPath))
         {
@@ -26,11 +26,12 @@ public class LocalScriptRunner : IScriptRunner
 
         try
         {
-            await _logger.LogAsync($"Executando hook (script): {scriptPath}");
+            await _logger.LogAsync($"Executando hook (script): {scriptPath} com argumentos: {arguments}");
 
             var startInfo = new ProcessStartInfo
             {
                 FileName = scriptPath,
+                Arguments = arguments,
                 UseShellExecute = false, // Permite redirecionar a sada
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -41,7 +42,8 @@ public class LocalScriptRunner : IScriptRunner
             if (scriptPath.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase))
             {
                 startInfo.FileName = "powershell.exe";
-                startInfo.Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"";
+                // Passa o arquivo e em seguida os argumentos
+                startInfo.Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" {arguments}";
             }
 
             using var process = Process.Start(startInfo);

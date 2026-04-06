@@ -26,6 +26,8 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty] private string _targetPathText = string.Empty;
     [ObservableProperty] private string _extensionsText = string.Empty;
     [ObservableProperty] private string _excludePatternsText = string.Empty;
+    [ObservableProperty] private string _preScriptPathText = string.Empty;
+    [ObservableProperty] private string _postScriptPathText = string.Empty;
     [ObservableProperty] private PreviewSummary? _currentPreview;
     [ObservableProperty] private bool _isPreviewLoading;
     [ObservableProperty] private bool _isWatchMode;
@@ -91,6 +93,8 @@ public partial class JobEditorViewModel : ViewModelBase
         TargetPathText = job.TargetPath;
         ExtensionsText = string.Join(", ", job.IncludeExtensions);
         ExcludePatternsText = string.Join(", ", job.ExcludePatterns);
+        PreScriptPathText = job.PreScriptPath ?? string.Empty;
+        PostScriptPathText = job.PostScriptPath ?? string.Empty;
         
         if (TimeSpan.TryParse(job.ScheduleTime, out var ts))
         {
@@ -123,10 +127,26 @@ public partial class JobEditorViewModel : ViewModelBase
         if (path != null) TargetPathText = path;
     }
 
+    [RelayCommand]
+    private async Task SelectPreScriptPath()
+    {
+        var path = await _storageService.OpenFileAsync("Script", "ps1,bat,cmd,exe,py,sh");
+        if (path != null) PreScriptPathText = path;
+    }
+
+    [RelayCommand]
+    private async Task SelectPostScriptPath()
+    {
+        var path = await _storageService.OpenFileAsync("Script", "ps1,bat,cmd,exe,py,sh");
+        if (path != null) PostScriptPathText = path;
+    }
+
     private void SyncFields()
     {
         Job.SourcePath = SourcePathText;
         Job.TargetPath = TargetPathText;
+        Job.PreScriptPath = PreScriptPathText;
+        Job.PostScriptPath = PostScriptPathText;
         Job.WatchEnabled = IsWatchMode;
         Job.ScheduleTime = $"{ScheduleHour:D2}:{ScheduleMinute:D2}:{ScheduleSecond:D2}";
         Job.SpecificDate = SelectedDateOffset?.DateTime;

@@ -5,5 +5,5 @@ namespace AutoFlow.Application.Interfaces;
 
 public interface IScriptRunner
 {
-    Task<bool> RunScriptAsync(string scriptPath, CancellationToken cancellationToken = default);
+    Task<bool> RunScriptAsync(string scriptPath, string arguments = "", CancellationToken cancellationToken = default);
 }

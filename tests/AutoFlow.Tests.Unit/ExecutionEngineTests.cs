@@ -88,9 +88,11 @@ public class ExecutionEngineTests
 
     private class MockScriptRunner : IScriptRunner
     {
-        public Task<bool> RunScriptAsync(string scriptPath, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> RunScriptAsync(string scriptPath, string arguments = "", CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(true);
+        }
     }
-
     private class MockEncryptionService : IEncryptionService
     {
         public Stream GetEncryptStream(Stream targetStream, string password) => targetStream;

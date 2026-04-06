@@ -94,7 +94,7 @@ public class ExecutionEngine
 
             if (!string.IsNullOrWhiteSpace(job.PreScriptPath))
             {
-                var preSuccess = await _scriptRunner.RunScriptAsync(job.PreScriptPath, cancellationToken);
+                var preSuccess = await _scriptRunner.RunScriptAsync(job.PreScriptPath, $"\"{job.SourcePath}\"", cancellationToken);
                 if (!preSuccess)
                 {
                     await _logger.LogAsync(_localizationService["PreScriptFailed"], "WARNING");
@@ -266,7 +266,7 @@ public class ExecutionEngine
         {
             if (!string.IsNullOrWhiteSpace(job.PostScriptPath))
             {
-                var postSuccess = await _scriptRunner.RunScriptAsync(job.PostScriptPath, cancellationToken);
+                var postSuccess = await _scriptRunner.RunScriptAsync(job.PostScriptPath, $"\"{job.TargetPath}\"", cancellationToken);
                 if (!postSuccess)
                 {
                     await _logger.LogAsync(_localizationService["PostScriptFailed"], "WARNING");
