@@ -1,6 +1,7 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.IO;
+using System.Runtime.Versioning;
 
 namespace AutoFlow.Infrastructure.Helpers;
 
@@ -9,8 +10,11 @@ public static class WindowsStartupHelper
     private const string AppName = "AutoFlow";
     private const string RunKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
 
+    [SupportedOSPlatform("windows")]
     public static void SetStartup(bool enable)
     {
+        if (!OperatingSystem.IsWindows()) return;
+
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKey, true);

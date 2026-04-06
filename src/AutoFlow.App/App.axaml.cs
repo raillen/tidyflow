@@ -53,6 +53,7 @@ public partial class App : Avalonia.Application
 
                 var themeService = Services.GetRequiredService<ThemeService>();
                 themeService.SetTheme(settings.Theme);
+                themeService.SetFont(settings.Font);
 
                 var mainVm = Services.GetRequiredService<MainWindowViewModel>();
                 mainVm.CurrentPage = mainVm.Dashboard; 

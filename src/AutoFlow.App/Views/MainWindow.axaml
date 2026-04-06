@@ -44,6 +44,37 @@
                        PaneBackground="Transparent">
                 <SplitView.Pane>
                     <Grid RowDefinitions="Auto, *, Auto">
+                        <Grid.Styles>
+                            <Style Selector="Button">
+                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="CornerRadius" Value="8"/>
+                                <Setter Property="Padding" Value="15,12"/>
+                                <Setter Property="Margin" Value="0,2"/>
+                                <Setter Property="Transitions">
+                                    <Transitions>
+                                        <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                                    </Transitions>
+                                </Setter>
+                            </Style>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}"/>
+                            </Style>
+                            <Style Selector="Button.active">
+                                <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                            </Style>
+                            <Style Selector="Button.active TextBlock">
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                            </Style>
+                            <Style Selector="Button.active material|MaterialIcon">
+                                <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                            </Style>
+                        </Grid.Styles>
+
                         <Border Grid.RowSpan="3" Background="{DynamicResource SidebarBackground}" Opacity="{Binding Settings.Settings.GlassOpacity}" IsHitTestVisible="False"/>
                         
                         <!-- Header Sidebar (Logo) -->
@@ -59,43 +90,32 @@
                         <!-- Menu de Navegação -->
                         <StackPanel Grid.Row="1" Spacing="4" Margin="12,0">
                              <ListBox ItemsSource="{x:Null}" Background="Transparent" BorderThickness="0">
-                                 <ListBox.Styles>
-                                    <Style Selector="Button">
-                                        <Setter Property="HorizontalAlignment" Value="Stretch"/>
-                                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="BorderThickness" Value="0"/>
-                                        <Setter Property="CornerRadius" Value="8"/>
-                                        <Setter Property="Padding" Value="15,12"/>
-                                        <Setter Property="Margin" Value="0,2"/>
-                                    </Style>
-                                    <Style Selector="Button:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}"/>
-                                    </Style>
-                                </ListBox.Styles>
-
-                                <Button Command="{Binding NavigateToDashboardCommand}">
+                                <Button Command="{Binding NavigateToDashboardCommand}"
+                                        Classes.active="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Type vm:DashboardViewModel}}">
                                     <StackPanel Orientation="Horizontal" Spacing="16">
                                         <material:MaterialIcon Kind="ViewDashboardOutline" Width="22" Height="22"/>
                                         <TextBlock Text="{lcl:Lcl Dashboard}" VerticalAlignment="Center" FontWeight="Medium"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Command="{Binding NavigateToAutomationCommand}">
+                                <Button Command="{Binding NavigateToAutomationCommand}"
+                                        Classes.active="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Type vm:AutomationViewModel}}">
                                     <StackPanel Orientation="Horizontal" Spacing="16">
                                         <material:MaterialIcon Kind="SwapHorizontal" Width="22" Height="22"/>
                                         <TextBlock Text="{lcl:Lcl SidebarAutomation}" VerticalAlignment="Center" FontWeight="Medium"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Command="{Binding NavigateToBlueprintCommand}">
+                                <Button Command="{Binding NavigateToBlueprintCommand}"
+                                        Classes.active="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Type vm:BlueprintViewModel}}">
                                     <StackPanel Orientation="Horizontal" Spacing="16">
                                         <material:MaterialIcon Kind="FileTree" Width="22" Height="22"/>
                                         <TextBlock Text="{lcl:Lcl SidebarBlueprint}" VerticalAlignment="Center" FontWeight="Medium"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Command="{Binding NavigateToHistoryCommand}">
+                                <Button Command="{Binding NavigateToHistoryCommand}"
+                                        Classes.active="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Type vm:HistoryViewModel}}">
                                     <StackPanel Orientation="Horizontal" Spacing="16">
                                         <material:MaterialIcon Kind="History" Width="22" Height="22"/>
                                         <TextBlock Text="{lcl:Lcl SidebarAudit}" VerticalAlignment="Center" FontWeight="Medium"/>
@@ -117,7 +137,8 @@
 
                             <Button Command="{Binding NavigateToSettingsCommand}"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                    BorderThickness="0" CornerRadius="8" Padding="15,12">
+                                    BorderThickness="0" CornerRadius="8" Padding="15,12"
+                                    Classes.active="{Binding CurrentPage, Converter={StaticResource EqualsConverter}, ConverterParameter={x:Type vm:SettingsViewModel}}">
                                 <StackPanel Orientation="Horizontal" Spacing="16">
                                     <material:MaterialIcon Kind="SettingsOutline" Width="22" Height="22"/>
                                     <TextBlock Text="{lcl:Lcl Settings}" VerticalAlignment="Center" FontWeight="Medium"/>

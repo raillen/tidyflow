@@ -5,6 +5,7 @@ namespace AutoFlow.Domain.Entities;
 public class AppSettings
 {
     public ThemeMode Theme { get; set; } = ThemeMode.System;
+    public AppFont Font { get; set; } = AppFont.Default;
     public string Language { get; set; } = "pt-BR";
     public bool ShowNotifications { get; set; } = true;
     

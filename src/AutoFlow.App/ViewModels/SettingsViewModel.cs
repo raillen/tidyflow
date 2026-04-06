@@ -43,6 +43,16 @@ public partial class SettingsViewModel : ViewModelBase
         ThemeMode.Dracula,
         ThemeMode.Neon
     });
+
+    public ObservableCollection<AppFont> Fonts { get; } = new(new[] {
+        AppFont.Default,
+        AppFont.System,
+        AppFont.Roboto,
+        AppFont.Montserrat,
+        AppFont.OpenSans,
+        AppFont.PublicSans,
+        AppFont.JetBrains
+    });
     
     public ObservableCollection<string> Languages { get; } = new(new[] { 
         "pt-BR", "en-US", "es-ES", "ja-JP", "ru-RU" 
@@ -163,6 +173,7 @@ public partial class SettingsViewModel : ViewModelBase
         
         // Aplica o tema imediatamente
         _themeService.SetTheme(Settings.Theme);
+        _themeService.SetFont(Settings.Font);
         
         // Aplica o idioma imediatamente
         if (!string.IsNullOrEmpty(Settings.Language))
@@ -171,7 +182,10 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         // Integrao Windows
-        AutoFlow.Infrastructure.Helpers.WindowsStartupHelper.SetStartup(Settings.StartAtStartup);
+        if (OperatingSystem.IsWindows())
+        {
+            AutoFlow.Infrastructure.Helpers.WindowsStartupHelper.SetStartup(Settings.StartAtStartup);
+        }
         AutoFlow.Infrastructure.Helpers.WindowsStartupHelper.SetProcessPriority(Settings.ProcessPriority);
     }
 }
