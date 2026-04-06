@@ -62,9 +62,22 @@ Contribuições são bem-vindas! Sinta-se à vontade para abrir Issues ou enviar
 4. Faça o Push para a Branch (`git push origin feature/NovaFeature`)
 5. Abra um Pull Request
 
+## 📚 Documentação (Wiki)
+
+Acesse nossa Wiki interna para guias detalhados:
+- [Página Inicial da Wiki](docs/WIKI/Home.md)
+- [Guia do Usuário](docs/WIKI/User-Guide.md)
+- [Arquitetura do Sistema](docs/WIKI/Technical-Architecture.md)
+- [Resolução de Problemas](docs/WIKI/Troubleshooting.md)
+
 ## 📄 Licença
 
-Este projeto está sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+Este projeto está sob uma licença **Aberta para Uso Pessoal**, mas com as seguintes restrições:
+- ❌ **Sem Uso Comercial:** É proibido vender ou lucrar com o software.
+- ❌ **Sem Modificação:** Não é permitido modificar ou derivar o código sem autorização prévia por escrito.
+- ✅ **Uso Aberto:** Gratuito para uso individual e pessoal.
+
+Consulte o arquivo [LICENSE](LICENSE) para mais detalhes ou entre em contato: **contato@raillen.site**
 
 ---
 Desenvolvido com ❤️ por [Raillen Santos](https://github.com/raillen)
