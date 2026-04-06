@@ -7,7 +7,7 @@
              x:Class="FolderFlow.App.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
     <ScrollViewer>
-        <StackPanel Margin="25,20,25,25" Spacing="25">
+        <StackPanel Spacing="25" Margin="30, 0, 30, 0">
             <!-- Header & Filters -->
             <Grid ColumnDefinitions="*, Auto">
                 <StackPanel Grid.Column="0" Spacing="5">

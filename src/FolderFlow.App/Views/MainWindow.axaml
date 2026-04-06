@@ -36,13 +36,6 @@
         <Border Background="{DynamicResource AppBackground}" IsHitTestVisible="False" />
         
         <Grid>
-            <!-- Padding para compensar botões nativos e DragArea (60px) -->
-            <Grid.Styles>
-                <Style Selector="SplitView.MainContent">
-                    <Setter Property="Padding" Value="0,60,0,0"/>
-                </Style>
-            </Grid.Styles>
-
             <SplitView IsPaneOpen="True"
                        Classes="MainContent"
                        DisplayMode="Inline"
@@ -54,7 +47,7 @@
                         <Border Grid.RowSpan="3" Background="{DynamicResource SidebarBackground}" Opacity="{Binding Settings.Settings.GlassOpacity}" IsHitTestVisible="False"/>
                         
                         <!-- Header Sidebar (Logo) -->
-                        <Grid Grid.Row="0" Margin="20,45,15,40">
+                        <Grid Grid.Row="0" Margin="20,20,15,40">
                             <StackPanel Orientation="Horizontal" Spacing="16">
                                 <Border Background="{DynamicResource AccentColor}" CornerRadius="8" Width="40" Height="40">
                                     <material:MaterialIcon Kind="CloudSync" Width="24" Height="24" Foreground="White"/>
@@ -134,7 +127,7 @@
                     </Grid>
                 </SplitView.Pane>
 
-                <TransitioningContentControl Content="{Binding CurrentPage}" />
+                <TransitioningContentControl Content="{Binding CurrentPage}"  Margin="0,50,0,0"/>
             </SplitView>
         </Grid>
 

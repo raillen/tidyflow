@@ -8,7 +8,7 @@
     
     <Grid ColumnDefinitions="Auto, *">
         <!-- Main Master-Detail TabControl -->
-        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left" Margin="0,20,0,0">
+        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left">
             <TabControl.Styles>
                 <Style Selector="TabItem">
                     <Setter Property="Width" Value="220"/>
@@ -45,20 +45,29 @@
 
                     <!-- DataGrid Area -->
                     <Grid Grid.Row="1" ColumnDefinitions="*, 350">
-                        <DataGrid Grid.Column="0" ItemsSource="{Binding Logs}" SelectedItem="{Binding SelectedLog}" IsReadOnly="True" BorderThickness="0">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Binding="{Binding Entry.Timestamp, StringFormat={}{0:HH:mm:ss}}" Header="{lcl:Lcl Time}" Width="80"/>
-                                <DataGridTemplateColumn Header="{lcl:Lcl Status}" Width="110">
-                                    <DataTemplate>
-                                        <Border Background="{Binding StatusColor}" CornerRadius="12" Padding="8,2" HorizontalAlignment="Left" Margin="5">
-                                            <TextBlock Text="{Binding LocalizedStatus}" FontSize="10" FontWeight="Bold" Foreground="White"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="{lcl:Lcl Task}" Width="120"/>
-                                <DataGridTextColumn Binding="{Binding Entry.SourcePath}" Header="{lcl:Lcl Origin}" Width="*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                        <Grid Grid.Column="0">
+                            <DataGrid ItemsSource="{Binding Logs}" SelectedItem="{Binding SelectedLog}" IsReadOnly="True" BorderThickness="0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Binding="{Binding Entry.Timestamp, StringFormat={}{0:HH:mm:ss}}" Header="{lcl:Lcl Time}" Width="80"/>
+                                    <DataGridTemplateColumn Header="{lcl:Lcl Status}" Width="110">
+                                        <DataTemplate>
+                                            <Border Background="{Binding StatusColor}" CornerRadius="12" Padding="8,2" HorizontalAlignment="Left" Margin="5">
+                                                <TextBlock Text="{Binding LocalizedStatus}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="{lcl:Lcl Task}" Width="120"/>
+                                    <DataGridTextColumn Binding="{Binding Entry.SourcePath}" Header="{lcl:Lcl Origin}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <Border IsVisible="{Binding !Logs.Count}" Background="{DynamicResource CardBackground}" Opacity="0.5">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
+                                    <material:MaterialIcon Kind="History" Width="48" Height="48" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{lcl:Lcl NoLogs}" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
                         <!-- Details Panel -->
                         <Border Grid.Column="1" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
@@ -111,13 +120,22 @@
                     <Border Grid.Row="0" Padding="25,15" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
                         <TextBlock Text="Registros de Falhas e Erros Críticos" FontSize="20" FontWeight="Black"/>
                     </Border>
-                    <DataGrid Grid.Row="1" ItemsSource="{Binding IncidentLogs}" IsReadOnly="True" BorderThickness="0">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding Entry.Timestamp}" Header="{lcl:Lcl Time}" Width="150"/>
-                            <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="{lcl:Lcl Task}" Width="120"/>
-                            <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Erro" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <Grid Grid.Row="1">
+                        <DataGrid ItemsSource="{Binding IncidentLogs}" IsReadOnly="True" BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding Entry.Timestamp}" Header="{lcl:Lcl Time}" Width="150"/>
+                                <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="{lcl:Lcl Task}" Width="120"/>
+                                <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Erro" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Border IsVisible="{Binding !IncidentLogs.Count}" Background="{DynamicResource CardBackground}" Opacity="0.5">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
+                                <material:MaterialIcon Kind="AlertCircleOutline" Width="48" Height="48" HorizontalAlignment="Center" Foreground="{DynamicResource SuccessColor}"/>
+                                <TextBlock Text="{lcl:Lcl NoIncidents}" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
                 </Grid>
             </TabItem>
 
@@ -134,12 +152,21 @@
                     <Border Grid.Row="0" Padding="25,15" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
                         <TextBlock Text="Logs de Infraestrutura e Engine" FontSize="20" FontWeight="Black"/>
                     </Border>
-                    <DataGrid Grid.Row="1" ItemsSource="{Binding SystemLogs}" IsReadOnly="True" BorderThickness="0">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding Entry.Timestamp}" Header="{lcl:Lcl Time}" Width="150"/>
-                            <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Evento" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <Grid Grid.Row="1">
+                        <DataGrid ItemsSource="{Binding SystemLogs}" IsReadOnly="True" BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding Entry.Timestamp}" Header="{lcl:Lcl Time}" Width="150"/>
+                                <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Evento" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Border IsVisible="{Binding !SystemLogs.Count}" Background="{DynamicResource CardBackground}" Opacity="0.5">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
+                                <material:MaterialIcon Kind="CogOutline" Width="48" Height="48" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{lcl:Lcl NoSystemLogs}" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
                 </Grid>
             </TabItem>
         </TabControl>

@@ -183,6 +183,12 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["DailySummaryName"] = "Daily Summary", ["InXDays"] = "in {0} days", ["InXHours"] = "in {0}h", ["InXMinutes"] = "in {0}min",
         ["SupportTitle"] = "Support the Developer", ["SupportPixLabel"] = "Pix Key (Brazil)", ["SupportCoffeeLabel"] = "Buy Me a Coffee", ["SupportCopyPix"] = "Copy Key",
         ["Donate"] = "Donate",
+        ["NoWatchers"] = "No monitored folders found.",
+        ["NoTransfers"] = "No direct flows configured.",
+        ["NoIncidents"] = "No incidents recorded. Everything is running smoothly!",
+        ["NoSystemLogs"] = "No system events recorded.",
+        ["NoFileBlueprints"] = "No file organization models.",
+        ["NoFolderBlueprints"] = "No folder structure models.",
         
         // Organization (Blueprint)
         ["Organization"] = "Blueprint",
@@ -340,6 +346,12 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["DailySummaryName"] = "Resumen Diario", ["InXDays"] = "en {0} días", ["InXHours"] = "en {0}h", ["InXMinutes"] = "en {0}min",
         ["SupportTitle"] = "Apoya al Desarrollador", ["SupportPixLabel"] = "Clave Pix (Brasil)", ["SupportCoffeeLabel"] = "Buy Me a Coffee", ["SupportCopyPix"] = "Copiar Clave",
         ["Donate"] = "Donar",
+        ["NoWatchers"] = "No se encontraron carpetas monitoreadas.",
+        ["NoTransfers"] = "No hay flujos directos configurados.",
+        ["NoIncidents"] = "No hay incidentes registrados. ¡Todo funciona bien!",
+        ["NoSystemLogs"] = "No hay eventos de sistema registrados.",
+        ["NoFileBlueprints"] = "No hay modelos de organización de archivos.",
+        ["NoFolderBlueprints"] = "No hay modelos de estructura de carpetas.",
         
         // Organization (Blueprint)
         ["Organization"] = "Blueprint",
@@ -452,6 +464,12 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["DailySummaryName"] = "デイリーサマリー", ["InXDays"] = "{0}日後", ["InXHours"] = "{0}時間後", ["InXMinutes"] = "{0}分後",
         ["SupportTitle"] = "開発者を支援", ["SupportPixLabel"] = "Pixキー (ブラジル)", ["SupportCoffeeLabel"] = "コーヒーを買う", ["SupportCopyPix"] = "キーをコピー",
         ["Donate"] = "寄付",
+        ["NoWatchers"] = "監視対象のフォルダが見つかりません。",
+        ["NoTransfers"] = "直接フローが設定されていません。",
+        ["NoIncidents"] = "インシデントは記録されていません。すべて正常です！",
+        ["NoSystemLogs"] = "システムイベントは記録されていません。",
+        ["NoFileBlueprints"] = "ファイル整理モデルがありません。",
+        ["NoFolderBlueprints"] = "フォルダ構造モデルがありません。",
         
         // Organization (Blueprint)
         ["Organization"] = "ブループリント",
@@ -564,6 +582,12 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["DailySummaryName"] = "Отчет за день", ["InXDays"] = "через {0} д.", ["InXHours"] = "через {0} ч.", ["InXMinutes"] = "через {0} мин.",
         ["SupportTitle"] = "Поддержка разработчика", ["SupportPixLabel"] = "Pix ключ (Бразилия)", ["SupportCoffeeLabel"] = "Купить кофе", ["SupportCopyPix"] = "Копировать",
         ["Donate"] = "Донат",
+        ["NoWatchers"] = "Наблюдаемые папки не найдены.",
+        ["NoTransfers"] = "Прямые потоки не настроены.",
+        ["NoIncidents"] = "Инцидентов нет. Все работает отлично!",
+        ["NoSystemLogs"] = "Системные события не зарегистрированы.",
+        ["NoFileBlueprints"] = "Нет шаблонов организации файлов.",
+        ["NoFolderBlueprints"] = "Нет шаблонов структуры папок.",
         
         // Organization (Blueprint)
         ["Organization"] = "Шаблон",
@@ -755,6 +779,12 @@ public class JsonLocalizationService : ILocalizationService, INotifyPropertyChan
         ["AutoScaffoldingTip"] = "Injeta automaticamente a estrutura de pastas quando um novo diretório é criado ou renomeado.",
         ["EnableAutoRenaming"] = "Renomeação Automática",
         ["AutoRenamingTip"] = "Renomeia automaticamente os novos arquivos que entram nesta pasta baseado no template.",
+        ["NoWatchers"] = "Nenhuma pasta monitorada encontrada.",
+        ["NoTransfers"] = "Nenhum fluxo de transferência configurado.",
+        ["NoIncidents"] = "Nenhum incidente registrado. Tudo funcionando bem!",
+        ["NoSystemLogs"] = "Nenhum evento de sistema registrado.",
+        ["NoFileBlueprints"] = "Nenhum modelo de organização de arquivos.",
+        ["NoFolderBlueprints"] = "Nenhum modelo de estrutura de pastas configurado.",
     };
 
     private void CreateDefaultFile(string path, string culture)

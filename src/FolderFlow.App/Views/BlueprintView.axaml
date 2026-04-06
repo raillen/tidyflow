@@ -8,7 +8,7 @@
     
     <Grid ColumnDefinitions="Auto, *">
         <!-- Main Master-Detail TabControl -->
-        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left" Margin="0,20,0,0">
+        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left">
             <TabControl.Styles>
                 <Style Selector="TabItem">
                     <Setter Property="Width" Value="220"/>
@@ -113,28 +113,37 @@
                     </Border>
 
                     <ScrollViewer Grid.Row="1" Padding="30">
-                        <ItemsControl ItemsSource="{Binding FileBlueprints}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:BlueprintItemViewModel">
-                                    <Border Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="20" Margin="0,0,0,12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                                        <Grid ColumnDefinitions="Auto, *, Auto">
-                                            <Border Grid.Column="0" Width="44" Height="44" CornerRadius="12" Background="#1A2196F3" Margin="0,0,15,0">
-                                                <material:MaterialIcon Kind="FileDocumentOutline" Foreground="#2196F3" Width="22"/>
-                                            </Border>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                                <TextBlock Text="{Binding Blueprint.Name}" FontWeight="Bold" FontSize="16"/>
-                                                <TextBlock Text="{Binding Blueprint.Path}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                                                <ToggleSwitch IsChecked="{Binding Blueprint.IsActive}" Command="{Binding ToggleActiveCommand}" OnContent="" OffContent=""/>
-                                                <Button Command="{Binding EditCommand}" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="6"><material:MaterialIcon Kind="Pencil" Width="16"/></Button>
-                                                <Button Command="{Binding DeleteCommand}" Classes="Danger" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="6"><material:MaterialIcon Kind="DeleteOutline" Width="16"/></Button>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding FileBlueprints}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:BlueprintItemViewModel">
+                                        <Border Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="20" Margin="0,0,0,12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                            <Grid ColumnDefinitions="Auto, *, Auto">
+                                                <Border Grid.Column="0" Width="44" Height="44" CornerRadius="12" Background="#1A2196F3" Margin="0,0,15,0">
+                                                    <material:MaterialIcon Kind="FileDocumentOutline" Foreground="#2196F3" Width="22"/>
+                                                </Border>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                                    <TextBlock Text="{Binding Blueprint.Name}" FontWeight="Bold" FontSize="16"/>
+                                                    <TextBlock Text="{Binding Blueprint.Path}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                                                    <ToggleSwitch IsChecked="{Binding Blueprint.IsActive}" Command="{Binding ToggleActiveCommand}" OnContent="" OffContent=""/>
+                                                    <Button Command="{Binding EditCommand}" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="6"><material:MaterialIcon Kind="Pencil" Width="16"/></Button>
+                                                    <Button Command="{Binding DeleteCommand}" Classes="Danger" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="6"><material:MaterialIcon Kind="DeleteOutline" Width="16"/></Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Border IsVisible="{Binding !FileBlueprints.Count}" Padding="60" Opacity="0.2" Background="{DynamicResource CardBackground}" CornerRadius="16">
+                                <StackPanel HorizontalAlignment="Center" Spacing="15">
+                                    <material:MaterialIcon Kind="FileDocumentOutline" Width="48" Height="48" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{lcl:Lcl NoFileBlueprints}" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </ScrollViewer>
                 </Grid>
             </TabItem>
@@ -165,28 +174,37 @@
                     </Border>
 
                     <ScrollViewer Grid.Row="1" Padding="30">
-                        <ItemsControl ItemsSource="{Binding FolderBlueprints}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:BlueprintItemViewModel">
-                                    <Border Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="20" Margin="0,0,0,12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                                        <Grid ColumnDefinitions="Auto, *, Auto">
-                                            <Border Grid.Column="0" Width="44" Height="44" CornerRadius="12" Background="#1A4CAF50" Margin="0,0,15,0">
-                                                <material:MaterialIcon Kind="FolderOutline" Foreground="#4CAF50" Width="22"/>
-                                            </Border>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                                <TextBlock Text="{Binding Blueprint.Name}" FontWeight="Bold" FontSize="16"/>
-                                                <TextBlock Text="{Binding Blueprint.Path}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                                                <ToggleSwitch IsChecked="{Binding Blueprint.IsActive}" Command="{Binding ToggleActiveCommand}" OnContent="" OffContent=""/>
-                                                <Button Command="{Binding EditCommand}" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="6"><material:MaterialIcon Kind="Pencil" Width="16"/></Button>
-                                                <Button Command="{Binding DeleteCommand}" Classes="Danger" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="6"><material:MaterialIcon Kind="DeleteOutline" Width="16"/></Button>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding FolderBlueprints}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:BlueprintItemViewModel">
+                                        <Border Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="20" Margin="0,0,0,12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                            <Grid ColumnDefinitions="Auto, *, Auto">
+                                                <Border Grid.Column="0" Width="44" Height="44" CornerRadius="12" Background="#1A4CAF50" Margin="0,0,15,0">
+                                                    <material:MaterialIcon Kind="FolderOutline" Foreground="#4CAF50" Width="22"/>
+                                                </Border>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                                    <TextBlock Text="{Binding Blueprint.Name}" FontWeight="Bold" FontSize="16"/>
+                                                    <TextBlock Text="{Binding Blueprint.Path}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                                                    <ToggleSwitch IsChecked="{Binding Blueprint.IsActive}" Command="{Binding ToggleActiveCommand}" OnContent="" OffContent=""/>
+                                                    <Button Command="{Binding EditCommand}" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="6"><material:MaterialIcon Kind="Pencil" Width="16"/></Button>
+                                                    <Button Command="{Binding DeleteCommand}" Classes="Danger" Theme="{DynamicResource OutlineButton}" Padding="8" CornerRadius="6"><material:MaterialIcon Kind="DeleteOutline" Width="16"/></Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Border IsVisible="{Binding !FolderBlueprints.Count}" Padding="60" Opacity="0.2" Background="{DynamicResource CardBackground}" CornerRadius="16">
+                                <StackPanel HorizontalAlignment="Center" Spacing="15">
+                                    <material:MaterialIcon Kind="FolderOutline" Width="48" Height="48" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{lcl:Lcl NoFolderBlueprints}" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </ScrollViewer>
                 </Grid>
             </TabItem>
