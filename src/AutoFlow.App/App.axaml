@@ -1,0 +1,57 @@
+﻿<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="AutoFlow.App.App"
+             xmlns:local="using:AutoFlow.App"
+             xmlns:conv="using:AutoFlow.App.Converters"
+             xmlns:materialIcons="using:Material.Icons.Avalonia"
+             xmlns:semi="using:Semi.Avalonia"
+             xmlns:lcl="using:AutoFlow.App.Localization"
+             RequestedThemeVariant="Default">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://AutoFlow.App/Styles/Themes.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <local:ViewLocator x:Key="ViewLocator"/>
+            <conv:EqualsConverter x:Key="EqualsConverter"/>
+            <conv:NotEqualsConverter x:Key="NotEqualsConverter"/>
+            <conv:PageToColorConverter x:Key="PageToColorConverter"/>
+            <conv:PlayPauseConverter x:Key="StatusToIconConverter"/>
+            <conv:PlayPauseColorConverter x:Key="StatusToColorConverter"/>
+            <conv:StatusToProgressColorConverter x:Key="StatusToProgressColorConverter"/>
+            <conv:BoolToIconConverter x:Key="BoolToIconConverter"/>
+            <conv:BoolToTextConverter x:Key="BoolToTextConverter"/>
+            <conv:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
+            <conv:StatusToPercentageConverter x:Key="StatusToPercentageConverter"/>
+            <conv:SpeedToHeightConverter x:Key="SpeedToHeightConverter"/>
+            <conv:FileSizeConverter x:Key="FileSizeConverter"/>
+            <conv:EnumLocalizationConverter x:Key="EnumLocalizationConverter"/>
+            <conv:BlueprintTypeToIconConverter x:Key="BlueprintTypeToIconConverter"/>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+  
+    <Application.Styles>
+        <semi:SemiTheme Locale="pt-BR" />
+        <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml" />
+        <materialIcons:MaterialIconStyles />
+    </Application.Styles>
+
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="AutoFlow" Clicked="OnOpenClick">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="{lcl:Lcl OpenApp}" Click="OnOpenClick"/>
+                        <NativeMenuItemSeparator/>
+                        <NativeMenuItem Header="{lcl:Lcl Exit}" Click="OnExitClick"/>
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+</Application>

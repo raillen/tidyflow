@@ -1,8 +1,8 @@
-# PRD Tecnico: FolderFlow
+﻿# PRD Tecnico: AutoFlow
 
 ## 1. Metadados
 
-- Produto: FolderFlow
+- Produto: AutoFlow
 - Repositorio: csharp_BatchBackupBridge
 - Tipo: Desktop (Windows/Linux)
 - Status do documento: Finalizado (MVP)
@@ -14,7 +14,7 @@
 
 ## 2. Resumo Executivo
 
-O FolderFlow é um aplicativo desktop projetado para automatizar a gestão de arquivos através de "Jobs". Ele permite que usuários configurem tarefas de cópia, movimentação e backup baseadas em eventos em tempo real (Watch Folder) ou agendamentos específicos.
+O AutoFlow é um aplicativo desktop projetado para automatizar a gestão de arquivos através de "Jobs". Ele permite que usuários configurem tarefas de cópia, movimentação e backup baseadas em eventos em tempo real (Watch Folder) ou agendamentos específicos.
 
 ### Decisao arquitetural do MVP
 

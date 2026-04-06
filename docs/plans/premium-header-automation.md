@@ -1,6 +1,6 @@
-# Planejamento Premium: Header da Central de Automação
+﻿# Planejamento Premium: Header da Central de Automação
 
-Este documento detalha a reformulação estética e funcional do cabeçalho da Central de Automação para atingir o padrão visual do FolderFlow.
+Este documento detalha a reformulação estética e funcional do cabeçalho da Central de Automação para atingir o padrão visual do AutoFlow.
 
 ## 1. Identidade Visual
 - **Glass Effect:** Aplicação de fundo translúcido com gradiente linear sutil (60% para 90% de opacidade).

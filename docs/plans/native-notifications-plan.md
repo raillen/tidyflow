@@ -1,12 +1,12 @@
-# Plano de Implementação: Notificações Nativas do Windows
+﻿# Plano de Implementação: Notificações Nativas do Windows
 
 ## 1. Objetivo
-Permitir que o FolderFlow envie notificações para o Desktop (Central de Ações do Windows) mesmo quando estiver minimizado no tray, utilizando recursos nativos do sistema operacional.
+Permitir que o AutoFlow envie notificações para o Desktop (Central de Ações do Windows) mesmo quando estiver minimizado no tray, utilizando recursos nativos do sistema operacional.
 
 ## 2. Abordagem Técnica
 Para evitar dependências de pacotes UWP pesados ou complexos, utilizaremos o comando `New-BurntToastNotification` via PowerShell (se disponível) ou, como fallback universal, o objeto `Windows.UI.Notifications` disparado via script inline do PowerShell.
 
-## 3. Mudanças na Infraestrutura (`FolderFlow.Infrastructure`)
+## 3. Mudanças na Infraestrutura (`AutoFlow.Infrastructure`)
 - Criar `WindowsNotificationHelper` na pasta `Helpers`.
 - Este helper terá um método `SendToast(title, message, iconPath)`.
 - O método executará um processo `powershell.exe` em background com os argumentos necessários para disparar a notificação nativa.

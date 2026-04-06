@@ -1,4 +1,4 @@
-# Planejamento Premium: Orquestrador de Fila (Queue Manager) - FolderFlow
+﻿# Planejamento Premium: Orquestrador de Fila (Queue Manager) - AutoFlow
 
 Este documento detalha a evolução da fila de automação para um sistema de orquestração inteligente e interativo.
 

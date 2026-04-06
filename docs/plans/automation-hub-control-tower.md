@@ -1,6 +1,6 @@
-# Planejamento Premium: Torre de Controle de Automação (Automation Hub)
+﻿# Planejamento Premium: Torre de Controle de Automação (Automation Hub)
 
-Este documento detalha as funcionalidades avançadas para transformar o FolderFlow em um sistema de orquestração de arquivos de nível enterprise.
+Este documento detalha as funcionalidades avançadas para transformar o AutoFlow em um sistema de orquestração de arquivos de nível enterprise.
 
 ## 1. Diferenciação Visual Extrema
 - **Watch Folders (O Monitor):**

@@ -1,15 +1,15 @@
-# ADR-001: Escolha da Stack Tecnica e Arquitetura
+﻿# ADR-001: Escolha da Stack Tecnica e Arquitetura
 
 - Status: `Accepted`
 - Data: 2026-03-20
-- Escopo: Projeto FolderFlow
-- Relacionado ao PRD: PRD-FolderFlow v1.0.0
+- Escopo: Projeto AutoFlow
+- Relacionado ao PRD: PRD-AutoFlow v1.0.0
 
 ---
 
 ## 1. Contexto
 
-O projeto FolderFlow requer uma base tecnológica que suporte desenvolvimento cross-platform (Windows e Linux) com uma interface desktop rica, performance em operações de IO e facilidade de manutenção. É necessário decidir qual framework de UI e qual arquitetura de software serão utilizados para garantir longevidade e escalabilidade.
+O projeto AutoFlow requer uma base tecnológica que suporte desenvolvimento cross-platform (Windows e Linux) com uma interface desktop rica, performance em operações de IO e facilidade de manutenção. É necessário decidir qual framework de UI e qual arquitetura de software serão utilizados para garantir longevidade e escalabilidade.
 
 ---
 
@@ -70,7 +70,7 @@ Rejeitada porque:
 ## 5. Impacto no Sprint 0
 
 - Criação da solução .NET 8 com os 4 projetos (App, Application, Domain, Infrastructure).
-- Setup do Avalonia UI no projeto `FolderFlow.App`.
+- Setup do Avalonia UI no projeto `AutoFlow.App`.
 - Implementação inicial da estrutura de pastas recomendada.
 
 ---

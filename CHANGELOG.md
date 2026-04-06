@@ -1,4 +1,4 @@
-# Changelog - FolderFlow Pro
+﻿# Changelog - AutoFlow Pro
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
@@ -26,4 +26,4 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - **Changelog Interno:** Visualizador de notas de versão integrado.
 
 ---
-*FolderFlow Pro - Desenvolvido por Raillen Santos*
+*AutoFlow Pro - Desenvolvido por Raillen Santos*

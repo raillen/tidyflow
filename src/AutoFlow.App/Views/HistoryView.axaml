@@ -1,0 +1,174 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AutoFlow.App.ViewModels"
+             xmlns:material="using:Material.Icons.Avalonia"
+             xmlns:lcl="using:AutoFlow.App.Localization"
+             x:Class="AutoFlow.App.Views.HistoryView"
+             x:DataType="vm:HistoryViewModel">
+    
+    <Grid ColumnDefinitions="Auto, *">
+        <!-- Main Master-Detail TabControl -->
+        <TabControl Grid.ColumnSpan="2" TabStripPlacement="Left">
+            <TabControl.Styles>
+                <Style Selector="TabItem">
+                    <Setter Property="Width" Value="220"/>
+                    <Setter Property="Padding" Value="15,12"/>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                </Style>
+            </TabControl.Styles>
+
+            <!-- 1. EXECUTIONS -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <material:MaterialIcon Kind="History" Width="18"/>
+                        <TextBlock Text="{lcl:Lcl AuditHistory}"/>
+                    </StackPanel>
+                </TabItem.Header>
+                
+                <Grid RowDefinitions="Auto, *">
+                    <!-- Toolbar -->
+                    <Border Grid.Row="0" Padding="25,15" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBox Text="{Binding SearchText}" Watermark="{lcl:Lcl SearchWatermark}" Width="300" HorizontalAlignment="Left" CornerRadius="8">
+                                <TextBox.InnerLeftContent><material:MaterialIcon Kind="Magnify" Margin="10,0" Opacity="0.3"/></TextBox.InnerLeftContent>
+                            </TextBox>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                                <Button Command="{Binding ExportToCsvCommand}" Theme="{DynamicResource OutlineButton}" Content="{lcl:Lcl ExportCsv}" CornerRadius="8"/>
+                                <Button Command="{Binding LoadLogsCommand}" Classes="Primary" Theme="{DynamicResource SolidButton}" CornerRadius="8" Padding="15,5">
+                                    <material:MaterialIcon Kind="Refresh" Width="18"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- DataGrid Area -->
+                    <Grid Grid.Row="1" ColumnDefinitions="*, 350">
+                        <Grid Grid.Column="0">
+                            <DataGrid ItemsSource="{Binding Logs}" SelectedItem="{Binding SelectedLog}" IsReadOnly="True" BorderThickness="0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Binding="{Binding Entry.Timestamp, StringFormat={}{0:HH:mm:ss}}" Header="{lcl:Lcl Time}" Width="80"/>
+                                    <DataGridTemplateColumn Header="{lcl:Lcl Status}" Width="110">
+                                        <DataTemplate>
+                                            <Border Background="{Binding StatusColor}" CornerRadius="12" Padding="8,2" HorizontalAlignment="Left" Margin="5">
+                                                <TextBlock Text="{Binding LocalizedStatus}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="{lcl:Lcl Task}" Width="120"/>
+                                    <DataGridTextColumn Binding="{Binding Entry.SourcePath}" Header="{lcl:Lcl Origin}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <Border IsVisible="{Binding !Logs.Count}" Background="{DynamicResource CardBackground}" Opacity="0.5">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
+                                    <material:MaterialIcon Kind="History" Width="48" Height="48" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{lcl:Lcl NoLogs}" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Details Panel -->
+                        <Border Grid.Column="1" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
+                            <ScrollViewer Padding="20">
+                                <StackPanel Spacing="20">
+                                    <TextBlock Text="{lcl:Lcl OpDetails}" FontSize="12" FontWeight="Bold" Opacity="0.6"/>
+                                    <ContentControl Content="{Binding SelectedLog}">
+                                        <ContentControl.DataTemplates>
+                                            <DataTemplate DataType="{x:Type vm:AuditEntryViewModel}">
+                                                <StackPanel Spacing="15">
+                                                    <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15">
+                                                        <StackPanel Spacing="10">
+                                                            <TextBlock Text="{Binding Entry.SourcePath}" FontSize="12" FontWeight="Bold" TextWrapping="Wrap" Foreground="{DynamicResource AccentColor}"/>
+                                                            <material:MaterialIcon Kind="ArrowDown" Width="14" Opacity="0.3"/>
+                                                            <TextBlock Text="{Binding Entry.TargetPath}" FontSize="12" FontWeight="Bold" TextWrapping="Wrap" Foreground="{DynamicResource AccentColor}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <Grid ColumnDefinitions="*, *">
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="{lcl:Lcl Size}" FontSize="10" Opacity="0.5"/>
+                                                            <TextBlock Text="{Binding Entry.FileSize, Converter={StaticResource FileSizeConverter}}" FontWeight="Bold"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{lcl:Lcl Duration}" FontSize="10" Opacity="0.5"/>
+                                                            <TextBlock Text="{Binding Entry.DurationMs, StringFormat={}{0:F0}ms}" FontWeight="Bold"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Entry.Details}" FontSize="11" TextWrapping="Wrap" FontStyle="Italic" Opacity="0.7"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ContentControl.DataTemplates>
+                                    </ContentControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- 2. INCIDENTES -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <material:MaterialIcon Kind="AlertCircleOutline" Width="18" Foreground="{DynamicResource DangerColor}"/>
+                        <TextBlock Text="Incidentes"/>
+                    </StackPanel>
+                </TabItem.Header>
+                
+                <Grid RowDefinitions="Auto, *">
+                    <Border Grid.Row="0" Padding="25,15" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                        <TextBlock Text="Registros de Falhas e Erros Críticos" FontSize="20" FontWeight="Black"/>
+                    </Border>
+                    <Grid Grid.Row="1">
+                        <DataGrid ItemsSource="{Binding IncidentLogs}" IsReadOnly="True" BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding Entry.Timestamp}" Header="{lcl:Lcl Time}" Width="150"/>
+                                <DataGridTextColumn Binding="{Binding Entry.JobName}" Header="{lcl:Lcl Task}" Width="120"/>
+                                <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Erro" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Border IsVisible="{Binding !IncidentLogs.Count}" Background="{DynamicResource CardBackground}" Opacity="0.5">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
+                                <material:MaterialIcon Kind="AlertCircleOutline" Width="48" Height="48" HorizontalAlignment="Center" Foreground="{DynamicResource SuccessColor}"/>
+                                <TextBlock Text="{lcl:Lcl NoIncidents}" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- 3. SISTEMA -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <material:MaterialIcon Kind="CogOutline" Width="18"/>
+                        <TextBlock Text="Sistema"/>
+                    </StackPanel>
+                </TabItem.Header>
+                
+                <Grid RowDefinitions="Auto, *">
+                    <Border Grid.Row="0" Padding="25,15" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                        <TextBlock Text="Logs de Infraestrutura e Engine" FontSize="20" FontWeight="Black"/>
+                    </Border>
+                    <Grid Grid.Row="1">
+                        <DataGrid ItemsSource="{Binding SystemLogs}" IsReadOnly="True" BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding Entry.Timestamp}" Header="{lcl:Lcl Time}" Width="150"/>
+                                <DataGridTextColumn Binding="{Binding Entry.Details}" Header="Evento" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Border IsVisible="{Binding !SystemLogs.Count}" Background="{DynamicResource CardBackground}" Opacity="0.5">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
+                                <material:MaterialIcon Kind="CogOutline" Width="48" Height="48" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{lcl:Lcl NoSystemLogs}" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

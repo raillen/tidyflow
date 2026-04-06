@@ -1,6 +1,6 @@
-# Especificação: Motor de Renomeação Inteligente (Smart Renaming Engine)
+﻿# Especificação: Motor de Renomeação Inteligente (Smart Renaming Engine)
 
-Este documento detalha as novas funcionalidades do motor de renomeação de arquivos do FolderFlow, elevando o sistema de templates básicos para um motor de regras robusto.
+Este documento detalha as novas funcionalidades do motor de renomeação de arquivos do AutoFlow, elevando o sistema de templates básicos para um motor de regras robusto.
 
 ## 1. Tokens Expandidos
 Além dos tokens básicos, o sistema suportará:

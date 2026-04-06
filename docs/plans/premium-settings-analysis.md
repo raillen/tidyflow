@@ -1,6 +1,6 @@
-# Planejamento Premium: Módulo de Configurações - FolderFlow
+﻿# Planejamento Premium: Módulo de Configurações - AutoFlow
 
-Este documento detalha a visão para transformar as configurações do FolderFlow em um centro de controle avançado.
+Este documento detalha a visão para transformar as configurações do AutoFlow em um centro de controle avançado.
 
 ## 1. Performance & Engine
 - **Concurrency Control:** Slider para definir o número de arquivos processados simultaneamente (1-10).

@@ -1,6 +1,6 @@
-# Roadmap de Expansão: FolderFlow Premium
+﻿# Roadmap de Expansão: AutoFlow Premium
 
-Este documento define o plano arquitetural e de execução para elevar o **FolderFlow** de uma excelente ferramenta de cópia para uma solução de backup e automação de nível corporativo e comercial.
+Este documento define o plano arquitetural e de execução para elevar o **AutoFlow** de uma excelente ferramenta de cópia para uma solução de backup e automação de nível corporativo e comercial.
 
 ## Visão Geral das Fases
 
@@ -84,11 +84,11 @@ O plano está dividido em 4 fases, priorizadas do maior impacto e menor esforço
     *   **Infrastructure:** Implementar o algoritmo *Rsync* (Rolling Hash / Adler-32). O `DeltaSyncService` precisará ler as assinaturas de blocos do arquivo de origem e destino, calcular as diferenças e transferir apenas os deltas.
     *   *Nota:* Requer alto conhecimento computacional, mas economiza 99% de banda em arquivos grandes.
 
-### 4.2. FolderFlow Windows Service / Daemon
+### 4.2. AutoFlow Windows Service / Daemon
 *   **Descrição:** Desacoplar o motor (Engine) da Interface Visual (UI).
 *   **Implementação:**
-    *   **Architecture:** Separar a `FolderFlow.Application` e `FolderFlow.Infrastructure` em um projeto `FolderFlow.Service` (Background Worker usando `Microsoft.Extensions.Hosting`).
-    *   **Communication:** A `FolderFlow.App` (UI Avalonia) deixará de rodar as tarefas localmente e passará a se comunicar com o `FolderFlow.Service` via **gRPC** ou **Named Pipes** para enviar Jobs, receber Progressos e ler Logs.
+    *   **Architecture:** Separar a `AutoFlow.Application` e `AutoFlow.Infrastructure` em um projeto `AutoFlow.Service` (Background Worker usando `Microsoft.Extensions.Hosting`).
+    *   **Communication:** A `AutoFlow.App` (UI Avalonia) deixará de rodar as tarefas localmente e passará a se comunicar com o `AutoFlow.Service` via **gRPC** ou **Named Pipes** para enviar Jobs, receber Progressos e ler Logs.
 
 ---
 
@@ -101,4 +101,4 @@ Para suportar essas funcionalidades mantendo a organização:
 3.  **Filas Paralelas:** Para a concorrência (Fase 3), o `ChannelJobQueue` atual processa um Job por vez. Ele precisará ser atualizado para um roteador de Jobs com `ActionBlock` ou controle de `SemaphoreSlim`.
 
 ---
-*Plano gerado para evoluir o FolderFlow rumo à categoria Enterprise/Pro.*
+*Plano gerado para evoluir o AutoFlow rumo à categoria Enterprise/Pro.*

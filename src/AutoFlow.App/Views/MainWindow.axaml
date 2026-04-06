@@ -1,0 +1,137 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AutoFlow.App.ViewModels"
+        xmlns:v="using:AutoFlow.App.Views"
+        xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:lcl="using:AutoFlow.App.Localization"
+        x:Class="AutoFlow.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="AutoFlow"
+        Width="1100" Height="700"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{DynamicResource AppBackground}">
+
+    <Window.DataTemplates>
+        <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+            <v:DashboardView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AutomationViewModel}">
+            <v:AutomationView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BlueprintViewModel}">
+            <v:BlueprintView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
+            <v:HistoryView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <v:SettingsView/>
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <Panel>
+        <!-- Background -->
+        <Border Background="{DynamicResource AppBackground}" IsHitTestVisible="False" />
+        
+        <Grid>
+            <SplitView IsPaneOpen="True"
+                       Classes="MainContent"
+                       DisplayMode="Inline"
+                       OpenPaneLength="260"
+                       Background="Transparent"
+                       PaneBackground="Transparent">
+                <SplitView.Pane>
+                    <Grid RowDefinitions="Auto, *, Auto">
+                        <Border Grid.RowSpan="3" Background="{DynamicResource SidebarBackground}" Opacity="{Binding Settings.Settings.GlassOpacity}" IsHitTestVisible="False"/>
+                        
+                        <!-- Header Sidebar (Logo) -->
+                        <Grid Grid.Row="0" Margin="20,20,15,40">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <Border Background="{DynamicResource AccentColor}" CornerRadius="8" Width="40" Height="40">
+                                    <material:MaterialIcon Kind="CloudSync" Width="24" Height="24" Foreground="White"/>
+                                </Border>
+                                <TextBlock Text="AutoFlow" Classes="H4" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Menu de Navegação -->
+                        <StackPanel Grid.Row="1" Spacing="4" Margin="12,0">
+                             <ListBox ItemsSource="{x:Null}" Background="Transparent" BorderThickness="0">
+                                 <ListBox.Styles>
+                                    <Style Selector="Button">
+                                        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="CornerRadius" Value="8"/>
+                                        <Setter Property="Padding" Value="15,12"/>
+                                        <Setter Property="Margin" Value="0,2"/>
+                                    </Style>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}"/>
+                                    </Style>
+                                </ListBox.Styles>
+
+                                <Button Command="{Binding NavigateToDashboardCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <material:MaterialIcon Kind="ViewDashboardOutline" Width="22" Height="22"/>
+                                        <TextBlock Text="{lcl:Lcl Dashboard}" VerticalAlignment="Center" FontWeight="Medium"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Command="{Binding NavigateToAutomationCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <material:MaterialIcon Kind="SwapHorizontal" Width="22" Height="22"/>
+                                        <TextBlock Text="{lcl:Lcl SidebarAutomation}" VerticalAlignment="Center" FontWeight="Medium"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Command="{Binding NavigateToBlueprintCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <material:MaterialIcon Kind="FileTree" Width="22" Height="22"/>
+                                        <TextBlock Text="{lcl:Lcl SidebarBlueprint}" VerticalAlignment="Center" FontWeight="Medium"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Command="{Binding NavigateToHistoryCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <material:MaterialIcon Kind="History" Width="22" Height="22"/>
+                                        <TextBlock Text="{lcl:Lcl SidebarAudit}" VerticalAlignment="Center" FontWeight="Medium"/>
+                                    </StackPanel>
+                                </Button>
+                            </ListBox>
+                        </StackPanel>
+
+                        <!-- Footer -->
+                        <StackPanel Grid.Row="2" Margin="12,0,12,30" Spacing="4">
+                            <Button Command="{Binding ShowDonateCommand}"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Background="Transparent" BorderThickness="0" CornerRadius="8" Padding="15,12">
+                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                    <material:MaterialIcon Kind="Heart" Width="22" Height="22" Foreground="#EF4444"/>
+                                    <TextBlock Text="{lcl:Lcl Donate}" VerticalAlignment="Center" FontWeight="Medium" Classes="Secondary"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Command="{Binding NavigateToSettingsCommand}"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    BorderThickness="0" CornerRadius="8" Padding="15,12">
+                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                    <material:MaterialIcon Kind="SettingsOutline" Width="22" Height="22"/>
+                                    <TextBlock Text="{lcl:Lcl Settings}" VerticalAlignment="Center" FontWeight="Medium"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </SplitView.Pane>
+
+                <TransitioningContentControl Content="{Binding CurrentPage}"  Margin="0,50,0,0"/>
+            </SplitView>
+        </Grid>
+
+        <!-- Custom Draggable Area (TitleBar) -->
+        <Border Name="DragArea" Height="45" VerticalAlignment="Top" Background="#00000000" IsHitTestVisible="True" />
+    </Panel>
+</Window>

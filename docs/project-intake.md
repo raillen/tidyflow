@@ -1,4 +1,4 @@
-# Project Intake: FolderFlow
+﻿# Project Intake: AutoFlow
 
 Preencha este documento antes de escrever o PRD tecnico.
 
@@ -6,8 +6,8 @@ Preencha este documento antes de escrever o PRD tecnico.
 
 ## 1. Identificacao
 
-- Nome do projeto: FolderFlow
-- Nome curto ou slug: folderflow
+- Nome do projeto: AutoFlow
+- Nome curto ou slug: autoflow
 - Tipo de produto: `desktop` (Windows/Linux)
 - Status atual: `ideia` / `roadmap`
 

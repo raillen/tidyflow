@@ -1,4 +1,4 @@
-# Plano Tecnico: Sprint 0 (Fundação)
+﻿# Plano Tecnico: Sprint 0 (Fundação)
 
 - Sprint: `0`
 - Duracao sugerida: 2 semanas
@@ -45,12 +45,12 @@ O Sprint 0 nao entrega ainda:
 
 ```text
 src/
-  FolderFlow.App/             # Presentation
-  FolderFlow.Application/     # Services/UseCases
-  FolderFlow.Domain/          # Entities/Logic
-  FolderFlow.Infrastructure/  # Implementation
+  AutoFlow.App/             # Presentation
+  AutoFlow.Application/     # Services/UseCases
+  AutoFlow.Domain/          # Entities/Logic
+  AutoFlow.Infrastructure/  # Implementation
 tests/
-  FolderFlow.Tests.Unit/
+  AutoFlow.Tests.Unit/
 docs/
   adr/
   specs/

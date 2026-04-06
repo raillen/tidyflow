@@ -1,6 +1,6 @@
-# Análise Premium do Dashboard - FolderFlow
+﻿# Análise Premium do Dashboard - AutoFlow
 
-Este documento detalha o plano de evolução do Dashboard do FolderFlow para torná-lo um produto premium e focado em inteligência operacional.
+Este documento detalha o plano de evolução do Dashboard do AutoFlow para torná-lo um produto premium e focado em inteligência operacional.
 
 ## 1. Métricas de Impacto (Premium Insights)
 - **Economia de Tempo:** Calculada com base na média de processamento manual (`arquivos_processados * X segundos`).
