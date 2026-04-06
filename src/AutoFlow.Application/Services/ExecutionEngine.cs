@@ -152,91 +152,87 @@ public class ExecutionEngine
             }
             else
             {
+                var parallelSemaphore = new SemaphoreSlim(settings.MaxParallelFilesPerJob);
+                var tasks = new System.Collections.Generic.List<Task>();
+
                 foreach (var file in filesToProcess)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
 
-                    progressInfo.CurrentFile = Path.GetFileName(file);
-                    ReportProgress();
+                    await parallelSemaphore.WaitAsync(cancellationToken);
 
-                    var fileMeta = _fileOperator.GetFileMetadata(file);
-                    long fileBytes = fileMeta?.Size ?? 0;
-
-                    if (ShouldProcessFile(file, job, _fileOperator))
+                    tasks.Add(Task.Run(async () =>
                     {
-                        progressInfo.AddLog(string.Format(_localizationService["StartingFile"], Path.GetFileName(file)));
-                        ReportProgress();
-
-                        // RETRY AUTOMTICO (3 vezes)
-                        AuditEntry? entry = null;
-                        int attempts = 0;
-                        while (attempts < 3)
+                        try
                         {
-                            progressInfo.CurrentFilePercentage = 0;
-                            progressInfo.TransferSpeed = 0;
-                            
-                            long startProcessedBytes = progressInfo.ProcessedBytes; 
-                            
-                            entry = await ProcessFileAsync(file, job, _fileOperator, cancellationToken, (p) => 
+                            progressInfo.CurrentFile = Path.GetFileName(file);
+                            ReportProgress();
+
+                            var fileMeta = _fileOperator.GetFileMetadata(file);
+                            long fileBytes = fileMeta?.Size ?? 0;
+
+                            if (ShouldProcessFile(file, job, _fileOperator))
                             {
-                                progressInfo.ProcessedBytes = startProcessedBytes + (long)(fileBytes * (p.CurrentFilePercentage / 100.0));
-                                
-                                if (p.TransferSpeed > 0)
+                                AuditEntry? entry = null;
+                                int attempts = 0;
+                                while (attempts < 3)
                                 {
-                                    var remainingBytes = p.TotalBytes - p.ProcessedBytes;
-                                    var remainingSeconds = remainingBytes / p.TransferSpeed;
-                                    p.EstimatedTimeRemaining = TimeSpan.FromSeconds(remainingSeconds);
+                                    // Nota: No paralelismo, o reporte de progresso por arquivo individual na UI global
+                                    // pode ser confuso. Mantemos o progresso total de bytes.
+                                    long startProcessedBytes = progressInfo.ProcessedBytes;
+
+                                    entry = await ProcessFileAsync(file, job, _fileOperator, cancellationToken, (p) =>
+                                    {
+                                        // Update total processed bytes safely
+                                        // (Simplificado no paralelismo para evitar race conditions no reporte)
+                                        ReportProgress();
+                                    }, progressInfo);
+
+                                    if (entry != null && entry.Status != "FALHA")
+                                    {
+                                        Interlocked.Add(ref processedCount, 1);
+                                        lock (progressInfo) { progressInfo.ProcessedBytes += fileBytes; }
+                                        break;
+                                    }
+                                    attempts++;
+                                    if (attempts < 3) await Task.Delay(1000, cancellationToken);
                                 }
-                                
-                                ReportProgress();
-                            }, progressInfo);
-                            
-                            if (entry != null && entry.Status != "FALHA") 
-                            {
-                                progressInfo.ProcessedBytes = startProcessedBytes + fileBytes;
-                                progressInfo.AddLog(string.Format(_localizationService["SuccessFile"], Path.GetFileName(file)));
-                                break;
+
+                                if (entry != null)
+                                {
+                                    lock (auditEntries) { auditEntries.Add(entry); }
+                                    if (entry.Status == "FALHA") lock (failedPaths) { failedPaths.Add(file); }
+                                    else if (entry.Status != "IGNORADO")
+                                    {
+                                        if ((entry.Status == "MOVIDO" || entry.Status == "COPIADO") && !string.IsNullOrWhiteSpace(entry.SourcePath) && !string.IsNullOrWhiteSpace(entry.TargetPath))
+                                        {
+                                            lock (rollbackManifest.Items) { rollbackManifest.Items.Add(new RollbackItem { SourcePath = entry.SourcePath, TargetPath = entry.TargetPath, Action = entry.Status }); }
+                                        }
+                                    }
+                                }
                             }
                             else
                             {
-                                progressInfo.ProcessedBytes = startProcessedBytes;
-                                if (attempts == 2) progressInfo.AddLog(string.Format(_localizationService["ErrorFile"], Path.GetFileName(file), entry?.Details));
+                                lock (progressInfo) { progressInfo.ProcessedBytes += fileBytes; }
+                                var details = _localizationService["FilterIgnored"];
+                                lock (auditEntries) { auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, Status = "IGNORADO", Details = details }); }
                             }
-                            
-                            attempts++;
-                            if (attempts < 3) await Task.Delay(1000, cancellationToken);
-                        }
 
-                        if (entry != null)
-                        {
-                            auditEntries.Add(entry);
-                            if (entry.Status == "FALHA") failedPaths.Add(file);
-                            else if (entry.Status != "IGNORADO") 
+                            lock (progressInfo)
                             {
-                                processedCount++;
-                                if ((entry.Status == "MOVIDO" || entry.Status == "COPIADO") && !string.IsNullOrWhiteSpace(entry.SourcePath) && !string.IsNullOrWhiteSpace(entry.TargetPath))
-                                {
-                                    rollbackManifest.Items.Add(new RollbackItem { SourcePath = entry.SourcePath, TargetPath = entry.TargetPath, Action = entry.Status });
-                                }
+                                progressInfo.ProcessedFiles++;
+                                progressInfo.Timestamp = DateTime.Now;
                             }
-
-                            progressInfo.Status = entry.Status;
-                            progressInfo.Details = entry.Details ?? "";
+                            ReportProgress();
                         }
-                    }
-                    else
-                    {
-                        progressInfo.ProcessedBytes += fileBytes; // Mesmo ignorado, conta como processado no total
-                        var details = _localizationService["FilterIgnored"];
-                        auditEntries.Add(new AuditEntry { JobName = job.Name, SourcePath = file, Status = "IGNORADO", Details = details });
-                        progressInfo.Status = "IGNORADO";
-                        progressInfo.Details = details;
-                    }
-
-                    progressInfo.ProcessedFiles++;
-                    progressInfo.Timestamp = DateTime.Now;
-                    ReportProgress();
+                        finally
+                        {
+                            parallelSemaphore.Release();
+                        }
+                    }, cancellationToken));
                 }
+
+                await Task.WhenAll(tasks);
             }
 
             ReportProgress(true); // Final report

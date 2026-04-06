@@ -14,7 +14,7 @@ public class NativeWatchService : IWatchService
     private readonly ConcurrentDictionary<Guid, FileSystemWatcher> _contexts = new();
     private readonly ConcurrentDictionary<Guid, Action<Job>> _jobCallbacks = new();
     private readonly ConcurrentDictionary<Guid, Action<Blueprint, string>> _blueprintCallbacks = new();
-    private readonly ConcurrentDictionary<Guid, DateTime> _lastEventTime = new();
+    private readonly ConcurrentDictionary<Guid, System.Timers.Timer> _debounceTimers = new();
 
     public void StartWatching(Job job, Action<Job> onFileChanged)
     {
@@ -36,7 +36,6 @@ public class NativeWatchService : IWatchService
         if (!Directory.Exists(blueprint.Path)) return;
 
         var watcher = CreateWatcher(blueprint.Path, false);
-        // Captura o caminho especfico do evento para o Blueprint
         watcher.Created += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint, e.FullPath));
         watcher.Renamed += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint, e.FullPath));
         watcher.Changed += (s, e) => Debounce(blueprint.Id, 2, () => _blueprintCallbacks[blueprint.Id](blueprint, e.FullPath));
@@ -65,24 +64,28 @@ public class NativeWatchService : IWatchService
             watcher.EnableRaisingEvents = false;
             watcher.Dispose();
         }
+        if (_debounceTimers.TryRemove(id, out var timer))
+        {
+            timer.Stop();
+            timer.Dispose();
+        }
         _jobCallbacks.TryRemove(id, out _);
         _blueprintCallbacks.TryRemove(id, out _);
     }
 
     private void Debounce(Guid id, int settleSeconds, Action callback)
     {
-        var now = DateTime.Now;
-        if (_lastEventTime.TryGetValue(id, out var lastTime))
+        var timer = _debounceTimers.GetOrAdd(id, _ =>
         {
-            if ((now - lastTime).TotalSeconds < settleSeconds) return;
-        }
-
-        _lastEventTime[id] = now;
-        
-        Task.Run(async () => {
-            await Task.Delay(settleSeconds * 1000);
-            callback();
+            var t = new System.Timers.Timer(settleSeconds * 1000);
+            t.AutoReset = false;
+            t.Elapsed += (s, e) => callback();
+            return t;
         });
+
+        timer.Stop();
+        timer.Interval = Math.Max(100, settleSeconds * 1000);
+        timer.Start();
     }
 
     public bool IsWatching(Job job) => _contexts.ContainsKey(job.Id);
@@ -90,7 +93,9 @@ public class NativeWatchService : IWatchService
 
     public void Dispose()
     {
+        foreach (var timer in _debounceTimers.Values) timer.Dispose();
         foreach (var context in _contexts.Values) context.Dispose();
+        _debounceTimers.Clear();
         _contexts.Clear();
     }
 }

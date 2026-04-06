@@ -13,6 +13,8 @@ public class SqliteAuditService : IAuditService
 {
     private readonly string _connectionString;
     private readonly string _dbPath;
+    private readonly System.Collections.Concurrent.ConcurrentQueue<AuditEntry> _logBuffer = new();
+    private readonly System.Timers.Timer _flushTimer;
 
     public SqliteAuditService(string? basePath = null)
     {
@@ -20,9 +22,15 @@ public class SqliteAuditService : IAuditService
         if (!Directory.Exists(dataFolder)) Directory.CreateDirectory(dataFolder);
 
         _dbPath = Path.Combine(dataFolder, "audit.db");
-        _connectionString = $"Data Source={_dbPath}";
+        // WAL mode e Synchronous=Normal para mxima performance de escrita concorrente
+        _connectionString = $"Data Source={_dbPath};Cache=Shared;Mode=ReadWriteCreate;";
 
         _ = InitializeDatabaseAsync();
+
+        _flushTimer = new System.Timers.Timer(5000); // Flush a cada 5 segundos
+        _flushTimer.Elapsed += async (s, e) => await FlushBufferAsync();
+        _flushTimer.AutoReset = true;
+        _flushTimer.Start();
     }
 
     private async Task InitializeDatabaseAsync()
@@ -34,6 +42,8 @@ public class SqliteAuditService : IAuditService
 
             var command = connection.CreateCommand();
             command.CommandText = @"
+                PRAGMA journal_mode=WAL;
+                PRAGMA synchronous=NORMAL;
                 CREATE TABLE IF NOT EXISTS AuditEntries (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     Timestamp TEXT NOT NULL,
@@ -58,39 +68,72 @@ public class SqliteAuditService : IAuditService
 
     public async Task SaveReportAsync(string jobName, IEnumerable<AuditEntry> entries)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
-
-        using var transaction = connection.BeginTransaction();
-        var command = connection.CreateCommand();
-        command.CommandText = @"
-            INSERT INTO AuditEntries (Timestamp, JobName, SourcePath, TargetPath, Status, Details, FileSize, DurationMs)
-            VALUES ($timestamp, $jobname, $source, $target, $status, $details, $size, $duration)
-        ";
-
-        var pTimestamp = command.CreateParameter(); pTimestamp.ParameterName = "$timestamp"; command.Parameters.Add(pTimestamp);
-        var pJobName = command.CreateParameter(); pJobName.ParameterName = "$jobname"; command.Parameters.Add(pJobName);
-        var pSource = command.CreateParameter(); pSource.ParameterName = "$source"; command.Parameters.Add(pSource);
-        var pTarget = command.CreateParameter(); pTarget.ParameterName = "$target"; command.Parameters.Add(pTarget);
-        var pStatus = command.CreateParameter(); pStatus.ParameterName = "$status"; command.Parameters.Add(pStatus);
-        var pDetails = command.CreateParameter(); pDetails.ParameterName = "$details"; command.Parameters.Add(pDetails);
-        var pSize = command.CreateParameter(); pSize.ParameterName = "$size"; command.Parameters.Add(pSize);
-        var pDuration = command.CreateParameter(); pDuration.ParameterName = "$duration"; command.Parameters.Add(pDuration);
-
         foreach (var entry in entries)
         {
-            pTimestamp.Value = entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss");
-            pJobName.Value = entry.JobName;
-            pSource.Value = entry.SourcePath ?? (object)DBNull.Value;
-            pTarget.Value = entry.TargetPath ?? (object)DBNull.Value;
-            pStatus.Value = entry.Status;
-            pDetails.Value = entry.Details ?? (object)DBNull.Value;
-            pSize.Value = entry.FileSize;
-            pDuration.Value = entry.DurationMs;
-            await command.ExecuteNonQueryAsync();
+            _logBuffer.Enqueue(entry);
         }
 
-        await transaction.CommitAsync();
+        // Se o buffer estiver muito grande, forca o flush imediato
+        if (_logBuffer.Count > 100)
+        {
+            await FlushBufferAsync();
+        }
+    }
+
+    private async Task FlushBufferAsync()
+    {
+        if (_logBuffer.IsEmpty) return;
+
+        var entriesToSave = new List<AuditEntry>();
+        while (_logBuffer.TryDequeue(out var entry))
+        {
+            entriesToSave.Add(entry);
+        }
+
+        if (entriesToSave.Count == 0) return;
+
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            using var transaction = connection.BeginTransaction();
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                INSERT INTO AuditEntries (Timestamp, JobName, SourcePath, TargetPath, Status, Details, FileSize, DurationMs)
+                VALUES ($timestamp, $jobname, $source, $target, $status, $details, $size, $duration)
+            ";
+
+            var pTimestamp = command.CreateParameter(); pTimestamp.ParameterName = "$timestamp"; command.Parameters.Add(pTimestamp);
+            var pJobName = command.CreateParameter(); pJobName.ParameterName = "$jobname"; command.Parameters.Add(pJobName);
+            var pSource = command.CreateParameter(); pSource.ParameterName = "$source"; command.Parameters.Add(pSource);
+            var pTarget = command.CreateParameter(); pTarget.ParameterName = "$target"; command.Parameters.Add(pTarget);
+            var pStatus = command.CreateParameter(); pStatus.ParameterName = "$status"; command.Parameters.Add(pStatus);
+            var pDetails = command.CreateParameter(); pDetails.ParameterName = "$details"; command.Parameters.Add(pDetails);
+            var pSize = command.CreateParameter(); pSize.ParameterName = "$size"; command.Parameters.Add(pSize);
+            var pDuration = command.CreateParameter(); pDuration.ParameterName = "$duration"; command.Parameters.Add(pDuration);
+
+            foreach (var entry in entriesToSave)
+            {
+                pTimestamp.Value = entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss");
+                pJobName.Value = entry.JobName;
+                pSource.Value = entry.SourcePath ?? (object)DBNull.Value;
+                pTarget.Value = entry.TargetPath ?? (object)DBNull.Value;
+                pStatus.Value = entry.Status;
+                pDetails.Value = entry.Details ?? (object)DBNull.Value;
+                pSize.Value = entry.FileSize;
+                pDuration.Value = entry.DurationMs;
+                await command.ExecuteNonQueryAsync();
+            }
+
+            await transaction.CommitAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error flushing audit logs: {ex.Message}");
+            // Em caso de erro, devolvemos pro buffer para tentar depois
+            foreach (var entry in entriesToSave) _logBuffer.Enqueue(entry);
+        }
     }
 
     public async Task<long> GetTotalBytesProcessedAsync(string? jobName = null)

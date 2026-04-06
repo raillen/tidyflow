@@ -15,7 +15,7 @@ public class QueueProcessor
     private readonly ISettingsStore _settingsStore;
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _activeJobs = new();
     private CancellationTokenSource? _cts;
-    private SemaphoreSlim _semaphore;
+    private SemaphoreSlim _semaphore = new(2);
 
     public int ActiveCount => _activeJobs.Count;
 
@@ -24,7 +24,6 @@ public class QueueProcessor
         _jobQueue = jobQueue;
         _executionEngine = executionEngine;
         _settingsStore = settingsStore;
-        _semaphore = new SemaphoreSlim(2);
     }
 
     public bool IsJobActive(Guid jobId) => _activeJobs.ContainsKey(jobId);
@@ -39,7 +38,7 @@ public class QueueProcessor
     {
         if (_activeJobs.TryGetValue(jobId, out var cts))
         {
-            cts.Cancel();
+            try { cts.Cancel(); } catch { }
         }
     }
 
@@ -49,9 +48,9 @@ public class QueueProcessor
 
     public void StopAll()
     {
-        foreach (var jobId in _activeJobs.Keys)
+        foreach (var cts in _activeJobs.Values)
         {
-            StopJob(jobId);
+            try { cts.Cancel(); } catch { }
         }
     }
 
@@ -60,7 +59,11 @@ public class QueueProcessor
         try
         {
             var settings = await _settingsStore.LoadAsync();
-            _semaphore = new SemaphoreSlim(settings.MaxDegreeOfParallelism);
+            // Atualiza semforo se mudou nas settings, mas preservando o estado
+            if (_semaphore.CurrentCount != settings.MaxDegreeOfParallelism)
+            {
+                _semaphore = new SemaphoreSlim(settings.MaxDegreeOfParallelism);
+            }
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -77,6 +80,7 @@ public class QueueProcessor
                 if (job == null)
                 {
                     _semaphore.Release();
+                    await Task.Delay(500, cancellationToken); // Evita loop frenetico se fila vazia
                     continue;
                 }
 
@@ -94,7 +98,7 @@ public class QueueProcessor
                         finally
                         {
                             _activeJobs.TryRemove(job.Id, out _);
-                            _semaphore.Release();
+                            try { _semaphore.Release(); } catch { }
                         }
                     }, cancellationToken);
                 }

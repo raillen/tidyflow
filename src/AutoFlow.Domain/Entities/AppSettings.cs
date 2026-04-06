@@ -10,6 +10,7 @@ public class AppSettings
     
     // Performance
     public int MaxDegreeOfParallelism { get; set; } = 2;
+    public int MaxParallelFilesPerJob { get; set; } = 1; // Padro conservador
     public string ProcessPriority { get; set; } = "Normal"; // Normal, BelowNormal, High
     public long BandwidthLimitBytes { get; set; } = 0; // 0 = Sem limite
 

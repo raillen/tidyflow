@@ -257,9 +257,9 @@
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="Filtrar por Data de Captura da Foto (EXIF Original):" FontSize="11" Opacity="0.6"/>
                                     <Grid ColumnDefinitions="*, 10, *">
-                                        <DatePicker SelectedDate="{Binding ExifDateStart}" Grid.Column="0" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                                        <CalendarDatePicker SelectedDate="{Binding ExifDateStart}" Watermark="Data Inicial" Grid.Column="0" HorizontalAlignment="Stretch" CornerRadius="8"/>
                                         <TextBlock Grid.Column="1" Text="até" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="11" Opacity="0.5"/>
-                                        <DatePicker SelectedDate="{Binding ExifDateEnd}" Grid.Column="2" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                                        <CalendarDatePicker SelectedDate="{Binding ExifDateEnd}" Watermark="Data Final" Grid.Column="2" HorizontalAlignment="Stretch" CornerRadius="8"/>
                                     </Grid>
                                 </StackPanel>
                             </StackPanel>

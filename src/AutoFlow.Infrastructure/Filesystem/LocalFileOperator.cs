@@ -127,9 +127,35 @@ public class LocalFileOperator : IFileOperator
 
     public async Task MoveAsync(string source, string target, CancellationToken cancellationToken = default)
     {
-        // No Windows/Linux, File.Move é atômico se no mesmo volume. 
-        // Para o MVP, usamos a API nativa do .NET.
-        await Task.Run(() => File.Move(source, target, true), cancellationToken);
+        // Detecta se  o mesmo volume (Disco)
+        var sourceDrive = Path.GetPathRoot(Path.GetFullPath(source));
+        var targetDrive = Path.GetPathRoot(Path.GetFullPath(target));
+
+        if (sourceDrive == targetDrive)
+        {
+            // Mesmo disco: Operao atmica instantnea do SO
+            await Task.Run(() => File.Move(source, target, true), cancellationToken);
+        }
+        else
+        {
+            // Discos diferentes: Fallback para Copy + Delete (permite reportar progresso no futuro se passarmos o IProgress)
+            await CopyAsync(source, target, cancellationToken);
+            
+            // Verificao simples de sucesso antes de deletar a origem
+            if (File.Exists(target))
+            {
+                var sInfo = new FileInfo(source);
+                var tInfo = new FileInfo(target);
+                if (sInfo.Length == tInfo.Length)
+                {
+                    File.Delete(source);
+                }
+                else
+                {
+                    throw new IOException("Falha na integridade do movimento entre volumes: Tamanhos divergem.");
+                }
+            }
+        }
     }
 
     public Task DeleteAsync(string path, CancellationToken cancellationToken = default)
