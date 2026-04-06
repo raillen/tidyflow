@@ -20,7 +20,6 @@ DefaultGroupName={#MyAppName}
 PrivilegesRequired=admin
 OutputDir=..\release
 OutputBaseFilename=AutoFlow_Setup_v{#MyAppVersion}
-SetupIconFile=..\src\AutoFlow.App\Assets\app-icon.png
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
