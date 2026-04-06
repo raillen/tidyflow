@@ -22,6 +22,7 @@ public partial class JobItemViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isSelected;
     [ObservableProperty] private bool _isExpanded;
+    [ObservableProperty] private bool _isSimulating;
     [ObservableProperty] 
     [NotifyPropertyChangedFor(nameof(LocalizedStatus))]
     private string _status = "";
@@ -112,6 +113,41 @@ public partial class JobItemViewModel : ViewModelBase
     {
         Status = _localizationService["Queued"];
         await _jobAppService.RunJobAsync(Job.Id);
+    }
+
+    [RelayCommand]
+    public async Task SimulateAsync()
+    {
+        if (IsSimulating) return;
+        IsSimulating = true;
+        try
+        {
+            var previewEngine = App.Services?.GetService(typeof(PreviewEngine)) as PreviewEngine;
+            if (previewEngine != null)
+            {
+                var summary = await previewEngine.GeneratePreviewAsync(Job);
+                
+                Dispatcher.UIThread.Post(() => {
+                    var vm = new PreviewWindowViewModel(summary, _localizationService);
+                    var window = new Views.PreviewWindow { DataContext = vm };
+                    
+                    var desktop = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+                    var mainWindow = desktop?.MainWindow;
+                    if (mainWindow != null)
+                    {
+                        window.ShowDialog(mainWindow);
+                    }
+                    else
+                    {
+                        window.Show();
+                    }
+                });
+            }
+        }
+        finally
+        {
+            IsSimulating = false;
+        }
     }
 
     [RelayCommand]
