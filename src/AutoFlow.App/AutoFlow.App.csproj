@@ -6,9 +6,19 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    
+    <!-- MSIX Packaging Properties -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <MsixPackageId>AutoFlow.App</MsixPackageId>
+    <MsixPublisherDisplayName>Raillen Santos</MsixPublisherDisplayName>
+    <MsixPackageDisplayName>AutoFlow</MsixPackageDisplayName>
+    <MsixPackageDescription>Automação Inteligente de Arquivos</MsixPackageDescription>
+    <MsixPackageVersion>1.4.1.0</MsixPackageVersion>
+    <MsixPublisher>CN=Raillen</MsixPublisher>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.Msix.Packaging.MsixPublish" Version="1.1.0" />
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
