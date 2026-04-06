@@ -22,6 +22,7 @@ PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64
 OutputDir=..\release
 OutputBaseFilename=AutoFlow_Setup_v{#MyAppVersion}
+SetupIconFile=..\src\AutoFlow.App\Assets\app-icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
