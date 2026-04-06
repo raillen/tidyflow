@@ -31,10 +31,9 @@ Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; Aqui apontamos para os binários gerados pelo dotnet publish
-Source: "..\src\AutoFlow.App\bin\Release\net10.0\win-x64\publish\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+; Copia todos os arquivos da pasta de publicação
 Source: "..\src\AutoFlow.App\bin\Release\net10.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; OBS: O ícone do sistema para o instalador precisa estar na pasta de assets
+; OBS: O executável principal deve ser o primeiro ou especificado em Icons
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
