@@ -15,11 +15,13 @@ public class PreviewEngine
 {
     private readonly IFileOperator _fileOperator;
     private readonly ILocalizationService _localizationService;
+    private readonly IMetadataService _metadataService;
 
-    public PreviewEngine(IFileOperator fileOperator, ILocalizationService localizationService)
+    public PreviewEngine(IFileOperator fileOperator, ILocalizationService localizationService, IMetadataService metadataService)
     {
         _fileOperator = fileOperator;
         _localizationService = localizationService;
+        _metadataService = metadataService;
     }
 
     public async Task<PreviewSummary> GeneratePreviewAsync(Job job, CancellationToken cancellationToken = default)
@@ -78,6 +80,22 @@ public class PreviewEngine
         if (job.ModifiedWithinDays.HasValue)
         {
             if (DateTime.Now - info.LastWriteTime > TimeSpan.FromDays(job.ModifiedWithinDays.Value)) return false;
+        }
+
+        // Filtros Avançados: Conteúdo
+        if (!string.IsNullOrWhiteSpace(job.ContentContains))
+        {
+            if (!_metadataService.ContainsText(file, job.ContentContains)) return false;
+        }
+
+        // Filtros Avançados: EXIF Data
+        if (job.ExifDateStart.HasValue || job.ExifDateEnd.HasValue)
+        {
+            var exifDate = _metadataService.GetExifDate(file);
+            if (exifDate == null) return false;
+
+            if (job.ExifDateStart.HasValue && exifDate.Value < job.ExifDateStart.Value) return false;
+            if (job.ExifDateEnd.HasValue && exifDate.Value > job.ExifDateEnd.Value) return false;
         }
 
         return true;

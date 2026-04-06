@@ -32,6 +32,11 @@ public class Job
     public long? MaxSizeKB { get; set; }
     public int? ModifiedWithinDays { get; set; }
 
+    // Filtros Avançados (Fase 4)
+    public string? ContentContains { get; set; } // Lê conteúdo TXT, MD, LOG etc.
+    public DateTime? ExifDateStart { get; set; } // EXIF Metadata
+    public DateTime? ExifDateEnd { get; set; }
+
     // Agendamento
     public ScheduleType ScheduleType { get; set; } = ScheduleType.None;
     public int IntervalMinutes { get; set; } = 60;

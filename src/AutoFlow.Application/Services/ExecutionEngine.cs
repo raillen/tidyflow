@@ -29,6 +29,7 @@ public class ExecutionEngine
     private readonly ISettingsStore _settingsStore;
     private readonly ILocalizationService _localizationService;
     private readonly IRollbackStore _rollbackStore;
+    private readonly IMetadataService _metadataService;
 
     public ExecutionEngine(
         FileOperatorFactory fileOperatorFactory, 
@@ -45,7 +46,8 @@ public class ExecutionEngine
         IEncryptionService encryptionService,
         ISettingsStore settingsStore,
         ILocalizationService localizationService,
-        IRollbackStore rollbackStore)
+        IRollbackStore rollbackStore,
+        IMetadataService metadataService)
     {
         _fileOperatorFactory = fileOperatorFactory;
         _logger = logger;
@@ -62,6 +64,7 @@ public class ExecutionEngine
         _settingsStore = settingsStore;
         _localizationService = localizationService;
         _rollbackStore = rollbackStore;
+        _metadataService = metadataService;
     }
 
     public async Task RunJobAsync(Job job, CancellationToken cancellationToken = default, bool isRetry = false, IProgress<JobProgressInfo>? progress = null)
@@ -327,6 +330,22 @@ public class ExecutionEngine
         if (job.ModifiedWithinDays.HasValue)
         {
             if (DateTime.UtcNow - meta.LastWriteTimeUtc > TimeSpan.FromDays(job.ModifiedWithinDays.Value)) return false;
+        }
+
+        // Filtros Avançados: Conteúdo
+        if (!string.IsNullOrWhiteSpace(job.ContentContains))
+        {
+            if (!_metadataService.ContainsText(file, job.ContentContains)) return false;
+        }
+
+        // Filtros Avançados: EXIF Data
+        if (job.ExifDateStart.HasValue || job.ExifDateEnd.HasValue)
+        {
+            var exifDate = _metadataService.GetExifDate(file);
+            if (exifDate == null) return false;
+
+            if (job.ExifDateStart.HasValue && exifDate.Value < job.ExifDateStart.Value) return false;
+            if (job.ExifDateEnd.HasValue && exifDate.Value > job.ExifDateEnd.Value) return false;
         }
 
         return true;

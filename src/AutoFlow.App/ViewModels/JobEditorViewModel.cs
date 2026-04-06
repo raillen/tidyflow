@@ -28,6 +28,9 @@ public partial class JobEditorViewModel : ViewModelBase
     [ObservableProperty] private string _excludePatternsText = string.Empty;
     [ObservableProperty] private string _preScriptPathText = string.Empty;
     [ObservableProperty] private string _postScriptPathText = string.Empty;
+    [ObservableProperty] private string _contentContainsText = string.Empty;
+    [ObservableProperty] private DateTimeOffset? _exifDateStart;
+    [ObservableProperty] private DateTimeOffset? _exifDateEnd;
     [ObservableProperty] private PreviewSummary? _currentPreview;
     [ObservableProperty] private bool _isPreviewLoading;
     [ObservableProperty] private bool _isWatchMode;
@@ -95,6 +98,9 @@ public partial class JobEditorViewModel : ViewModelBase
         ExcludePatternsText = string.Join(", ", job.ExcludePatterns);
         PreScriptPathText = job.PreScriptPath ?? string.Empty;
         PostScriptPathText = job.PostScriptPath ?? string.Empty;
+        ContentContainsText = job.ContentContains ?? string.Empty;
+        ExifDateStart = job.ExifDateStart;
+        ExifDateEnd = job.ExifDateEnd;
         
         if (TimeSpan.TryParse(job.ScheduleTime, out var ts))
         {
@@ -147,6 +153,9 @@ public partial class JobEditorViewModel : ViewModelBase
         Job.TargetPath = TargetPathText;
         Job.PreScriptPath = PreScriptPathText;
         Job.PostScriptPath = PostScriptPathText;
+        Job.ContentContains = ContentContainsText;
+        Job.ExifDateStart = ExifDateStart?.DateTime;
+        Job.ExifDateEnd = ExifDateEnd?.DateTime;
         Job.WatchEnabled = IsWatchMode;
         Job.ScheduleTime = $"{ScheduleHour:D2}:{ScheduleMinute:D2}:{ScheduleSecond:D2}";
         Job.SpecificDate = SelectedDateOffset?.DateTime;

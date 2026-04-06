@@ -120,6 +120,12 @@ public class ExecutionEngineTests
         public Task ClearManifestAsync(Guid jobId) => Task.CompletedTask;
     }
 
+    private class MockMetadataService : IMetadataService
+    {
+        public DateTime? GetExifDate(string filePath) => null;
+        public bool ContainsText(string filePath, string searchText) => true;
+    }
+
     [Fact]
     public async Task RunJobAsync_ShouldCopyFiles_WhenFiltersMatch()
     {
@@ -150,6 +156,7 @@ public class ExecutionEngineTests
         var settingsStore = new MockSettingsStore();
         var localizationService = new MockLocalizationService();
         var rollbackStore = new MockRollbackStore();
+        var metadataService = new MockMetadataService();
         
         var engine = new ExecutionEngine(
             fileOperatorFactory, 
@@ -166,7 +173,8 @@ public class ExecutionEngineTests
             encryptionService,
             settingsStore,
             localizationService,
-            rollbackStore);
+            rollbackStore,
+            metadataService);
 
         var job = new Job
         {

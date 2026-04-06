@@ -113,6 +113,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IExternalNotificationService, WebhookNotificationService>();
         services.AddSingleton<ICloudHydrationService, WindowsCloudHydrationService>();
         services.AddSingleton<IStorageService, AvaloniaStorageService>();
+        services.AddSingleton<IMetadataService, MetadataService>();
         services.AddSingleton<IJobQueue, ObservableJobQueue>();
         services.AddSingleton<ISchedulerService, SimpleScheduler>();
         services.AddSingleton<ThemeService>();
