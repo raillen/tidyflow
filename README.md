@@ -72,10 +72,12 @@ Acesse nossa Wiki interna para guias detalhados:
 
 ## 📄 Licença
 
-Este projeto está sob uma licença **Aberta para Uso Pessoal**, mas com as seguintes restrições:
-- ❌ **Sem Uso Comercial:** É proibido vender ou lucrar com o software.
-- ❌ **Sem Modificação:** Não é permitido modificar ou derivar o código sem autorização prévia por escrito.
-- ✅ **Uso Aberto:** Gratuito para uso individual e pessoal.
+Este projeto está sob a licença **Creative Commons Atribuição-NãoComercial-SemDerivações 4.0 Internacional (CC BY-NC-ND 4.0)**.
+
+- ✅ **Livre para Compartilhar:** Você pode copiar e redistribuir o material.
+- ❌ **Sem Uso Comercial:** Proibido vender ou lucrar com o software.
+- ❌ **Sem Derivações:** Proibido modificar ou criar obras derivadas.
+- 👤 **Atribuição:** Deve dar o crédito apropriado ao autor.
 
 Consulte o arquivo [LICENSE](LICENSE) para mais detalhes ou entre em contato: **contato@raillen.site**
 
