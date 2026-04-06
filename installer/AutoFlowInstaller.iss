@@ -18,6 +18,8 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 ; Requer privilégios administrativos
 PrivilegesRequired=admin
+; Garante que instale em C:\Program Files em sistemas 64-bit
+ArchitecturesInstallIn64BitMode=x64
 OutputDir=..\release
 OutputBaseFilename=AutoFlow_Setup_v{#MyAppVersion}
 Compression=lzma
@@ -40,4 +42,5 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; O segredo para evitar o erro 740 é garantir que o instalador inicie o programa como o usuário atual mas permitindo o UAC
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runascurrentuser
