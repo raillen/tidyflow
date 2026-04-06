@@ -33,16 +33,16 @@
             </Grid>
 
             <!-- Metrics Cards Row -->
-            <Grid ColumnDefinitions="*, *, *, *">
+            <UniformGrid Columns="4">
                 <!-- Health Score Card -->
-                <Border Grid.Column="0" Margin="0,0,10,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <Border Margin="0,0,10,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" ClipToBounds="True">
                     <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
                             <material:MaterialIcon Grid.Column="0" Kind="HeartPulse" Foreground="{DynamicResource SuccessColor}" Width="20" Height="20"/>
-                            <TextBlock Grid.Column="1" Text="{lcl:Lcl SystemHealth}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+                            <TextBlock Grid.Column="1" Text="{lcl:Lcl SystemHealth}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
                         </Grid>
                         <StackPanel HorizontalAlignment="Center" Margin="0,5">
-                            <TextBlock Text="{Binding HealthStatus}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding HealthStatus}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Text="{Binding HealthScore, StringFormat='{}{0:F1}%'}" FontSize="12" Opacity="0.6" HorizontalAlignment="Center"/>
                         </StackPanel>
                         <ProgressBar Value="{Binding HealthScore}" Height="4" CornerRadius="2" Foreground="{DynamicResource SuccessColor}"/>
@@ -50,39 +50,39 @@
                 </Border>
 
                 <!-- Data Volume Card -->
-                <Border Grid.Column="1" Margin="5,0,5,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <Border Margin="5,0,5,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" ClipToBounds="True">
                     <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
                             <material:MaterialIcon Grid.Column="0" Kind="DatabaseOutline" Foreground="{DynamicResource AccentColor}" Width="20" Height="20"/>
-                            <TextBlock Grid.Column="1" Text="{lcl:Lcl TotalVolume}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+                            <TextBlock Grid.Column="1" Text="{lcl:Lcl TotalVolume}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
                         </Grid>
                         <StackPanel HorizontalAlignment="Center" Margin="0,5">
-                            <TextBlock Text="{Binding TotalDataVolume}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding TotalDataVolume}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Text="{lcl:Lcl ProcessedData}" FontSize="11" Opacity="0.6" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- Time Saved Card -->
-                <Border Grid.Column="2" Margin="5,0,5,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <Border Margin="5,0,5,0" Background="{DynamicResource CardBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" ClipToBounds="True">
                     <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
                             <material:MaterialIcon Grid.Column="0" Kind="TimerOutline" Foreground="{DynamicResource WarningColor}" Width="20" Height="20"/>
-                            <TextBlock Grid.Column="1" Text="{lcl:Lcl TimeSaved}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+                            <TextBlock Grid.Column="1" Text="{lcl:Lcl TimeSaved}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
                         </Grid>
                         <StackPanel HorizontalAlignment="Center" Margin="0,5">
-                            <TextBlock Text="{Binding TimeSaved}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding TimeSaved}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Text="{lcl:Lcl AutomatedWork}" FontSize="11" Opacity="0.6" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- Processed Files Summary -->
-                <Border Grid.Column="3" Margin="10,0,0,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <Border Margin="10,0,0,0" Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" ClipToBounds="True">
                     <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="Auto, *">
                             <material:MaterialIcon Grid.Column="0" Kind="Files" Foreground="{DynamicResource AccentColor}" Width="20" Height="20"/>
-                            <TextBlock Grid.Column="1" Text="{lcl:Lcl Files}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+                            <TextBlock Grid.Column="1" Text="{lcl:Lcl Files}" VerticalAlignment="Center" Margin="8,0" FontSize="10" FontWeight="Bold" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
                         </Grid>
                         <Grid ColumnDefinitions="*, *, *">
                             <StackPanel Grid.Column="0" HorizontalAlignment="Center">
@@ -100,7 +100,7 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-            </Grid>
+            </UniformGrid>
 
             <!-- Quick Actions -->
             <Border Background="{DynamicResource CardBackground}" CornerRadius="12" Padding="15" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">

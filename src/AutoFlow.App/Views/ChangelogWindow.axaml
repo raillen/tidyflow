@@ -1,9 +1,10 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:material="using:Material.Icons.Avalonia"
         xmlns:lcl="using:AutoFlow.App.Localization"
         x:Class="AutoFlow.App.Views.ChangelogWindow"
         Title="Changelog"
+        Icon="/Assets/app-icon.png"
         Width="500" Height="600"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppBackground}"
@@ -18,100 +19,39 @@
             <StackPanel Grid.Row="0" Spacing="10" Margin="0,0,0,20">
                 <StackPanel Orientation="Horizontal" Spacing="15">
                     <material:MaterialIcon Kind="History" Width="32" Height="32" Foreground="{DynamicResource AccentColor}"/>
-                    <TextBlock Text="Notas da Versão" FontSize="24" FontWeight="Black"/>
+                    <TextBlock Text="{lcl:Lcl ChangelogTitle}" FontSize="24" FontWeight="Black"/>
                 </StackPanel>
-                <TextBlock Text="Acompanhe a evolução do AutoFlow Pro" FontSize="13" Opacity="0.5"/>
+                <TextBlock Text="{lcl:Lcl ChangelogSubtitle}" FontSize="13" Opacity="0.5"/>
                 <Separator Background="{DynamicResource CardBorderBrush}" Margin="0,10,0,0"/>
             </StackPanel>
 
             <!-- Content -->
             <ScrollViewer Grid.Row="1" Padding="0,0,15,0">
                 <StackPanel Spacing="25">
-                    <!-- v1.3.4 -->
+                    <!-- v1.4.1 -->
                     <StackPanel Spacing="10">
                         <Border Background="{DynamicResource AccentColor}" HorizontalAlignment="Left" Padding="10,4" CornerRadius="6">
-                            <TextBlock Text="v1.3.4 - PAINÉIS DE CONTROLE &amp; LAYOUT FINAL" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="v1.4.1 - NAVIGATION &amp; RESPONSIVENESS" FontSize="11" FontWeight="Bold" Foreground="White"/>
                         </Border>
-                        <TextBlock Text="Abril 2026" FontSize="11" Opacity="0.4" FontWeight="Bold"/>
-                        <TextBlock TextWrapping="Wrap" LineHeight="20" FontSize="14">
-• Implementação do **Painel de Controle de Automação**: métricas reais de jobs e progresso visual detalhado.
-• Novo **Painel de Controle de Blueprints**: estatísticas de templates e atalhos de criação.
-• Finalização do **Centro de Auditoria**: abas dedicadas para Incidentes e Logs de Sistema.
-• Ajuste final de **Margem Superior (60px)**: eliminação total de conflitos com a barra de título em todos os módulos.
-                        </TextBlock>
+                        <TextBlock Text="April 2026" FontSize="11" Opacity="0.4" FontWeight="Bold"/>
+                        <TextBlock Text="{lcl:Lcl Changelog_v1_4_1}" TextWrapping="Wrap" LineHeight="20" FontSize="14" />
                     </StackPanel>
 
-                    <!-- v1.3.3 -->
+                    <!-- v1.4.0 -->
                     <StackPanel Spacing="10">
                         <Border Background="{DynamicResource AccentColor}" HorizontalAlignment="Left" Padding="10,4" CornerRadius="6">
-                            <TextBlock Text="v1.3.3 - UNIFICAÇÃO VISUAL &amp; ACESSIBILIDADE" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="v1.4.0 - VISUAL &amp; TYPOGRAPHY" FontSize="11" FontWeight="Bold" Foreground="White"/>
                         </Border>
-                        <TextBlock Text="Abril 2026" FontSize="11" Opacity="0.4" FontWeight="Bold"/>
-                        <TextBlock TextWrapping="Wrap" LineHeight="20" FontSize="14">
-• Padronização de **UI Master-Detail**: todos os módulos (Automação, Blueprints e Histórico) agora possuem navegação por abas laterais.
-• Correção de **Sobreposição em Maximizado**: o conteúdo agora respeita a área dos botões nativos do Windows quando a janela está maximizada.
-• Alinhamento vertical padronizado em todas as sub-sidebars.
-                        </TextBlock>
+                        <TextBlock Text="April 2026" FontSize="11" Opacity="0.4" FontWeight="Bold"/>
+                        <TextBlock Text="{lcl:Lcl Changelog_v1_4_0}" TextWrapping="Wrap" LineHeight="20" FontSize="14" />
                     </StackPanel>
 
-                    <!-- v1.3.2 -->
-                    <StackPanel Spacing="10">
-                        <Border Background="{DynamicResource CardBorderBrush}" HorizontalAlignment="Left" Padding="10,4" CornerRadius="6">
-                            <TextBlock Text="v1.3.2 - NOTIFICAÇÕES NATIVAS" FontSize="11" FontWeight="Bold"/>
-                        </Border>
-                        <TextBlock Text="Abril 2026" FontSize="11" Opacity="0.4" FontWeight="Bold"/>
-                        <TextBlock TextWrapping="Wrap" LineHeight="20" FontSize="14">
-• Implementação de **Notificações Híbridas**: Toasts nativos do Windows quando o app está minimizado.
-• Melhoria na restauração da janela a partir do **System Tray**.
-• Otimização do pipeline de inicialização para evitar deadlocks.
-                        </TextBlock>
-                    </StackPanel>
-
-                    <!-- v1.3.1 -->
-                    <StackPanel Spacing="10">
-                        <Border Background="{DynamicResource CardBorderBrush}" HorizontalAlignment="Left" Padding="10,4" CornerRadius="6">
-                            <TextBlock Text="v1.3.1 - PERFORMANCE &amp; UI" FontSize="11" FontWeight="Bold"/>
-                        </Border>
-                        <TextBlock Text="Abril 2026" FontSize="11" Opacity="0.4" FontWeight="Bold"/>
-                        <TextBlock TextWrapping="Wrap" LineHeight="20" FontSize="14">
-• Implementação do motor de **Bandwidth Throttling**: limite de velocidade global para SFTP e ZIP.
-• Reestruturação completa do módulo de **Configurações** com abas laterais.
-• Nova sessão **'Sobre'** com informações do desenvolvedor e links sociais.
-                        </TextBlock>
-                    </StackPanel>
-
-                    <!-- v1.3.0 -->
-                    <StackPanel Spacing="10">
-                        <Border Background="{DynamicResource CardBorderBrush}" HorizontalAlignment="Left" Padding="10,4" CornerRadius="6">
-                            <TextBlock Text="v1.3.0 - SMART RENAMING" FontSize="11" FontWeight="Bold"/>
-                        </Border>
-                        <TextBlock Text="Março 2026" FontSize="11" Opacity="0.4" FontWeight="Bold"/>
-                        <TextBlock TextWrapping="Wrap" LineHeight="20" FontSize="14">
-• Introdução do **Smart Renaming Engine**: utilize tokens como {Date}, {Counter} e {JobName} para renomear arquivos automaticamente.
-• Novo módulo de **Blueprints**: separe a lógica de organização de arquivos da lógica de movimentação.
-• Suporte a **Regex Avançado** para manipulação de strings de nomes de arquivos.
-                        </TextBlock>
-                    </StackPanel>
-
-                    <!-- v1.2.5 -->
-                    <StackPanel Spacing="10">
-                        <Border Background="{DynamicResource CardBorderBrush}" HorizontalAlignment="Left" Padding="10,4" CornerRadius="6">
-                            <TextBlock Text="v1.2.5 - ESTABILIDADE CORE" FontSize="11" FontWeight="Bold"/>
-                        </Border>
-                        <TextBlock Text="Fevereiro 2026" FontSize="11" Opacity="0.4" FontWeight="Bold"/>
-                        <TextBlock TextWrapping="Wrap" LineHeight="20" FontSize="14">
-• Otimização drástica no tempo de inicialização do aplicativo (Startup).
-• Migração dos logs para **SQLite**: consultas ao histórico agora são instantâneas mesmo com milhares de registros.
-• Correção de vazamentos de memória em observadores de pastas (Watchers).
-                        </TextBlock>
-                    </StackPanel>
-
-                    <TextBlock Text="Fim do histórico recente." HorizontalAlignment="Center" Opacity="0.3" FontSize="11" Margin="0,20"/>
+                    <TextBlock Text="{lcl:Lcl EndRecentHistory}" HorizontalAlignment="Center" Opacity="0.3" FontSize="11" Margin="0,20"/>
                 </StackPanel>
             </ScrollViewer>
 
             <!-- Footer -->
-            <Button Grid.Row="2" Content="Entendido" 
+            <Button Grid.Row="2" Content="{lcl:Lcl GotIt}" 
                     Click="CloseClick"
                     HorizontalAlignment="Right" 
                     Theme="{DynamicResource SolidButton}" 

@@ -6,6 +6,7 @@
         x:Class="AutoFlow.App.Views.DonateWindow"
         x:DataType="vm:DonateViewModel"
         Title="{lcl:Lcl Donate}"
+        Icon="/Assets/app-icon.png"
         Width="450" Height="650"
         WindowStartupLocation="CenterOwner"
         CanResize="True"

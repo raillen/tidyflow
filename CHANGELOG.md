@@ -1,6 +1,20 @@
-﻿# Changelog - AutoFlow Pro
+# Changelog - AutoFlow Pro
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
+
+## [v1.4.1] - 2026-04-06
+### Adicionado
+- **Responsividade do Dashboard:** Implementado UniformGrid e TextTrimming nos cards de métricas para evitar quebras em janelas pequenas.
+- **Ações Rápidas em Fluxos:** Novos atalhos para criação de tarefas manuais e monitoradas no módulo de Automação.
+- **Melhorias na Auditoria:** Novo layout de detalhes para logs de operação, corrigindo problemas de informações cortadas.
+- **Navegação Inteligente:** Destaque visual (fundo e cor) para a aba ativa na barra lateral.
+
+## [v1.4.0] - 2026-04-06
+### Adicionado
+- **Tipografia Personalizável:** Suporte a múltiplas fontes (Inter, Roboto, Montserrat, Open Sans, Public Sans e JetBrains Mono).
+- **Ajustes em Tempo Real:** Alterações de tema, fonte e efeitos visuais agora são aplicadas instantaneamente sem reiniciar.
+- **Efeito Mica & Glass:** Suporte nativo ao Windows 11 Mica e AcrylicBlur com slider de opacidade variável para a barra lateral.
+- **Estabilidade de Interface:** Definido tamanho mínimo de janela (950x650) para garantir integridade visual.
 
 ## [v1.3.4] - 2026-04-02
 ### Adicionado

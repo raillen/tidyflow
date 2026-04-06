@@ -6,6 +6,7 @@
         x:Class="AutoFlow.App.Views.PreviewWindow"
         x:DataType="vm:PreviewWindowViewModel"
         Title="Dry-Run (Simulação)" Width="650" Height="500"
+        Icon="/Assets/app-icon.png"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppBackground}"
         ExtendClientAreaToDecorationsHint="True"

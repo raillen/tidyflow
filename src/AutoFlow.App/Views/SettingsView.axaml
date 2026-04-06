@@ -38,7 +38,7 @@
                                 <Grid ColumnDefinitions="*, *">
                                     <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                         <TextBlock Text="{lcl:Lcl InterfaceTheme}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                        <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Settings.Theme}" HorizontalAlignment="Stretch" CornerRadius="8">
+                                        <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding SelectedTheme}" HorizontalAlignment="Stretch" CornerRadius="8">
                                             <ComboBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding Converter={StaticResource EnumLocalizationConverter}}"/>
@@ -55,7 +55,7 @@
                                 <Grid ColumnDefinitions="*, *">
                                     <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                         <TextBlock Text="{lcl:Lcl InterfaceFont}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                        <ComboBox ItemsSource="{Binding Fonts}" SelectedItem="{Binding Settings.Font}" HorizontalAlignment="Stretch" CornerRadius="8">
+                                        <ComboBox ItemsSource="{Binding Fonts}" SelectedItem="{Binding SelectedFont}" HorizontalAlignment="Stretch" CornerRadius="8">
                                             <ComboBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding Converter={StaticResource EnumLocalizationConverter}}"/>
@@ -66,10 +66,18 @@
                                 </Grid>
 
                                 <StackPanel Spacing="8">
-                                    <TextBlock Text="{lcl:Lcl GlassOpacity}" FontSize="12" FontWeight="SemiBold"/>
-                                    <Grid ColumnDefinitions="*, Auto">
-                                        <Slider Grid.Column="0" Value="{Binding GlassOpacity}" Minimum="0.1" Maximum="1.0" SmallChange="0.05"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding GlassOpacity, StringFormat={}{0:P0}}" Margin="15,0,0,0" VerticalAlignment="Center" Width="40" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
+                                    <Grid ColumnDefinitions="*, *">
+                                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                            <TextBlock Text="{lcl:Lcl GlassOpacity}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                            <Grid ColumnDefinitions="*, Auto">
+                                                <Slider Grid.Column="0" Value="{Binding GlassOpacity}" Minimum="0.1" Maximum="1.0" SmallChange="0.05"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding GlassOpacity, StringFormat={}{0:P0}}" Margin="15,0,0,0" VerticalAlignment="Center" Width="40" FontWeight="Bold" Foreground="{DynamicResource AccentColor}"/>
+                                            </Grid>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                            <TextBlock Text="{lcl:Lcl GlassMaterial}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                            <ComboBox ItemsSource="{Binding GlassMaterials}" SelectedItem="{Binding SelectedGlassMaterial}" HorizontalAlignment="Stretch" CornerRadius="8"/>
+                                        </StackPanel>
                                     </Grid>
                                 </StackPanel>
                             </StackPanel>
@@ -300,18 +308,18 @@
                             <StackPanel Spacing="20">
                                 <StackPanel Spacing="10">
                                     <TextBlock Text="AutoFlow Pro" FontSize="22" FontWeight="Black" Foreground="{DynamicResource AccentColor}"/>
-                                    <TextBlock Text="v1.3.4 (April 2026)" FontSize="12" Opacity="0.5"/>
+                                    <TextBlock Text="v1.4.1 (April 2026)" FontSize="12" Opacity="0.5"/>
                                 </StackPanel>
 
-                                <TextBlock Text="O AutoFlow nasceu para simplificar o gerenciamento de backups e a organização de arquivos em larga escala, unindo performance industrial com uma interface moderna e intuitiva." 
+                                <TextBlock Text="{lcl:Lcl AboutDescription}" 
                                            TextWrapping="Wrap" FontSize="14" Opacity="0.8" LineHeight="22"/>
 
                                 <Separator Background="{DynamicResource CardBorderBrush}"/>
 
                                 <StackPanel Spacing="15">
-                                    <TextBlock Text="Desenvolvido por Raillen Santos" FontSize="14" FontWeight="Bold"/>
-                                    <TextBlock Text="Software Engineer focado em arquiteturas escaláveis e experiências de usuário fluidas." 
-                                               TextWrapping="Wrap" FontSize="13" Opacity="0.7"/>
+                                    <TextBlock Text="{lcl:Lcl DevelopedBy}" FontSize="14" FontWeight="Bold"/>
+                                    <TextBlock Text="{lcl:Lcl DeveloperBio}" 
+                                               TextWrapping="Wrap" FontSize="13" Opacity="0.7" LineHeight="20"/>
                                     
                                     <StackPanel Orientation="Horizontal" Spacing="15">
                                         <Button Command="{Binding OpenLinkCommand}" CommandParameter="https://github.com/raillen" Theme="{DynamicResource OutlineButton}" Padding="15,8">
@@ -320,7 +328,7 @@
                                                 <TextBlock Text="GitHub"/>
                                             </StackPanel>
                                         </Button>
-                                        <Button Command="{Binding OpenLinkCommand}" CommandParameter="https://www.linkedin.com/in/raillen-santos/" Theme="{DynamicResource OutlineButton}" Padding="15,8">
+                                        <Button Command="{Binding OpenLinkCommand}" CommandParameter="https://www.linkedin.com/in/raillen/" Theme="{DynamicResource OutlineButton}" Padding="15,8">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <material:MaterialIcon Kind="Linkedin" Width="18"/>
                                                 <TextBlock Text="LinkedIn"/>
@@ -332,7 +340,7 @@
                                 <Button Command="{Binding ShowChangelogCommand}" Theme="{DynamicResource SolidButton}" Classes="Secondary" CornerRadius="8" Padding="20,10">
                                     <StackPanel Orientation="Horizontal" Spacing="10">
                                         <material:MaterialIcon Kind="History" Width="18"/>
-                                        <TextBlock Text="Ver Changelog"/>
+                                        <TextBlock Text="{lcl:Lcl ViewChangelog}"/>
                                     </StackPanel>
                                 </Button>
                             </StackPanel>

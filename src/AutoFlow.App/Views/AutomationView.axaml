@@ -64,6 +64,27 @@
                                 </Border>
                             </Grid>
 
+                            <!-- Actions Shortcut -->
+                            <Border Background="{DynamicResource SidebarBackground}" CornerRadius="16" Padding="25" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="20">
+                                    <TextBlock Text="Ações Rápidas" FontSize="14" FontWeight="Bold" Opacity="0.7"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="15">
+                                        <Button Command="{Binding CreateDirectCopyCommand}" Theme="{DynamicResource SolidButton}" Classes="Primary" CornerRadius="8" Padding="20,12">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <material:MaterialIcon Kind="Plus" Width="18"/>
+                                                <TextBlock Text="{lcl:Lcl DirectCopy}" FontWeight="Bold"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding CreateWatchFolderCommand}" Theme="{DynamicResource SolidButton}" Classes="Success" CornerRadius="8" Padding="20,12">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <material:MaterialIcon Kind="Plus" Width="18"/>
+                                                <TextBlock Text="{lcl:Lcl WatchFolder}" FontWeight="Bold"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
                             <!-- Active Executions Progress -->
                             <StackPanel Spacing="15">
                                 <TextBlock Text="Execuções em Andamento" FontSize="14" FontWeight="Bold" Opacity="0.7"/>

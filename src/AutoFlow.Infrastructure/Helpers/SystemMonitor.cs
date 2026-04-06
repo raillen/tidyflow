@@ -57,15 +57,18 @@ public static class SystemMonitor
         catch { return _lastCpuUsage; }
     }
 
-    public static (long total, long used, double percentage) GetRamStatus()
+    public static (long total, long used, double percentage, long processUsed) GetRamStatus()
     {
         var memStatus = new MEMORYSTATUSEX();
+        var process = Process.GetCurrentProcess();
+        long processUsed = process.WorkingSet64; // Memória física usada pelo processo
+
         if (GlobalMemoryStatusEx(memStatus))
         {
             long total = (long)memStatus.ullTotalPhys;
             long used = total - (long)memStatus.ullAvailPhys;
-            return (total, used, memStatus.dwMemoryLoad);
+            return (total, used, memStatus.dwMemoryLoad, processUsed);
         }
-        return (0, 0, 0);
+        return (0, 0, 0, processUsed);
     }
 }

@@ -21,6 +21,49 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private AppSettings _settings = new();
 
+    public ThemeMode SelectedTheme
+    {
+        get => Settings.Theme;
+        set
+        {
+            if (Settings.Theme != value)
+            {
+                Settings.Theme = value;
+                OnPropertyChanged(nameof(SelectedTheme));
+                _themeService.SetTheme(value);
+            }
+        }
+    }
+
+    public AppFont SelectedFont
+    {
+        get => Settings.Font;
+        set
+        {
+            if (Settings.Font != value)
+            {
+                Settings.Font = value;
+                OnPropertyChanged(nameof(SelectedFont));
+                _themeService.SetFont(value);
+            }
+        }
+    }
+
+    public string SelectedGlassMaterial
+    {
+        get => Settings.GlassMaterial;
+        set
+        {
+            if (Settings.GlassMaterial != value)
+            {
+                Settings.GlassMaterial = value;
+                OnPropertyChanged(nameof(SelectedGlassMaterial));
+                // Notifica a MainWindow que o objeto Settings mudou para atualizar o TransparencyLevelHint
+                OnPropertyChanged(nameof(Settings));
+            }
+        }
+    }
+
     public double GlassOpacity
     {
         get => Settings.GlassOpacity;
@@ -52,6 +95,12 @@ public partial class SettingsViewModel : ViewModelBase
         AppFont.OpenSans,
         AppFont.PublicSans,
         AppFont.JetBrains
+    });
+
+    public ObservableCollection<string> GlassMaterials { get; } = new(new[] {
+        "None",
+        "Mica",
+        "AcrylicBlur"
     });
     
     public ObservableCollection<string> Languages { get; } = new(new[] { 

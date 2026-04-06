@@ -6,6 +6,7 @@
         x:Class="AutoFlow.App.Views.JobEditorWindow"
         x:DataType="vm:JobEditorViewModel"
         Title="{lcl:Lcl ConfigureAutomation}"
+        Icon="/Assets/app-icon.png"
         Width="800" Height="850"
         WindowStartupLocation="CenterOwner"
         CanResize="True"

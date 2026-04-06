@@ -43,7 +43,7 @@
 
     <TrayIcon.Icons>
         <TrayIcons>
-            <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="AutoFlow" Clicked="OnOpenClick">
+            <TrayIcon Icon="/Assets/app-icon.png" ToolTipText="AutoFlow" Clicked="OnOpenClick">
                 <TrayIcon.Menu>
                     <NativeMenu>
                         <NativeMenuItem Header="{lcl:Lcl OpenApp}" Click="OnOpenClick"/>

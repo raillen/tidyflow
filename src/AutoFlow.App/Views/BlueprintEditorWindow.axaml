@@ -7,6 +7,7 @@
         x:Class="AutoFlow.App.Views.BlueprintEditorWindow"
         x:DataType="vm:BlueprintEditorViewModel"
         Title="{lcl:Lcl NewBlueprintTitle}"
+        Icon="/Assets/app-icon.png"
         Width="{Binding WindowWidth}" Height="800"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
