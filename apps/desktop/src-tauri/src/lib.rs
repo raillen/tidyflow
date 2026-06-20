@@ -123,6 +123,14 @@ pub fn run() {
             commands::ui_state_save,
             commands::jobs_list_missed_schedules,
             commands::jobs_clear_missed_schedules,
+            commands::blueprints_list,
+            commands::blueprints_get,
+            commands::blueprints_create,
+            commands::blueprints_update,
+            commands::blueprints_delete,
+            commands::blueprints_simulate,
+            commands::blueprints_apply,
+            commands::blueprints_preview_template,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

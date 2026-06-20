@@ -1,9 +1,12 @@
 pub mod audit;
+pub mod blueprint;
+pub mod counter;
 pub mod error;
 pub mod execution;
 pub mod file_filter;
 pub mod filter;
 pub mod job;
+pub mod tokenizer;
 pub mod notify;
 pub mod path_policy;
 pub mod schedule;
@@ -13,6 +16,13 @@ pub mod transfer;
 pub mod watch;
 
 pub use audit::{AuditEntry, AuditStatus, NewAuditEntry};
+pub use blueprint::{
+    Blueprint, BlueprintCollision, BlueprintKind, BlueprintOperation, BlueprintPlanSample,
+    BlueprintSimulationReport, BlueprintSummary, FolderNode, FolderPlan, RoutingConfig,
+    TemplatePreview,
+};
+pub use counter::{CounterConfig, CounterScope};
+pub use tokenizer::{evaluate, TemplatePipeline, TemplateSegment, TokenContext, TokenError};
 pub use error::DomainError;
 pub use execution::{
     ActiveExecution, ExecutionCompleted, ExecutionProgress, SimulationReport, SimulationSample,

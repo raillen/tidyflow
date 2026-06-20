@@ -1,6 +1,10 @@
 use autoflow_domain::{AppSettings, DomainError, Job, JobSummary};
 use uuid::Uuid;
 
+pub mod blueprint_store;
+
+pub use blueprint_store::BlueprintStore;
+
 pub trait SettingsStore: Send + Sync {
     fn get(&self) -> AppSettings;
     fn update(&self, settings: AppSettings) -> Result<(), DomainError>;

@@ -18,6 +18,18 @@ import {
 } from "$lib/contracts/job";
 import { z } from "zod";
 import { auditEntrySchema, type AuditEntry } from "$lib/contracts/audit";
+import {
+  blueprintSchema,
+  blueprintSimulationReportSchema,
+  blueprintSummarySchema,
+  templatePipelineSchema,
+  templatePreviewSchema,
+  type Blueprint,
+  type BlueprintSimulationReport,
+  type BlueprintSummary,
+  type TemplatePipeline,
+  type TemplatePreview,
+} from "$lib/contracts/blueprint";
 
 export async function fetchHealth(): Promise<HealthStatus> {
   const raw: unknown = await invoke("health");
@@ -84,6 +96,52 @@ export async function cancelExecution(executionId: string): Promise<void> {
 export async function listRecentAudit(limit = 100): Promise<AuditEntry[]> {
   const raw: unknown = await invoke("audit_list_recent", { limit });
   return z.array(auditEntrySchema).parse(raw);
+}
+
+export async function listBlueprints(): Promise<BlueprintSummary[]> {
+  const raw: unknown = await invoke("blueprints_list");
+  return z.array(blueprintSummarySchema).parse(raw);
+}
+
+export async function getBlueprint(id: string): Promise<Blueprint> {
+  const raw: unknown = await invoke("blueprints_get", { id });
+  return blueprintSchema.parse(raw);
+}
+
+export async function createBlueprint(blueprint: Blueprint): Promise<Blueprint> {
+  const raw: unknown = await invoke("blueprints_create", { blueprint });
+  return blueprintSchema.parse(raw);
+}
+
+export async function updateBlueprint(blueprint: Blueprint): Promise<Blueprint> {
+  const raw: unknown = await invoke("blueprints_update", { blueprint });
+  return blueprintSchema.parse(raw);
+}
+
+export async function deleteBlueprint(id: string): Promise<void> {
+  await invoke("blueprints_delete", { id });
+}
+
+export async function simulateBlueprint(id: string): Promise<BlueprintSimulationReport> {
+  const raw: unknown = await invoke("blueprints_simulate", { id });
+  return blueprintSimulationReportSchema.parse(raw);
+}
+
+export async function applyBlueprint(id: string): Promise<{ processed: number; failed: number }> {
+  const raw: unknown = await invoke("blueprints_apply", { id });
+  const tuple = z.tuple([z.number().int(), z.number().int()]).parse(raw);
+  return { processed: tuple[0], failed: tuple[1] };
+}
+
+export async function previewBlueprintTemplate(
+  pipeline: TemplatePipeline,
+  samplePath: string,
+): Promise<TemplatePreview> {
+  const raw: unknown = await invoke("blueprints_preview_template", {
+    pipeline: templatePipelineSchema.parse(pipeline),
+    samplePath,
+  });
+  return templatePreviewSchema.parse(raw);
 }
 
 export { executionProgressSchema, executionCompletedSchema };

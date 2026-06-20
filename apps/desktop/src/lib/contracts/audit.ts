@@ -1,10 +1,17 @@
 import { z } from "zod";
 
-export const auditStatusSchema = z.enum(["COPIED", "MOVED", "IGNORED", "FAILED"]);
+export const auditStatusSchema = z.enum([
+  "COPIED",
+  "MOVED",
+  "IGNORED",
+  "FAILED",
+  "ORGANIZED",
+]);
 
 export const auditEntrySchema = z.object({
   id: z.number().int(),
   jobId: z.string().uuid().nullable(),
+  blueprintId: z.string().uuid().nullable().optional(),
   jobName: z.string(),
   sourcePath: z.string(),
   targetPath: z.string(),
@@ -22,6 +29,7 @@ export const AUDIT_STATUS_OPTIONS = [
   { value: "all" as const, label: "Todos" },
   { value: "COPIED" as const, label: "Copiados" },
   { value: "MOVED" as const, label: "Movidos" },
+  { value: "ORGANIZED" as const, label: "Organizados" },
   { value: "IGNORED" as const, label: "Ignorados" },
   { value: "FAILED" as const, label: "Falhas" },
 ];
@@ -32,6 +40,8 @@ export function auditStatusLabel(status: AuditStatus): string {
       return "Copiado";
     case "MOVED":
       return "Movido";
+    case "ORGANIZED":
+      return "Organizado";
     case "IGNORED":
       return "Ignorado";
     case "FAILED":

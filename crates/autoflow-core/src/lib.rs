@@ -4,16 +4,18 @@ mod watch;
 
 pub use queue::{ExecutionEvent, JobQueue};
 pub use scheduler::Scheduler;
-pub use watch::WatchService;
+pub use watch::{WatchService, WatchTarget};
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use autoflow_domain::{
-    AppSettings, DomainError, HealthStatus, Job, JobSummary, SimulationReport,
+    AppSettings, Blueprint, BlueprintSimulationReport, BlueprintSummary, DomainError, HealthStatus,
+    Job, JobSummary, SimulationReport, TemplatePipeline, TemplatePreview,
 };
 use autoflow_infrastructure::{
     audit::SqliteAuditStore,
+    blueprints::SqliteBlueprintStore,
     database,
     jobs::SqliteJobStore,
     settings::SqliteSettingsStore,
@@ -22,7 +24,7 @@ use autoflow_infrastructure::{
 use serde_json::Value;
 use uuid::Uuid;
 
-use autoflow_application::{jobs, ports::AuditStore};
+use autoflow_application::{blueprints, jobs, ports::AuditStore};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -32,6 +34,7 @@ pub struct AppState {
 struct AppStateInner {
     settings: Arc<SqliteSettingsStore>,
     jobs: Arc<SqliteJobStore>,
+    blueprints: Arc<SqliteBlueprintStore>,
     audit: Arc<SqliteAuditStore>,
     ui_state: Arc<SqliteUiStateStore>,
     missed: Arc<SqliteMissedScheduleStore>,
@@ -52,17 +55,24 @@ impl AppState {
         settings.ensure_default().await?;
 
         let jobs = Arc::new(SqliteJobStore::new(pool.clone()));
+        let blueprints = Arc::new(SqliteBlueprintStore::new(pool.clone()));
         let audit = Arc::new(SqliteAuditStore::new(pool.clone()));
         let ui_state = Arc::new(SqliteUiStateStore::new(pool.clone()));
         let missed = Arc::new(SqliteMissedScheduleStore::new(pool.clone()));
         let queue = JobQueue::start(data_dir.clone(), jobs.clone(), audit.clone(), events);
         Scheduler::start(jobs.clone(), missed.clone(), queue.clone());
-        let watch = WatchService::start(jobs.clone(), queue.clone());
+        let watch = WatchService::start(
+            jobs.clone(),
+            blueprints.clone(),
+            audit.clone(),
+            queue.clone(),
+        );
 
         Ok(Self {
             inner: Arc::new(AppStateInner {
                 settings,
                 jobs,
+                blueprints,
                 audit,
                 ui_state,
                 missed,
@@ -107,7 +117,7 @@ impl AppState {
 
     pub async fn delete_job(&self, id: Uuid) -> Result<(), DomainError> {
         jobs::delete_job(self.inner.jobs.as_ref(), id).await?;
-        self.inner.watch.unregister(id);
+        self.inner.watch.unregister_job(id);
         Ok(())
     }
 
@@ -117,6 +127,56 @@ impl AppState {
 
     pub fn simulate_job_draft(&self, job: Job) -> Result<SimulationReport, DomainError> {
         jobs::simulate_job_draft(job)
+    }
+
+    pub async fn list_blueprints(&self) -> Result<Vec<BlueprintSummary>, DomainError> {
+        blueprints::list_blueprints(self.inner.blueprints.as_ref()).await
+    }
+
+    pub async fn get_blueprint(&self, id: Uuid) -> Result<Blueprint, DomainError> {
+        blueprints::get_blueprint(self.inner.blueprints.as_ref(), id).await
+    }
+
+    pub async fn create_blueprint(&self, blueprint: Blueprint) -> Result<Blueprint, DomainError> {
+        let blueprint = blueprints::create_blueprint(self.inner.blueprints.as_ref(), blueprint).await?;
+        self.inner.watch.sync_blueprint(&blueprint).await?;
+        Ok(blueprint)
+    }
+
+    pub async fn update_blueprint(&self, blueprint: Blueprint) -> Result<Blueprint, DomainError> {
+        let blueprint = blueprints::update_blueprint(self.inner.blueprints.as_ref(), blueprint).await?;
+        self.inner.watch.sync_blueprint(&blueprint).await?;
+        Ok(blueprint)
+    }
+
+    pub async fn delete_blueprint(&self, id: Uuid) -> Result<(), DomainError> {
+        blueprints::delete_blueprint(self.inner.blueprints.as_ref(), id).await?;
+        self.inner.watch.unregister_blueprint(id);
+        Ok(())
+    }
+
+    pub async fn simulate_blueprint(
+        &self,
+        id: Uuid,
+    ) -> Result<BlueprintSimulationReport, DomainError> {
+        blueprints::simulate_blueprint(self.inner.blueprints.as_ref(), id).await
+    }
+
+    pub async fn apply_blueprint(&self, id: Uuid) -> Result<(u32, u32), DomainError> {
+        blueprints::apply_blueprint(
+            self.inner.blueprints.as_ref(),
+            self.inner.audit.as_ref(),
+            id,
+        )
+        .await
+    }
+
+    pub fn preview_template(
+        &self,
+        pipeline: TemplatePipeline,
+        sample_path: String,
+    ) -> TemplatePreview {
+        blueprints::preview_template(pipeline, sample_path)
     }
 
     pub fn run_job(&self, job_id: Uuid) -> Result<Uuid, DomainError> {

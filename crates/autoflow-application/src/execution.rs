@@ -109,7 +109,8 @@ pub async fn run_job(
 
                 audit
                     .append(NewAuditEntry {
-                        job_id,
+                        job_id: Some(job_id),
+                        blueprint_id: None,
                         job_name: job.name.clone(),
                         source_path: file.display().to_string(),
                         target_path: target_path.display().to_string(),
@@ -128,7 +129,8 @@ pub async fn run_job(
                 }
                 audit
                     .append(NewAuditEntry {
-                        job_id,
+                        job_id: Some(job_id),
+                        blueprint_id: None,
                         job_name: job.name.clone(),
                         source_path: file.display().to_string(),
                         target_path: target_dir.display().to_string(),
@@ -161,7 +163,8 @@ pub async fn run_job(
             recent_log.insert(0, format!("WARN post-script: {warning}"));
             audit
                 .append(NewAuditEntry {
-                    job_id,
+                    job_id: Some(job_id),
+                    blueprint_id: None,
                     job_name: job.name.clone(),
                     source_path: job.source_path.clone(),
                     target_path: job.target_path.clone(),
@@ -366,5 +369,6 @@ fn status_label(status: AuditStatus) -> &'static str {
         AuditStatus::Moved => "MOVED",
         AuditStatus::Ignored => "SKIPPED",
         AuditStatus::Failed => "FAILED",
+        AuditStatus::Organized => "ORGANIZED",
     }
 }

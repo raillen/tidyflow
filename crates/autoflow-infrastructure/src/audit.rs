@@ -22,13 +22,15 @@ impl AuditStore for SqliteAuditStore {
             AuditStatus::Moved => "MOVED",
             AuditStatus::Ignored => "IGNORED",
             AuditStatus::Failed => "FAILED",
+            AuditStatus::Organized => "ORGANIZED",
         };
 
         sqlx::query(
-            "INSERT INTO audit_entries (job_id, job_name, source_path, target_path, status, file_size, duration_ms, details, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO audit_entries (job_id, blueprint_id, job_name, source_path, target_path, status, file_size, duration_ms, details, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
-        .bind(entry.job_id.to_string())
+        .bind(entry.job_id.map(|id| id.to_string()))
+        .bind(entry.blueprint_id.map(|id| id.to_string()))
         .bind(entry.job_name)
         .bind(entry.source_path)
         .bind(entry.target_path)
@@ -47,6 +49,7 @@ impl AuditStore for SqliteAuditStore {
         let rows: Vec<(
             i64,
             Option<String>,
+            Option<String>,
             String,
             String,
             String,
@@ -56,7 +59,7 @@ impl AuditStore for SqliteAuditStore {
             Option<String>,
             String,
         )> = sqlx::query_as(
-            "SELECT id, job_id, job_name, source_path, target_path, status, file_size, duration_ms, details, created_at
+            "SELECT id, job_id, blueprint_id, job_name, source_path, target_path, status, file_size, duration_ms, details, created_at
              FROM audit_entries ORDER BY id DESC LIMIT ?",
         )
         .bind(limit)
@@ -69,14 +72,15 @@ impl AuditStore for SqliteAuditStore {
                 Ok(AuditEntry {
                     id: row.0,
                     job_id: row.1.and_then(|id| Uuid::parse_str(&id).ok()),
-                    job_name: row.2,
-                    source_path: row.3,
-                    target_path: row.4,
-                    status: parse_status(&row.5)?,
-                    file_size: row.6,
-                    duration_ms: row.7,
-                    details: row.8,
-                    created_at: DateTime::parse_from_rfc3339(&row.9)
+                    blueprint_id: row.2.and_then(|id| Uuid::parse_str(&id).ok()),
+                    job_name: row.3,
+                    source_path: row.4,
+                    target_path: row.5,
+                    status: parse_status(&row.6)?,
+                    file_size: row.7,
+                    duration_ms: row.8,
+                    details: row.9,
+                    created_at: DateTime::parse_from_rfc3339(&row.10)
                         .map(|dt| dt.with_timezone(&Utc))
                         .unwrap_or_else(|_| Utc::now()),
                 })
@@ -91,6 +95,7 @@ fn parse_status(raw: &str) -> Result<AuditStatus, DomainError> {
         "MOVED" => Ok(AuditStatus::Moved),
         "IGNORED" => Ok(AuditStatus::Ignored),
         "FAILED" => Ok(AuditStatus::Failed),
+        "ORGANIZED" => Ok(AuditStatus::Organized),
         other => Err(DomainError::Database(format!("unknown audit status: {other}"))),
     }
 }

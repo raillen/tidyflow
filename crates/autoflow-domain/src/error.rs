@@ -8,6 +8,8 @@ pub enum DomainError {
     Settings(String),
     #[error("job not found")]
     JobNotFound,
+    #[error("blueprint not found")]
+    BlueprintNotFound,
     #[error("job is disabled")]
     JobDisabled,
     #[error("source not found: {0}")]

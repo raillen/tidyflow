@@ -45,6 +45,7 @@
     switch (status) {
       case "COPIED":
       case "MOVED":
+      case "ORGANIZED":
         return "success";
       case "IGNORED":
         return "muted";

@@ -1,4 +1,5 @@
 pub mod audit;
+pub mod blueprints;
 pub mod database;
 pub mod jobs;
 pub mod settings;

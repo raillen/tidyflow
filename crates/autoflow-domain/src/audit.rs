@@ -9,6 +9,7 @@ pub enum AuditStatus {
     Moved,
     Ignored,
     Failed,
+    Organized,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,6 +17,7 @@ pub enum AuditStatus {
 pub struct AuditEntry {
     pub id: i64,
     pub job_id: Option<Uuid>,
+    pub blueprint_id: Option<Uuid>,
     pub job_name: String,
     pub source_path: String,
     pub target_path: String,
@@ -29,7 +31,8 @@ pub struct AuditEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewAuditEntry {
-    pub job_id: Uuid,
+    pub job_id: Option<Uuid>,
+    pub blueprint_id: Option<Uuid>,
     pub job_name: String,
     pub source_path: String,
     pub target_path: String,

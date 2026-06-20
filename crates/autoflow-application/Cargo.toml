@@ -8,6 +8,7 @@ async-trait = "0.1"
 autoflow-domain = { path = "../autoflow-domain" }
 blake3 = { workspace = true }
 chrono = { workspace = true }
+globset = { workspace = true }
 keyring = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true }

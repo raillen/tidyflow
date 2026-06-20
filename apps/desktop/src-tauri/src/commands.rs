@@ -1,6 +1,8 @@
 use autoflow_core::AppState;
 use autoflow_domain::{
-    ActiveExecution, AppSettings, AuditEntry, HealthStatus, Job, JobSummary, SimulationReport,
+    ActiveExecution, AppSettings, AuditEntry, Blueprint, BlueprintSimulationReport,
+    BlueprintSummary, HealthStatus, Job, JobSummary, SimulationReport, TemplatePipeline,
+    TemplatePreview,
 };
 use autoflow_infrastructure::ui_state::MissedScheduleEntry;
 use serde_json::Value;
@@ -131,4 +133,55 @@ pub async fn jobs_list_missed_schedules(
 #[tauri::command]
 pub async fn jobs_clear_missed_schedules(state: State<'_, AppState>) -> Result<(), String> {
     state.clear_missed_schedules().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn blueprints_list(state: State<'_, AppState>) -> Result<Vec<BlueprintSummary>, String> {
+    state.list_blueprints().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn blueprints_get(state: State<'_, AppState>, id: String) -> Result<Blueprint, String> {
+    let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    state.get_blueprint(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn blueprints_create(state: State<'_, AppState>, blueprint: Blueprint) -> Result<Blueprint, String> {
+    state.create_blueprint(blueprint).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn blueprints_update(state: State<'_, AppState>, blueprint: Blueprint) -> Result<Blueprint, String> {
+    state.update_blueprint(blueprint).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn blueprints_delete(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    state.delete_blueprint(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn blueprints_simulate(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<BlueprintSimulationReport, String> {
+    let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    state.simulate_blueprint(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn blueprints_apply(state: State<'_, AppState>, id: String) -> Result<(u32, u32), String> {
+    let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    state.apply_blueprint(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn blueprints_preview_template(
+    state: State<'_, AppState>,
+    pipeline: TemplatePipeline,
+    sample_path: String,
+) -> TemplatePreview {
+    state.preview_template(pipeline, sample_path)
 }
