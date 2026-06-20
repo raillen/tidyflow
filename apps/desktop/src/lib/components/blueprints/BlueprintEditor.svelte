@@ -3,15 +3,13 @@
     countBlueprintFilters,
     parseTemplateDisplayString,
     pipelineToDisplayString,
-    TEMPLATE_REGEX_PRESETS,
-    TEMPLATE_TOKENS,
-    TEMPLATE_TRANSFORMS,
     type Blueprint,
     type BlueprintKind,
     type BlueprintOperation,
     type FolderNode,
     type FolderPlanPreviewNode,
   } from "$lib/contracts/blueprint";
+  import BlueprintTemplatePanel from "$lib/components/blueprints/BlueprintTemplatePanel.svelte";
   import {
     EXCLUDE_PRESETS,
     type FileFilter,
@@ -59,10 +57,6 @@
   let previewResult = $state<Awaited<ReturnType<typeof previewBlueprintTemplate>> | null>(null);
   let planPreviewLoading = $state(false);
   let planPreviewResult = $state<Awaited<ReturnType<typeof previewBlueprintPlan>> | null>(null);
-  let templateInput: HTMLTextAreaElement | undefined = $state();
-
-  const renamePlaceholder = "{stem}_{counter}{ext}";
-  const templatePlaceholder = "{year}/{month}/{stem}{ext}";
 
   const filterCount = $derived(countBlueprintFilters(blueprint.search));
 
@@ -183,6 +177,10 @@
     patchRouting({ pathTemplate: parseTemplateDisplayString(value) });
   }
 
+  function appendTemplateSegment(suffix: string) {
+    handleTemplateInput(templateText + suffix);
+  }
+
   function handleRenameTemplateInput(value: string) {
     renameTemplateText = value;
     blueprint = {
@@ -191,16 +189,7 @@
     };
   }
 
-  function insertToken(token: string) {
-    const cursor = templateInput?.selectionStart ?? templateText.length;
-    const next = templateText.slice(0, cursor) + `{${token}}` + templateText.slice(cursor);
-    handleTemplateInput(next);
-  }
-
-  function appendTransform(name: string, kind: "transform" | "regexPreset") {
-    const suffix = kind === "transform" ? `[${name}]` : `/${name}/`;
-    handleTemplateInput(templateText + suffix);
-  }
+  const renamePlaceholder = "{stem}_{counter}{ext}";
 
   function handleExtensionsInput(value: string) {
     extensionsText = value;
@@ -399,7 +388,7 @@
     {/each}
   </nav>
 
-  <div class="editor-content">
+  <div class="editor-content" class:template-mode={activePanel === "template"}>
     {#if activePanel === "geral"}
       <div class="panel-header">
         <h3>Geral</h3>
@@ -625,150 +614,23 @@
         </div>
       </details>
     {:else if activePanel === "template"}
-      <div class="panel-header">
+      <div class="panel-header template-header">
         <h3>Template de destino</h3>
-        <p>Define subpastas e nome final com tokens.</p>
+        <p>Monte o caminho relativo com tokens — preview ao vivo à direita.</p>
       </div>
 
-      <details class="collapsible" open>
-        <summary>Caminho de destino</summary>
-        <div class="collapsible-body">
-          <label class="field">
-            <span class="field-label">Template</span>
-            <textarea
-              bind:this={templateInput}
-              class="field-input textarea mono"
-              rows="3"
-              value={templateText}
-              oninput={(e) => handleTemplateInput(e.currentTarget.value)}
-              placeholder={templatePlaceholder}
-            ></textarea>
-          </label>
-
-          <label class="toggle">
-            <input
-              type="checkbox"
-              checked={blueprint.routing.createIntermediateDirs}
-              onchange={(e) =>
-                patchRouting({ createIntermediateDirs: e.currentTarget.checked })}
-            />
-            <span>Criar pastas intermediárias</span>
-          </label>
-
-          <div class="toolbox">
-            <span class="field-label">Tokens</span>
-            <div class="chip-row">
-              {#each TEMPLATE_TOKENS as token}
-                <button type="button" class="chip-btn" onclick={() => insertToken(token.name)}>
-                  {token.label}
-                </button>
-              {/each}
-            </div>
-          </div>
-
-          <div class="toolbox">
-            <span class="field-label">Transformações</span>
-            <div class="chip-row">
-              {#each TEMPLATE_TRANSFORMS as transform}
-                <button
-                  type="button"
-                  class="chip-btn"
-                  onclick={() => appendTransform(transform.name, "transform")}
-                >
-                  {transform.label}
-                </button>
-              {/each}
-            </div>
-          </div>
-
-          <div class="toolbox">
-            <span class="field-label">Regex presets</span>
-            <div class="chip-row">
-              {#each TEMPLATE_REGEX_PRESETS as preset}
-                <button
-                  type="button"
-                  class="chip-btn"
-                  onclick={() => appendTransform(preset.name, "regexPreset")}
-                >
-                  {preset.label}
-                </button>
-              {/each}
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <details class="collapsible" open>
-        <summary>Contador</summary>
-        <div class="collapsible-body">
-          <label class="field">
-            <span class="field-label">Escopo</span>
-            <select
-              class="field-input"
-              value={blueprint.counter.scope}
-              onchange={(e) =>
-                patchCounter({
-                  scope: e.currentTarget.value as Blueprint["counter"]["scope"],
-                })}
-            >
-              <option value="global">Global</option>
-              <option value="perDay">Por dia</option>
-              <option value="perFolder">Por pasta destino</option>
-              <option value="perParent">Por pasta pai</option>
-            </select>
-          </label>
-
-          <div class="field-row">
-            <label class="field">
-              <span class="field-label">Início</span>
-              <input
-                class="field-input"
-                type="number"
-                min="0"
-                value={blueprint.counter.start}
-                oninput={(e) => patchCounter({ start: Number(e.currentTarget.value) || 1 })}
-              />
-            </label>
-            <label class="field">
-              <span class="field-label">Padding (zeros)</span>
-              <input
-                class="field-input"
-                type="number"
-                min="0"
-                max="12"
-                value={blueprint.counter.padding}
-                oninput={(e) => patchCounter({ padding: Number(e.currentTarget.value) || 0 })}
-              />
-            </label>
-          </div>
-        </div>
-      </details>
-
-      <details class="collapsible" open>
-        <summary>Preview</summary>
-        <div class="collapsible-body">
-          <label class="field">
-            <span class="field-label">Arquivo de exemplo</span>
-            <input class="field-input mono" bind:value={samplePath} />
-          </label>
-
-          {#if previewLoading}
-            <p class="muted">Calculando preview…</p>
-          {:else if previewResult}
-            <div class="preview-box" class:invalid={!previewResult.valid}>
-              <p><strong>Destino:</strong> <code>{previewResult.resultPath}</code></p>
-              <p><strong>Nome:</strong> <code>{previewResult.resultName}</code></p>
-              {#if previewResult.warnings.length}
-                <ul>
-                  {#each previewResult.warnings as warning}
-                    <li>{warning}</li>
-                  {/each}
-                </ul>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      </details>
+      <BlueprintTemplatePanel
+        {blueprint}
+        {templateText}
+        {samplePath}
+        {previewLoading}
+        {previewResult}
+        onTemplateInput={handleTemplateInput}
+        onSamplePathChange={(value) => (samplePath = value)}
+        onPatchRouting={patchRouting}
+        onPatchCounter={patchCounter}
+        onAppendSegment={appendTemplateSegment}
+      />
     {:else if activePanel === "pastas"}
       <div class="panel-header">
         <h3>Plano de pastas</h3>
@@ -1053,6 +915,14 @@
     gap: var(--space-3);
   }
 
+  .editor-content.template-mode {
+    overflow: hidden;
+  }
+
+  .template-header {
+    flex-shrink: 0;
+  }
+
   .panel-header h3 {
     margin: 0;
     font-size: var(--text-base);
@@ -1152,26 +1022,6 @@
   .mono {
     font-family: var(--font-mono);
     font-size: var(--text-xs);
-  }
-
-  .toolbox {
-    display: grid;
-    gap: var(--space-2);
-  }
-
-  .chip-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .chip-btn {
-    padding: 0.25rem 0.55rem;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: var(--surface-muted);
-    font-size: var(--text-xs);
-    cursor: pointer;
   }
 
   .preview-box {

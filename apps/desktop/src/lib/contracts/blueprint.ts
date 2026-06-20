@@ -138,35 +138,123 @@ export type FolderPlanPreview = z.infer<typeof folderPlanPreviewSchema>;
 export type BlueprintKind = z.infer<typeof blueprintKindSchema>;
 export type BlueprintOperation = z.infer<typeof blueprintOperationSchema>;
 
-export const TEMPLATE_TOKENS = [
-  { name: "year", label: "Ano" },
-  { name: "month", label: "Mês" },
-  { name: "day", label: "Dia" },
-  { name: "hour", label: "Hora" },
-  { name: "minute", label: "Minuto" },
-  { name: "second", label: "Segundo" },
-  { name: "original", label: "Nome original" },
-  { name: "stem", label: "Nome sem extensão" },
-  { name: "ext", label: "Extensão" },
-  { name: "parent", label: "Pasta pai" },
-  { name: "counter", label: "Contador" },
-  { name: "guid", label: "GUID" },
-  { name: "index", label: "Índice" },
+export type TemplateToolboxItem = {
+  name: string;
+  label: string;
+  syntax: string;
+  hint: string;
+  example?: string;
+};
+
+export type TemplateToolboxGroup = {
+  id: string;
+  label: string;
+  items: TemplateToolboxItem[];
+};
+
+export const TEMPLATE_SYNTAX_LEGEND = [
+  { label: "Token", syntax: "{nome}", hint: "Insere valor dinâmico do arquivo ou data." },
+  { label: "Transformação", syntax: "[nome]", hint: "Aplica estilo ao trecho acumulado à esquerda." },
+  { label: "Regex preset", syntax: "/nome/", hint: "Limpeza por regex pré-definida." },
+  { label: "Literal", syntax: "texto livre", hint: "Separadores como / ou _ entre tokens." },
 ] as const;
 
-export const TEMPLATE_TRANSFORMS = [
-  { name: "lower", label: "minúsculas" },
-  { name: "upper", label: "MAIÚSCULAS" },
-  { name: "snake", label: "snake_case" },
-  { name: "kebab", label: "kebab-case" },
-  { name: "trim", label: "trim" },
-  { name: "collapse_spaces", label: "colapsar espaços" },
-  { name: "sanitize_windows_filename", label: "sanitizar Windows" },
+export const TEMPLATE_QUICK_PATTERNS = [
+  { label: "Ano / mês / arquivo", value: "{year}/{month}/{stem}{ext}" },
+  { label: "Pasta pai / nome", value: "{parent}/{stem}{ext}" },
+  { label: "Contador sequencial", value: "{year}/{counter}_{stem}{ext}" },
 ] as const;
 
-export const TEMPLATE_REGEX_PRESETS = [
-  { name: "removeDigits", label: "remover dígitos" },
-  { name: "stripSpecial", label: "remover especiais" },
+export const TEMPLATE_TOKEN_GROUPS: TemplateToolboxGroup[] = [
+  {
+    id: "datetime",
+    label: "Data e hora",
+    items: [
+      { name: "year", label: "Ano", syntax: "{year}", hint: "Ano com 4 dígitos (relógio local).", example: "2026" },
+      { name: "month", label: "Mês", syntax: "{month}", hint: "Mês com 2 dígitos.", example: "06" },
+      { name: "day", label: "Dia", syntax: "{day}", hint: "Dia do mês com 2 dígitos.", example: "19" },
+      { name: "hour", label: "Hora", syntax: "{hour}", hint: "Hora 00–23.", example: "14" },
+      { name: "minute", label: "Minuto", syntax: "{minute}", hint: "Minuto 00–59.", example: "05" },
+      { name: "second", label: "Segundo", syntax: "{second}", hint: "Segundo 00–59.", example: "42" },
+    ],
+  },
+  {
+    id: "file",
+    label: "Arquivo",
+    items: [
+      { name: "original", label: "Nome original", syntax: "{original}", hint: "Nome completo com extensão.", example: "relatorio.PDF" },
+      { name: "stem", label: "Nome sem ext.", syntax: "{stem}", hint: "Nome sem extensão.", example: "relatorio" },
+      { name: "ext", label: "Extensão", syntax: "{ext}", hint: "Extensão com ponto.", example: ".pdf" },
+      { name: "parent", label: "Pasta pai", syntax: "{parent}", hint: "Nome da pasta imediatamente acima do arquivo.", example: "Docs" },
+    ],
+  },
+  {
+    id: "sequence",
+    label: "Sequência",
+    items: [
+      { name: "counter", label: "Contador", syntax: "{counter}", hint: "Número sequencial conforme escopo configurado.", example: "001" },
+      { name: "index", label: "Índice", syntax: "{index}", hint: "Posição do item no lote atual (1-based).", example: "3" },
+      { name: "guid", label: "GUID", syntax: "{guid}", hint: "Identificador único por avaliação.", example: "a1b2…" },
+    ],
+  },
+];
+
+export const TEMPLATE_TRANSFORM_GROUPS: TemplateToolboxGroup[] = [
+  {
+    id: "case",
+    label: "Caixa e formato",
+    items: [
+      { name: "lower", label: "minúsculas", syntax: "[lower]", hint: "Converte todo o trecho para minúsculas.", example: "report" },
+      { name: "upper", label: "MAIÚSCULAS", syntax: "[upper]", hint: "Converte todo o trecho para maiúsculas.", example: "REPORT" },
+      { name: "snake", label: "snake_case", syntax: "[snake]", hint: "Espaços e hífens viram underscore.", example: "meu_arquivo" },
+      { name: "kebab", label: "kebab-case", syntax: "[kebab]", hint: "Formato com hífens.", example: "meu-arquivo" },
+    ],
+  },
+  {
+    id: "cleanup",
+    label: "Limpeza",
+    items: [
+      { name: "trim", label: "trim", syntax: "[trim]", hint: "Remove espaços no início e fim.", example: "arquivo" },
+      { name: "collapse_spaces", label: "colapsar espaços", syntax: "[collapse_spaces]", hint: "Múltiplos espaços viram um só.", example: "meu doc" },
+      { name: "sanitize_windows_filename", label: "sanitizar Windows", syntax: "[sanitize_windows_filename]", hint: "Substitui caracteres inválidos no Windows.", example: "arquivo_seguro" },
+    ],
+  },
+];
+
+export const TEMPLATE_REGEX_GROUPS: TemplateToolboxGroup[] = [
+  {
+    id: "presets",
+    label: "Presets",
+    items: [
+      { name: "removeDigits", label: "remover dígitos", syntax: "/removeDigits/", hint: "Remove todos os números do trecho.", example: "doc" },
+      { name: "stripSpecial", label: "remover especiais", syntax: "/stripSpecial/", hint: "Mantém letras, números, ponto, hífen e underscore.", example: "arquivo_1" },
+    ],
+  },
+];
+
+/** @deprecated Use TEMPLATE_TOKEN_GROUPS — mantido para compatibilidade. */
+export const TEMPLATE_TOKENS = TEMPLATE_TOKEN_GROUPS.flatMap((group) => group.items).map(({ name, label }) => ({
+  name,
+  label,
+}));
+
+/** @deprecated Use TEMPLATE_TRANSFORM_GROUPS */
+export const TEMPLATE_TRANSFORMS = TEMPLATE_TRANSFORM_GROUPS.flatMap((group) => group.items).map(({ name, label }) => ({
+  name,
+  label,
+}));
+
+/** @deprecated Use TEMPLATE_REGEX_GROUPS */
+export const TEMPLATE_REGEX_PRESETS = TEMPLATE_REGEX_GROUPS.flatMap((group) => group.items).map(({ name, label }) => ({
+  name,
+  label,
+}));
+
+export const COUNTER_SCOPE_OPTIONS = [
+  { value: "global", label: "Global", hint: "Um contador único para todo o blueprint." },
+  { value: "perDay", label: "Por dia", hint: "Reinicia a cada dia (YYYY-MM-DD)." },
+  { value: "perFolder", label: "Por pasta destino", hint: "Sequência independente por pasta de destino." },
+  { value: "perParent", label: "Por pasta pai", hint: "Sequência por pasta pai do arquivo de origem." },
 ] as const;
 
 export function createEmptyBlueprint(kind: BlueprintKind = "file"): Blueprint {

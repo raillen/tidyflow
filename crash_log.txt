@@ -1,0 +1,13 @@
+System.IO.FileNotFoundException: The resource /Assets/app-icon.png could not be found.
+   at Avalonia.Platform.StandardAssetLoader.OpenAndGetAssembly(Uri uri, Uri baseUri)
+   at Avalonia.Platform.StandardAssetLoader.Open(Uri uri, Uri baseUri)
+   at Avalonia.Markup.Xaml.Converters.IconTypeConverter.CreateIconFromPath(ITypeDescriptorContext context, String s)
+   at Avalonia.Markup.Xaml.Converters.IconTypeConverter.ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, Object value)
+   at AutoFlow.App.App.!XamlIlPopulate(IServiceProvider, App) in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\AutoFlow.App\App.axaml:line 46
+   at AutoFlow.App.App.!XamlIlPopulateTrampoline(App)
+   at AutoFlow.App.App.Initialize() in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\AutoFlow.App\App.axaml.cs:line 34
+   at Avalonia.AppBuilder.SetupUnsafe()
+   at Avalonia.AppBuilder.Setup()
+   at Avalonia.AppBuilder.SetupWithLifetime(IApplicationLifetime lifetime)
+   at Avalonia.ClassicDesktopStyleApplicationLifetimeExtensions.StartWithClassicDesktopLifetime(AppBuilder builder, String[] args, Action`1 lifetimeBuilder)
+   at AutoFlow.App.Program.Main(String[] args) in C:\Users\raillen.DESKTOP-99RJ5M6\Documents\Projetos\csharp_BatchBackupBridge\src\AutoFlow.App\Program.cs:line 16
