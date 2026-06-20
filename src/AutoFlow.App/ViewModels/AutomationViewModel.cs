@@ -103,7 +103,7 @@ public partial class AutomationViewModel : ViewModelBase, IDisposable
     public async Task LoadJobsAsync()
     {
         var jobs = await _jobAppService.GetAllJobsAsync();
-        var vms = jobs.Select(j => new JobItemViewModel(j, _jobAppService, _notificationService, _localizationService)).ToList();
+        var vms = jobs.Select(j => new JobItemViewModel(j, _jobAppService, _notificationService, _localizationService, _auditService)).ToList();
         
         AllJobs.Clear();
         foreach (var vm in vms) AllJobs.Add(vm);

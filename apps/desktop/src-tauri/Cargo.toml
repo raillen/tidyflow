@@ -1,0 +1,28 @@
+[package]
+name = "autoflow-desktop"
+version.workspace = true
+description = "AutoFlow desktop shell (Tauri + Svelte)"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "autoflow_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+autoflow-core = { path = "../../../crates/autoflow-core" }
+autoflow-domain = { path = "../../../crates/autoflow-domain" }
+autoflow-infrastructure = { path = "../../../crates/autoflow-infrastructure" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-opener = "2"
+tracing = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }

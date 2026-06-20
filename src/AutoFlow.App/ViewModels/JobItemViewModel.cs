@@ -11,6 +11,7 @@ using AutoFlow.Domain.Entities;
 using AutoFlow.Domain.ValueObjects;
 using System.Diagnostics;
 using System.IO;
+using AutoFlow.Infrastructure.Logging;
 
 namespace AutoFlow.App.ViewModels;
 
@@ -19,6 +20,7 @@ public partial class JobItemViewModel : ViewModelBase
     private readonly JobAppService _jobAppService;
     private readonly INotificationService _notificationService;
     private readonly ILocalizationService _localizationService;
+    private readonly IAuditService _auditService;
 
     [ObservableProperty] private bool _isSelected;
     [ObservableProperty] private bool _isExpanded;
@@ -27,6 +29,13 @@ public partial class JobItemViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(LocalizedStatus))]
     private string _status = "";
     [ObservableProperty] private double _progress;
+
+    // Estatísticas de execução
+    [ObservableProperty] private DateTime? _lastRunDate;
+    [ObservableProperty] private int _copiedCount;
+    [ObservableProperty] private int _ignoredCount;
+    [ObservableProperty] private int _errorCount;
+    [ObservableProperty] private bool _isFinished;
 
     public string LocalizedStatus
     {
@@ -64,13 +73,43 @@ public partial class JobItemViewModel : ViewModelBase
         return path.Substring(0, 15) + "..." + path.Substring(path.Length - 25);
     }
 
-    public JobItemViewModel(Job job, JobAppService jobAppService, INotificationService notificationService, ILocalizationService localizationService)
+    public JobItemViewModel(Job job, JobAppService jobAppService, INotificationService notificationService, ILocalizationService localizationService, IAuditService auditService)
     {
         Job = job;
         _jobAppService = jobAppService;
         _notificationService = notificationService;
         _localizationService = localizationService;
+        _auditService = auditService;
         _status = _localizationService["Idle"];
+        _lastRunDate = job.LastRun;
+        
+        _ = RefreshStatsAsync();
+    }
+
+    public async Task RefreshStatsAsync()
+    {
+        try
+        {
+            if (_auditService is SqliteAuditService sqliteAudit)
+            {
+                var stats = await sqliteAudit.GetStatsAsync(Job.Name);
+                CopiedCount = stats.success;
+                IgnoredCount = stats.ignored;
+                ErrorCount = stats.errors;
+                
+                // Atualiza a data do Job caso tenha mudado no banco mas não na memória
+                var jobs = await _jobAppService.GetAllJobsAsync();
+                var current = jobs.FirstOrDefault(j => j.Id == Job.Id);
+                if (current != null)
+                {
+                    LastRunDate = current.LastRun;
+                }
+
+                // Consideramos "finalizado" se houve uma execução e não está processando agora
+                IsFinished = LastRunDate.HasValue && Status != _localizationService["Processing"];
+            }
+        }
+        catch { /* Silencioso para não quebrar a UI */ }
     }
 
     partial void OnIsSelectedChanged(bool value)
@@ -85,6 +124,12 @@ public partial class JobItemViewModel : ViewModelBase
         Progress = p.TotalPercentage;
         CurrentFile = p.CurrentFile;
         SpeedText = FormatSpeed(p.TransferSpeed);
+
+        var upper = p.Status?.ToUpper();
+        if (upper == "CONCLUÍDO" || upper == "FINALIZADO" || upper == "ERRO" || upper == "FALHA")
+        {
+            _ = RefreshStatsAsync();
+        }
         
         if (p.RecentFilesLog.Any())
         {

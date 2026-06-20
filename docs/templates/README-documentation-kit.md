@@ -29,9 +29,22 @@ Se algum template ficar com muitos `OU`, `TALVEZ` ou multiplas opcoes abertas, o
 docs/
   adr/
     ADR-001-<tema>.md
+  v2/                          # reimplementação (ex.: Tauri + Svelte)
+    README.md
+    ARCHITECTURE.md
+    STACK.md
+    DOMAIN.md
+    API-IPC.md
+    UI-DESIGN-SYSTEM.md
+    PROJECT-STRUCTURE.md
+    ROADMAP.md
   specs/
     <contrato-principal>.md
     schemas/
   plans/
     sprint-0-plan.md
 ```
+
+## AutoFlow v2
+
+Pacote completo da reimplementação Tauri + Svelte + Rust: [`docs/v2/README.md`](../v2/README.md).

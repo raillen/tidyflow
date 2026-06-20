@@ -1,6 +1,8 @@
 ﻿# ADR-001: Escolha da Stack Tecnica e Arquitetura
 
-- Status: `Accepted`
+> **Nota (2026-06-19):** Implementação legada Avalonia/.NET. Nova stack documentada em [ADR-002](./ADR-002-stack-tauri-svelte-rust.md) e [`docs/v2/`](../v2/README.md).
+
+- Status: `Accepted` (legado v1)
 - Data: 2026-03-20
 - Escopo: Projeto AutoFlow
 - Relacionado ao PRD: PRD-AutoFlow v1.0.0

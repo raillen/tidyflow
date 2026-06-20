@@ -1,0 +1,13 @@
+{
+  "name": "autoflow",
+  "private": true,
+  "version": "0.2.0",
+  "description": "AutoFlow v2 — Tauri + Svelte + Rust",
+  "scripts": {
+    "dev": "pnpm --filter @autoflow/desktop tauri dev",
+    "build": "pnpm --filter @autoflow/desktop tauri build",
+    "check": "pnpm --filter @autoflow/desktop check",
+    "test": "pnpm --filter @autoflow/desktop test",
+    "test:rust": "cargo test --workspace"
+  }
+}

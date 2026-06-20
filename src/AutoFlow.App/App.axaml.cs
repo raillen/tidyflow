@@ -12,6 +12,7 @@ using AutoFlow.App.Views;
 using AutoFlow.App.Services;
 using AutoFlow.Application.Interfaces;
 using AutoFlow.Application.Services;
+using AutoFlow.Infrastructure;
 using AutoFlow.Infrastructure.Localization;
 using AutoFlow.Infrastructure.Logging;
 using AutoFlow.Infrastructure.Persistence;
@@ -70,6 +71,9 @@ public partial class App : Avalonia.Application
                 _ = Task.Run(async () => {
                     try 
                     {
+                        var queueProcessor = Services.GetRequiredService<QueueProcessor>();
+                        queueProcessor.Start(default);
+
                         var watchAppService = Services.GetRequiredService<WatchAppService>();
                         await watchAppService.InitializeAsync();
 
@@ -118,6 +122,10 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IJobQueue, ObservableJobQueue>();
         services.AddSingleton<ISchedulerService, SimpleScheduler>();
         services.AddSingleton<ThemeService>();
+
+        // File Browser
+        services.AddSingleton<IAuthorizedPathProvider, AuthorizedPathProvider>();
+        services.AddSingleton<IFileExplorerService, FileExplorerService>();
 
         // Application
         services.AddSingleton<JobAppService>();

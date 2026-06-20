@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autoflow.local/schemas/ipc-v2.json",
+  "title": "AutoFlow IPC v2 — tipos compartilhados",
+  "description": "Referência para contratos Tauri. Fonte de verdade: tauri-specta + docs/v2/API-IPC.md",
+  "definitions": {
+    "Uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "IsoDateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "AuditStatus": {
+      "type": "string",
+      "enum": ["COPIED", "MOVED", "IGNORED", "FAILED", "ZIPPED", "ORGANIZED"]
+    },
+    "JobTrigger": {
+      "oneOf": [
+        { "type": "object", "properties": { "type": { "const": "manual" } }, "required": ["type"] },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "watch" },
+            "settle_seconds": { "type": "integer", "minimum": 0 },
+            "monitoring": { "enum": ["realtime", "polling"] },
+            "poll_interval_secs": { "type": "integer", "minimum": 30 }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "schedule" },
+            "rule": {
+              "oneOf": [
+                { "type": "object", "properties": { "kind": { "const": "interval" }, "minutes": { "type": "integer" } }, "required": ["kind", "minutes"] },
+                { "type": "object", "properties": { "kind": { "const": "daily" }, "at": { "type": "string", "pattern": "^\\d{2}:\\d{2}:\\d{2}$" } }, "required": ["kind", "at"] },
+                { "type": "object", "properties": { "kind": { "const": "weekly" }, "days": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 6 } }, "at": { "type": "string" } }, "required": ["kind", "days", "at"] }
+              ]
+            }
+          },
+          "required": ["type", "rule"]
+        }
+      ]
+    },
+    "Job": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/definitions/Uuid" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "source_path": { "type": "string" },
+        "target_path": { "type": "string" },
+        "mode": { "enum": ["copy", "move"] },
+        "trigger": { "$ref": "#/definitions/JobTrigger" },
+        "enabled": { "type": "boolean" },
+        "last_run": { "oneOf": [{ "$ref": "#/definitions/IsoDateTime" }, { "type": "null" }] },
+        "next_run": { "oneOf": [{ "$ref": "#/definitions/IsoDateTime" }, { "type": "null" }] }
+      },
+      "required": ["id", "name", "source_path", "target_path", "mode", "trigger", "enabled"]
+    },
+    "ExecutionProgress": {
+      "type": "object",
+      "properties": {
+        "execution_id": { "$ref": "#/definitions/Uuid" },
+        "job_id": { "$ref": "#/definitions/Uuid" },
+        "job_name": { "type": "string" },
+        "current_file": { "type": "string" },
+        "percent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "bytes_per_sec": { "type": "number", "minimum": 0 },
+        "recent_log": { "type": "array", "items": { "type": "string" }, "maxItems": 10 }
+      },
+      "required": ["execution_id", "job_id", "job_name", "percent"]
+    },
+    "IpcError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "PATH_NOT_AUTHORIZED",
+            "JOB_NOT_FOUND",
+            "JOB_DISABLED",
+            "SOURCE_NOT_FOUND",
+            "ALREADY_RUNNING",
+            "VALIDATION_ERROR",
+            "INTERNAL_ERROR"
+          ]
+        },
+        "message": { "type": "string" },
+        "details": { "type": "object" }
+      },
+      "required": ["code", "message"]
+    }
+  }
+}

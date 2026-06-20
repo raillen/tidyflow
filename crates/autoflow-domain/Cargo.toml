@@ -1,0 +1,19 @@
+[package]
+name = "autoflow-domain"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+dunce = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+walkdir = { workspace = true }
+globset = { workspace = true }
+regex = { workspace = true }
+blake3 = { workspace = true }
+chrono-tz = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

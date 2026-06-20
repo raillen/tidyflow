@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/autoflow-domain",
+    "crates/autoflow-application",
+    "crates/autoflow-infrastructure",
+    "crates/autoflow-core",
+    "apps/desktop/src-tauri",
+]
+
+[workspace.package]
+version = "0.2.0"
+edition = "2021"
+license = "LicenseRef-CC-BY-NC-ND-4.0"
+authors = ["Raillen Santos"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["sync", "rt-multi-thread", "macros", "time"] }
+tracing = "0.1"
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "chrono", "uuid"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+dunce = "1"
+walkdir = "2"
+tempfile = "3"
+tokio-util = "0.7"
+blake3 = "1"
+globset = "0.4"
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+zip = { version = "2", default-features = false, features = ["deflate", "aes-crypto", "time"] }
+keyring = "3"
+chrono-tz = "0.10"

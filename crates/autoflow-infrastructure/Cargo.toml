@@ -1,0 +1,20 @@
+[package]
+name = "autoflow-infrastructure"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+async-trait = "0.1"
+autoflow-application = { path = "../autoflow-application" }
+autoflow-domain = { path = "../autoflow-domain" }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true }

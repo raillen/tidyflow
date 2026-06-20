@@ -1,0 +1,17 @@
+[package]
+name = "autoflow-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+autoflow-application = { path = "../autoflow-application" }
+autoflow-domain = { path = "../autoflow-domain" }
+autoflow-infrastructure = { path = "../autoflow-infrastructure" }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+uuid = { workspace = true }
