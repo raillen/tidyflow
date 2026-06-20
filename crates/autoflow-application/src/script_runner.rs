@@ -110,10 +110,39 @@ pub async fn run_post_script(
 }
 
 fn build_command(script_path: &Path, job: &Job) -> Command {
-    let mut command = Command::new(script_path);
+    let mut command = launch_script(script_path);
     command.env("AUTOFLOW_JOB_ID", job.id.to_string());
     command.env("AUTOFLOW_JOB_NAME", &job.name);
     command.env("AUTOFLOW_SOURCE", &job.source_path);
     command.env("AUTOFLOW_TARGET", &job.target_path);
     command
+}
+
+fn launch_script(script_path: &Path) -> Command {
+    #[cfg(windows)]
+    {
+        let ext = script_path
+            .extension()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        if ext == "bat" || ext == "cmd" {
+            let mut command = Command::new("cmd");
+            command.args(["/C", &script_path.to_string_lossy()]);
+            return command;
+        }
+        if ext == "ps1" {
+            let mut command = Command::new("powershell");
+            command.args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                &script_path.to_string_lossy(),
+            ]);
+            return command;
+        }
+    }
+
+    Command::new(script_path)
 }

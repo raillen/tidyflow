@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
 
     DomainError, FileFilter, NotifyConfig, ScheduleConfig, ScriptsConfig, TransferOptions,
-
+    WatchConfig,
 };
 
 
@@ -41,11 +41,12 @@ pub struct Job {
     pub options: TransferOptions,
 
     #[serde(default)]
-
     pub schedule: Option<ScheduleConfig>,
 
     #[serde(default)]
+    pub watch: Option<WatchConfig>,
 
+    #[serde(default)]
     pub scripts: ScriptsConfig,
 
     #[serde(default)]
@@ -95,6 +96,8 @@ pub struct JobSummary {
     pub next_run: Option<DateTime<Utc>>,
 
     pub schedule_enabled: bool,
+
+    pub watch_enabled: bool,
 
 }
 
@@ -154,6 +157,8 @@ impl Job {
 
             schedule: None,
 
+            watch: None,
+
             scripts: ScriptsConfig::default(),
 
             notify: NotifyConfig::default(),
@@ -192,9 +197,21 @@ impl Job {
 
         self.include_extensions.clear();
 
+        let watch_active = self.watch.as_ref().is_some_and(|w| w.enabled);
 
+        if watch_active {
+            if let Some(schedule) = &mut self.schedule {
+                schedule.enabled = false;
+            }
+        } else if self.schedule.as_ref().is_some_and(|s| s.enabled) {
+            if let Some(watch) = &mut self.watch {
+                watch.enabled = false;
+            }
+        }
 
-        if let Some(schedule) = &self.schedule {
+        if watch_active {
+            self.next_run = None;
+        } else if let Some(schedule) = &self.schedule {
 
             if schedule.enabled {
 
@@ -248,6 +265,12 @@ impl Job {
 
         }
 
+        if let Some(watch) = &self.watch {
+
+            watch.validate()?;
+
+        }
+
         self.scripts.validate()?;
 
         Ok(())
@@ -277,6 +300,8 @@ impl Job {
             next_run: self.next_run,
 
             schedule_enabled: self.schedule.as_ref().is_some_and(|s| s.enabled),
+
+            watch_enabled: self.watch.as_ref().is_some_and(|w| w.enabled),
 
         }
 

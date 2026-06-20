@@ -203,6 +203,9 @@
             {#if !job.enabled}
               <span class="badge muted">Desativado</span>
             {/if}
+            {#if job.watchEnabled}
+              <span class="badge muted">Watch</span>
+            {/if}
             <p class="paths muted">
               {job.sourcePath || "—"} → {job.targetPath || "—"}
             </p>

@@ -1,12 +1,22 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ScriptsConfig {
     pub pre_script: Option<String>,
     pub post_script: Option<String>,
     #[serde(default = "default_timeout")]
     pub timeout_secs: u32,
+}
+
+impl Default for ScriptsConfig {
+    fn default() -> Self {
+        Self {
+            pre_script: None,
+            post_script: None,
+            timeout_secs: default_timeout(),
+        }
+    }
 }
 
 fn default_timeout() -> u32 {

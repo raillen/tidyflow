@@ -10,6 +10,9 @@
     type ScheduleRule,
     type ScriptsConfig,
     type TransferOptions,
+    type WatchConfig,
+    type WatchDetectionMode,
+    type WatchEventKind,
   } from "$lib/contracts/job";
 
   type JobMode = Job["mode"];
@@ -25,6 +28,7 @@
     CaretDoubleRight,
     Code,
     Copy,
+    Eye,
     FolderOpen,
     Funnel,
     IdentificationCard,
@@ -33,7 +37,7 @@
     Trash,
   } from "phosphor-svelte";
 
-  type NavPanel = "geral" | "filtros" | "automacao" | "seguranca" | "avancado";
+  type NavPanel = "geral" | "filtros" | "automacao" | "monitoramento" | "seguranca" | "avancado";
 
   type Props = {
     job: Job;
@@ -52,6 +56,7 @@
     { id: "geral", label: "Geral", icon: IdentificationCard },
     { id: "filtros", label: "Filtros", icon: Funnel },
     { id: "automacao", label: "Automação", icon: Calendar },
+    { id: "monitoramento", label: "Monitoramento", icon: Eye },
     { id: "seguranca", label: "Segurança", icon: ShieldCheck },
     { id: "avancado", label: "Avançado", icon: Code },
   ];
@@ -65,6 +70,19 @@
     { value: 5, label: "Sex", fullLabel: "Sexta-feira" },
     { value: 6, label: "Sáb", fullLabel: "Sábado" },
   ] as const;
+
+  const WATCH_EVENTS: { id: WatchEventKind; label: string }[] = [
+    { id: "create", label: "Criação" },
+    { id: "modify", label: "Modificação" },
+    { id: "remove", label: "Remoção" },
+    { id: "rename", label: "Renomeação" },
+  ];
+
+  const DETECTION_OPTIONS: { value: WatchDetectionMode["kind"]; label: string; hint: string }[] = [
+    { value: "realtime", label: "Tempo real", hint: "Eventos nativos do SO — ideal para disco local." },
+    { value: "polling", label: "Polling", hint: "Varredura periódica — ideal para rede/USB." },
+    { value: "hybrid", label: "Híbrido", hint: "Tempo real + polling de backup — máxima confiabilidade." },
+  ];
 
   const RULE_KIND_OPTIONS: { value: ScheduleRule["kind"]; label: string }[] = [
     { value: "interval", label: "Intervalo" },
@@ -188,10 +206,62 @@
     return d.toISOString();
   }
 
+  function defaultWatch(): WatchConfig {
+    return {
+      enabled: true,
+      settleSeconds: 2,
+      detection: { kind: "realtime" },
+      events: ["create"],
+    };
+  }
+
+  function patchWatch(partial: Partial<WatchConfig>) {
+    const base = job.watch ?? defaultWatch();
+    job = { ...job, watch: { ...base, ...partial } };
+  }
+
+  function setWatchEnabled(enabled: boolean) {
+    if (enabled) {
+      job = {
+        ...job,
+        watch: job.watch ? { ...job.watch, enabled: true } : defaultWatch(),
+        schedule: job.schedule ? { ...job.schedule, enabled: false } : job.schedule,
+      };
+    } else if (job.watch) {
+      job = { ...job, watch: { ...job.watch, enabled: false } };
+    } else {
+      job = { ...job, watch: null };
+    }
+  }
+
+  function setDetectionKind(kind: WatchDetectionMode["kind"]) {
+    switch (kind) {
+      case "realtime":
+        patchWatch({ detection: { kind: "realtime" } });
+        break;
+      case "polling":
+        patchWatch({ detection: { kind: "polling", intervalSecs: 30 } });
+        break;
+      case "hybrid":
+        patchWatch({ detection: { kind: "hybrid", pollIntervalSecs: 30 } });
+        break;
+    }
+  }
+
+  function toggleWatchEvent(event: WatchEventKind) {
+    const watch = job.watch ?? defaultWatch();
+    const events = watch.events.includes(event)
+      ? watch.events.filter((item) => item !== event)
+      : [...watch.events, event];
+    if (events.length === 0) return;
+    patchWatch({ events });
+  }
+
   function setScheduleEnabled(enabled: boolean) {
     if (enabled) {
       job = {
         ...job,
+        watch: job.watch ? { ...job.watch, enabled: false } : job.watch,
         schedule: job.schedule
           ? { ...job.schedule, enabled: true }
           : defaultSchedule(),
@@ -700,7 +770,7 @@
     {:else if activePanel === "automacao"}
       <div class="panel-header">
         <h3>Automação</h3>
-        <p>Agendamento periódico do fluxo.</p>
+        <p>Agendamento periódico. Mutuamente exclusivo com monitoramento.</p>
       </div>
 
       <details class="collapsible" open>
@@ -716,6 +786,7 @@
           </label>
 
           {#if job.schedule?.enabled}
+            <p class="field-hint">Incompatível com monitoramento ativo — um desativa o outro ao salvar.</p>
             <label class="field">
               <span class="field-label">Fuso horário</span>
               <select
@@ -856,6 +927,121 @@
                 </label>
               </div>
             {/if}
+          {/if}
+        </div>
+      </details>
+    {:else if activePanel === "monitoramento"}
+      <div class="panel-header">
+        <h3>Monitoramento</h3>
+        <p>Dispara o fluxo quando a pasta de origem muda. Exclusivo com agendamento.</p>
+      </div>
+
+      <details class="collapsible" open>
+        <summary>Watch na origem</summary>
+        <div class="collapsible-body">
+          <label class="toggle">
+            <input
+              type="checkbox"
+              checked={job.watch?.enabled ?? false}
+              onchange={(e) => setWatchEnabled(e.currentTarget.checked)}
+            />
+            <span>Monitoramento ativo</span>
+          </label>
+
+          {#if job.watch?.enabled}
+            <p class="field-hint">
+              Monitora <code>{job.sourcePath || "—"}</code>. Profundidade segue o filtro
+              &quot;Incluir subpastas&quot;.
+            </p>
+
+            <label class="field">
+              <span class="field-label">Estabilização (segundos)</span>
+              <input
+                class="field-input"
+                type="number"
+                min="1"
+                max="60"
+                value={job.watch.settleSeconds}
+                oninput={(e) =>
+                  patchWatch({
+                    settleSeconds: Math.min(
+                      60,
+                      Math.max(1, Number(e.currentTarget.value) || 2),
+                    ),
+                  })}
+              />
+            </label>
+
+            <label class="field">
+              <span class="field-label">Método de detecção</span>
+              <select
+                class="field-input"
+                value={job.watch.detection.kind}
+                onchange={(e) =>
+                  setDetectionKind(e.currentTarget.value as WatchDetectionMode["kind"])}
+              >
+                {#each DETECTION_OPTIONS as option}
+                  <option value={option.value}>{option.label}</option>
+                {/each}
+              </select>
+            </label>
+            <p class="field-hint">
+              {DETECTION_OPTIONS.find((o) => o.value === job.watch?.detection.kind)?.hint}
+            </p>
+
+            {#if job.watch.detection.kind === "polling"}
+              <label class="field">
+                <span class="field-label">Intervalo de polling (segundos)</span>
+                <input
+                  class="field-input"
+                  type="number"
+                  min="5"
+                  max="3600"
+                  value={job.watch.detection.intervalSecs}
+                  oninput={(e) =>
+                    patchWatch({
+                      detection: {
+                        kind: "polling",
+                        intervalSecs: Math.max(5, Number(e.currentTarget.value) || 30),
+                      },
+                    })}
+                />
+              </label>
+            {:else if job.watch.detection.kind === "hybrid"}
+              <label class="field">
+                <span class="field-label">Polling de backup (segundos)</span>
+                <input
+                  class="field-input"
+                  type="number"
+                  min="5"
+                  max="3600"
+                  value={job.watch.detection.pollIntervalSecs}
+                  oninput={(e) =>
+                    patchWatch({
+                      detection: {
+                        kind: "hybrid",
+                        pollIntervalSecs: Math.max(5, Number(e.currentTarget.value) || 30),
+                      },
+                    })}
+                />
+              </label>
+            {/if}
+
+            <fieldset class="preset-group">
+              <legend class="field-label">Eventos que disparam o fluxo</legend>
+              <div class="checkbox-grid">
+                {#each WATCH_EVENTS as event}
+                  <label class="toggle">
+                    <input
+                      type="checkbox"
+                      checked={job.watch.events.includes(event.id)}
+                      onchange={() => toggleWatchEvent(event.id)}
+                    />
+                    <span>{event.label}</span>
+                  </label>
+                {/each}
+              </div>
+            </fieldset>
           {/if}
         </div>
       </details>

@@ -15,3 +15,6 @@ tracing = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 uuid = { workspace = true }
+notify-debouncer-full = { workspace = true }
+notify = { workspace = true }
+walkdir = { workspace = true }

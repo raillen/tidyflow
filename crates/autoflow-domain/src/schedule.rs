@@ -60,7 +60,7 @@ impl ScheduleConfig {
 }
 
 fn next_run(from: DateTime<Utc>, config: &ScheduleConfig) -> Option<DateTime<Utc>> {
-    use chrono::{Datelike, Duration, TimeZone, Timelike};
+    use chrono::{Datelike, Duration, TimeZone};
 
     if config.timezone == "local" {
         let local = from.with_timezone(&Local);

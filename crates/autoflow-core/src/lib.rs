@@ -1,8 +1,10 @@
 mod queue;
 mod scheduler;
+mod watch;
 
 pub use queue::{ExecutionEvent, JobQueue};
 pub use scheduler::Scheduler;
+pub use watch::WatchService;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -18,7 +20,6 @@ use autoflow_infrastructure::{
     ui_state::{MissedScheduleEntry, SqliteMissedScheduleStore, SqliteUiStateStore},
 };
 use serde_json::Value;
-use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use autoflow_application::{jobs, ports::AuditStore};
@@ -29,14 +30,13 @@ pub struct AppState {
 }
 
 struct AppStateInner {
-    data_dir: PathBuf,
-    pool: SqlitePool,
     settings: Arc<SqliteSettingsStore>,
     jobs: Arc<SqliteJobStore>,
     audit: Arc<SqliteAuditStore>,
     ui_state: Arc<SqliteUiStateStore>,
     missed: Arc<SqliteMissedScheduleStore>,
     queue: JobQueue,
+    watch: WatchService,
 }
 
 impl AppState {
@@ -57,17 +57,17 @@ impl AppState {
         let missed = Arc::new(SqliteMissedScheduleStore::new(pool.clone()));
         let queue = JobQueue::start(data_dir.clone(), jobs.clone(), audit.clone(), events);
         Scheduler::start(jobs.clone(), missed.clone(), queue.clone());
+        let watch = WatchService::start(jobs.clone(), queue.clone());
 
         Ok(Self {
             inner: Arc::new(AppStateInner {
-                data_dir,
-                pool,
                 settings,
                 jobs,
                 audit,
                 ui_state,
                 missed,
                 queue,
+                watch,
             }),
         })
     }
@@ -94,15 +94,21 @@ impl AppState {
     }
 
     pub async fn create_job(&self, job: Job) -> Result<Job, DomainError> {
-        jobs::create_job(self.inner.jobs.as_ref(), job).await
+        let job = jobs::create_job(self.inner.jobs.as_ref(), job).await?;
+        self.inner.watch.sync_job(&job).await?;
+        Ok(job)
     }
 
     pub async fn update_job(&self, job: Job) -> Result<Job, DomainError> {
-        jobs::update_job(self.inner.jobs.as_ref(), job).await
+        let job = jobs::update_job(self.inner.jobs.as_ref(), job).await?;
+        self.inner.watch.sync_job(&job).await?;
+        Ok(job)
     }
 
     pub async fn delete_job(&self, id: Uuid) -> Result<(), DomainError> {
-        jobs::delete_job(self.inner.jobs.as_ref(), id).await
+        jobs::delete_job(self.inner.jobs.as_ref(), id).await?;
+        self.inner.watch.unregister(id);
+        Ok(())
     }
 
     pub async fn simulate_job(&self, id: Uuid) -> Result<SimulationReport, DomainError> {

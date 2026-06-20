@@ -68,6 +68,27 @@ export const scheduleConfigSchema = z.object({
   rule: scheduleRuleSchema,
 });
 
+export const watchEventKindSchema = z.enum(["create", "modify", "remove", "rename"]);
+
+export const watchDetectionModeSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("realtime") }),
+  z.object({
+    kind: z.literal("polling"),
+    intervalSecs: z.number().int().min(5).max(3600).default(30),
+  }),
+  z.object({
+    kind: z.literal("hybrid"),
+    pollIntervalSecs: z.number().int().min(5).max(3600).default(30),
+  }),
+]);
+
+export const watchConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  settleSeconds: z.number().int().min(1).max(60).default(2),
+  detection: watchDetectionModeSchema.default({ kind: "realtime" }),
+  events: z.array(watchEventKindSchema).default(["create"]),
+});
+
 export const scriptsConfigSchema = z.object({
   preScript: z.string().nullable().optional(),
   postScript: z.string().nullable().optional(),
@@ -107,6 +128,7 @@ export const jobSchema = z.object({
   filters: fileFilterSchema.default({}),
   options: transferOptionsSchema.default({}),
   schedule: scheduleConfigSchema.nullable().optional(),
+  watch: watchConfigSchema.nullable().optional(),
   scripts: scriptsConfigSchema.default({}),
   notify: notifyConfigSchema.default({}),
   enabled: z.boolean(),
@@ -124,6 +146,7 @@ export const jobSummarySchema = z.object({
   lastRun: z.string().datetime().nullable(),
   nextRun: z.string().datetime().nullable().optional(),
   scheduleEnabled: z.boolean().optional(),
+  watchEnabled: z.boolean().optional(),
 });
 
 export const activeExecutionSchema = z.object({
@@ -166,6 +189,9 @@ export type FileFilter = z.infer<typeof fileFilterSchema>;
 export type TransferOptions = z.infer<typeof transferOptionsSchema>;
 export type ScheduleConfig = z.infer<typeof scheduleConfigSchema>;
 export type ScheduleRule = z.infer<typeof scheduleRuleSchema>;
+export type WatchConfig = z.infer<typeof watchConfigSchema>;
+export type WatchDetectionMode = z.infer<typeof watchDetectionModeSchema>;
+export type WatchEventKind = z.infer<typeof watchEventKindSchema>;
 export type ScriptsConfig = z.infer<typeof scriptsConfigSchema>;
 export type NotifyConfig = z.infer<typeof notifyConfigSchema>;
 export type NotifyChannel = z.infer<typeof notifyChannelSchema>;
@@ -184,6 +210,7 @@ export function createEmptyJob(): Job {
     filters: fileFilterSchema.parse({}),
     options: transferOptionsSchema.parse({}),
     schedule: null,
+    watch: null,
     scripts: scriptsConfigSchema.parse({}),
     notify: notifyConfigSchema.parse({}),
     enabled: true,
