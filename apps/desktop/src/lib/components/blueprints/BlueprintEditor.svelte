@@ -10,6 +10,7 @@
     type BlueprintKind,
     type BlueprintOperation,
     type FolderNode,
+    type FolderPlanPreviewNode,
   } from "$lib/contracts/blueprint";
   import {
     EXCLUDE_PRESETS,
@@ -18,7 +19,7 @@
     type WatchDetectionMode as JobWatchDetectionMode,
     type WatchEventKind as JobWatchEventKind,
   } from "$lib/contracts/job";
-  import { previewBlueprintTemplate } from "$lib/core/ipc/client";
+  import { previewBlueprintPlan, previewBlueprintTemplate } from "$lib/core/ipc/client";
   import { open } from "@tauri-apps/plugin-dialog";
   import {
     ArrowsLeftRight,
@@ -56,6 +57,8 @@
   let samplePath = $state("C:\\exemplo\\Docs\\relatorio.PDF");
   let previewLoading = $state(false);
   let previewResult = $state<Awaited<ReturnType<typeof previewBlueprintTemplate>> | null>(null);
+  let planPreviewLoading = $state(false);
+  let planPreviewResult = $state<Awaited<ReturnType<typeof previewBlueprintPlan>> | null>(null);
   let templateInput: HTMLTextAreaElement | undefined = $state();
 
   const renamePlaceholder = "{stem}_{counter}{ext}";
@@ -111,6 +114,23 @@
         previewResult = null;
       } finally {
         previewLoading = false;
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  });
+
+  $effect(() => {
+    if (activePanel !== "pastas" || blueprint.kind !== "folder") return;
+    const rootPath = blueprint.rootPath;
+    const folderPlan = blueprint.folderPlan ?? { nodes: [] };
+    const timer = setTimeout(async () => {
+      planPreviewLoading = true;
+      try {
+        planPreviewResult = await previewBlueprintPlan(rootPath, folderPlan);
+      } catch {
+        planPreviewResult = null;
+      } finally {
+        planPreviewLoading = false;
       }
     }, 350);
     return () => clearTimeout(timer);
@@ -316,6 +336,19 @@
     return nodes.map((node, index) => ({ node, path: [...path, index] }));
   }
 </script>
+
+{#snippet planPreviewNode(node: FolderPlanPreviewNode, depth: number)}
+  <li class="plan-preview-item" style:padding-left={`${depth * 1.25}rem`}>
+    <code>{node.relativePath}</code>
+    {#if node.children.length}
+      <ul>
+        {#each node.children as child}
+          {@render planPreviewNode(child, depth + 1)}
+        {/each}
+      </ul>
+    {/if}
+  </li>
+{/snippet}
 
 <form
   id="blueprint-editor-form"
@@ -788,6 +821,39 @@
           {/if}
         </div>
       </details>
+
+      <details class="collapsible" open>
+        <summary>Preview do scaffolding</summary>
+        <div class="collapsible-body">
+          {#if planPreviewLoading}
+            <p class="muted">Calculando árvore…</p>
+          {:else if planPreviewResult}
+            <div class="preview-box" class:invalid={!planPreviewResult.valid}>
+              <p>
+                <strong>{planPreviewResult.folderCount}</strong>
+                pasta(s) sob
+                <code>{planPreviewResult.rootPath || blueprint.rootPath || "—"}</code>
+              </p>
+              {#if planPreviewResult.warnings.length}
+                <ul>
+                  {#each planPreviewResult.warnings as warning}
+                    <li>{warning}</li>
+                  {/each}
+                </ul>
+              {/if}
+              {#if planPreviewResult.nodes.length}
+                <ul class="plan-preview-tree">
+                  {#each planPreviewResult.nodes as node}
+                    {@render planPreviewNode(node, 0)}
+                  {/each}
+                </ul>
+              {:else}
+                <p class="muted">Nenhuma pasta no plano.</p>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      </details>
     {:else if activePanel === "automacao"}
       <div class="panel-header">
         <h3>Automação</h3>
@@ -1147,6 +1213,26 @@
 
   .folder-row.nested {
     margin-left: var(--space-4);
+  }
+
+  .plan-preview-tree {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .plan-preview-item {
+    font-size: var(--text-xs);
+  }
+
+  .plan-preview-item ul {
+    list-style: none;
+    margin: var(--space-1) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1);
   }
 
   .field-hint {

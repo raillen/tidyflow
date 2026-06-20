@@ -11,7 +11,8 @@ use std::sync::Arc;
 
 use autoflow_domain::{
     AppSettings, Blueprint, BlueprintSimulationReport, BlueprintSummary, DomainError, HealthStatus,
-    Job, JobSummary, SimulationReport, TemplatePipeline, TemplatePreview,
+    Job, JobSummary, SimulationReport, TemplatePipeline, TemplatePreview, FolderPlan,
+    FolderPlanPreview,
 };
 use autoflow_infrastructure::{
     audit::SqliteAuditStore,
@@ -177,6 +178,14 @@ impl AppState {
         sample_path: String,
     ) -> TemplatePreview {
         blueprints::preview_template(pipeline, sample_path)
+    }
+
+    pub fn preview_folder_plan(
+        &self,
+        root_path: String,
+        folder_plan: FolderPlan,
+    ) -> FolderPlanPreview {
+        blueprints::preview_folder_plan(root_path, folder_plan)
     }
 
     pub fn run_job(&self, job_id: Uuid) -> Result<Uuid, DomainError> {

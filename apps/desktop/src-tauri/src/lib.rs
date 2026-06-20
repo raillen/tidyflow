@@ -131,6 +131,7 @@ pub fn run() {
             commands::blueprints_simulate,
             commands::blueprints_apply,
             commands::blueprints_preview_template,
+            commands::blueprints_preview_plan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

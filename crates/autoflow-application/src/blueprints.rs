@@ -5,8 +5,8 @@ use std::time::Instant;
 use autoflow_domain::{
     evaluate, is_path_under_root, normalize_path, AuditStatus, Blueprint, BlueprintCollision,
     BlueprintKind, BlueprintOperation, BlueprintPlanSample, BlueprintSimulationReport,
-    ConflictStrategy, DomainError, Job, NewAuditEntry, TemplatePreview,
-    TokenContext,
+    ConflictStrategy, DomainError, FolderPlan, FolderPlanPreview, FolderPlanPreviewNode, Job,
+    NewAuditEntry, TemplatePreview, TokenContext,
 };
 use chrono::Utc;
 use uuid::Uuid;
@@ -209,6 +209,80 @@ pub fn preview_template(
             warnings: vec![error.to_string()],
         },
     }
+}
+
+pub fn preview_folder_plan(root_path: String, folder_plan: FolderPlan) -> FolderPlanPreview {
+    let mut warnings = Vec::new();
+    let mut folder_count = 0u32;
+
+    if root_path.trim().is_empty() {
+        warnings.push("root_path is required".into());
+    }
+
+    let nodes = build_folder_plan_preview_nodes(&folder_plan.nodes, "", &mut warnings, &mut folder_count);
+    let valid = warnings.is_empty();
+
+    FolderPlanPreview {
+        root_path,
+        nodes,
+        folder_count,
+        valid,
+        warnings,
+    }
+}
+
+fn build_folder_plan_preview_nodes(
+    nodes: &[autoflow_domain::FolderNode],
+    parent_rel: &str,
+    warnings: &mut Vec<String>,
+    folder_count: &mut u32,
+) -> Vec<FolderPlanPreviewNode> {
+    let mut seen = std::collections::HashSet::new();
+    let mut result = Vec::new();
+
+    for node in nodes {
+        let name = node.name.trim();
+        if name.is_empty() {
+            warnings.push("folder name cannot be empty".into());
+            continue;
+        }
+        if folder_name_invalid(name) {
+            warnings.push(format!("invalid folder name: {name}"));
+        }
+        if !seen.insert(name.to_ascii_lowercase()) {
+            warnings.push(format!("duplicate sibling folder: {name}"));
+        }
+
+        let relative_path = if parent_rel.is_empty() {
+            name.to_string()
+        } else {
+            format!("{parent_rel}/{name}")
+        };
+
+        *folder_count += 1;
+        let children = build_folder_plan_preview_nodes(
+            &node.children,
+            &relative_path,
+            warnings,
+            folder_count,
+        );
+
+        result.push(FolderPlanPreviewNode {
+            name: name.to_string(),
+            relative_path,
+            children,
+        });
+    }
+
+    result
+}
+
+fn folder_name_invalid(name: &str) -> bool {
+    const INVALID: &[char] = &['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
+    name.is_empty()
+        || name.ends_with('.')
+        || name.ends_with(' ')
+        || name.chars().any(|c| INVALID.contains(&c))
 }
 
 struct PlanItem {
@@ -496,4 +570,47 @@ fn copy_dir_recursive(source: &Path, target: &Path) -> Result<(), String> {
 
 fn file_size(path: &Path) -> i64 {
     fs::metadata(path).map(|m| m.len() as i64).unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use autoflow_domain::FolderNode;
+
+    #[test]
+    fn preview_folder_plan_builds_relative_tree() {
+        let preview = preview_folder_plan(
+            "C:\\root".into(),
+            FolderPlan {
+                nodes: vec![FolderNode {
+                    name: "2026".into(),
+                    children: vec![FolderNode {
+                        name: "Janeiro".into(),
+                        children: vec![],
+                    }],
+                }],
+            },
+        );
+
+        assert!(preview.valid);
+        assert_eq!(preview.folder_count, 2);
+        assert_eq!(preview.nodes[0].relative_path, "2026");
+        assert_eq!(preview.nodes[0].children[0].relative_path, "2026/Janeiro");
+    }
+
+    #[test]
+    fn preview_folder_plan_flags_invalid_names() {
+        let preview = preview_folder_plan(
+            "C:\\root".into(),
+            FolderPlan {
+                nodes: vec![FolderNode {
+                    name: "bad<name".into(),
+                    children: vec![],
+                }],
+            },
+        );
+
+        assert!(!preview.valid);
+        assert!(!preview.warnings.is_empty());
+    }
 }

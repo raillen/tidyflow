@@ -1,8 +1,8 @@
 use autoflow_core::AppState;
 use autoflow_domain::{
     ActiveExecution, AppSettings, AuditEntry, Blueprint, BlueprintSimulationReport,
-    BlueprintSummary, HealthStatus, Job, JobSummary, SimulationReport, TemplatePipeline,
-    TemplatePreview,
+    BlueprintSummary, FolderPlan, FolderPlanPreview, HealthStatus, Job, JobSummary,
+    SimulationReport, TemplatePipeline, TemplatePreview,
 };
 use autoflow_infrastructure::ui_state::MissedScheduleEntry;
 use serde_json::Value;
@@ -184,4 +184,13 @@ pub fn blueprints_preview_template(
     sample_path: String,
 ) -> TemplatePreview {
     state.preview_template(pipeline, sample_path)
+}
+
+#[tauri::command]
+pub fn blueprints_preview_plan(
+    state: State<'_, AppState>,
+    root_path: String,
+    folder_plan: FolderPlan,
+) -> FolderPlanPreview {
+    state.preview_folder_plan(root_path, folder_plan)
 }

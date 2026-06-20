@@ -22,11 +22,15 @@ import {
   blueprintSchema,
   blueprintSimulationReportSchema,
   blueprintSummarySchema,
+  folderPlanPreviewSchema,
+  folderPlanSchema,
   templatePipelineSchema,
   templatePreviewSchema,
   type Blueprint,
   type BlueprintSimulationReport,
   type BlueprintSummary,
+  type FolderPlan,
+  type FolderPlanPreview,
   type TemplatePipeline,
   type TemplatePreview,
 } from "$lib/contracts/blueprint";
@@ -142,6 +146,17 @@ export async function previewBlueprintTemplate(
     samplePath,
   });
   return templatePreviewSchema.parse(raw);
+}
+
+export async function previewBlueprintPlan(
+  rootPath: string,
+  folderPlan: FolderPlan,
+): Promise<FolderPlanPreview> {
+  const raw: unknown = await invoke("blueprints_preview_plan", {
+    rootPath,
+    folderPlan: folderPlanSchema.parse(folderPlan),
+  });
+  return folderPlanPreviewSchema.parse(raw);
 }
 
 export { executionProgressSchema, executionCompletedSchema };

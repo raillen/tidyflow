@@ -73,6 +73,24 @@ impl Default for RoutingConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct FolderPlanPreviewNode {
+    pub name: String,
+    pub relative_path: String,
+    pub children: Vec<FolderPlanPreviewNode>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FolderPlanPreview {
+    pub root_path: String,
+    pub nodes: Vec<FolderPlanPreviewNode>,
+    pub folder_count: u32,
+    pub valid: bool,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct FolderPlan {
     pub nodes: Vec<FolderNode>,
 }

@@ -18,7 +18,8 @@ pub mod watch;
 pub use audit::{AuditEntry, AuditStatus, NewAuditEntry};
 pub use blueprint::{
     Blueprint, BlueprintCollision, BlueprintKind, BlueprintOperation, BlueprintPlanSample,
-    BlueprintSimulationReport, BlueprintSummary, FolderNode, FolderPlan, RoutingConfig,
+    BlueprintSimulationReport, BlueprintSummary, FolderNode, FolderPlan, FolderPlanPreview,
+    FolderPlanPreviewNode, RoutingConfig,
     TemplatePreview,
 };
 pub use counter::{CounterConfig, CounterScope};

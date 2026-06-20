@@ -104,6 +104,22 @@ export const templatePreviewSchema = z.object({
   warnings: z.array(z.string()),
 });
 
+export const folderPlanPreviewNodeSchema: z.ZodType<FolderPlanPreviewNode> = z.lazy(() =>
+  z.object({
+    name: z.string(),
+    relativePath: z.string(),
+    children: z.array(folderPlanPreviewNodeSchema),
+  }),
+);
+
+export const folderPlanPreviewSchema = z.object({
+  rootPath: z.string(),
+  nodes: z.array(folderPlanPreviewNodeSchema).default([]),
+  folderCount: z.number().int(),
+  valid: z.boolean(),
+  warnings: z.array(z.string()),
+});
+
 export type TemplateSegment = z.infer<typeof templateSegmentSchema>;
 export type TemplatePipeline = z.infer<typeof templatePipelineSchema>;
 export type RoutingConfig = z.infer<typeof routingConfigSchema>;
@@ -113,6 +129,12 @@ export type Blueprint = z.infer<typeof blueprintSchema>;
 export type BlueprintSummary = z.infer<typeof blueprintSummarySchema>;
 export type BlueprintSimulationReport = z.infer<typeof blueprintSimulationReportSchema>;
 export type TemplatePreview = z.infer<typeof templatePreviewSchema>;
+export type FolderPlanPreviewNode = {
+  name: string;
+  relativePath: string;
+  children: FolderPlanPreviewNode[];
+};
+export type FolderPlanPreview = z.infer<typeof folderPlanPreviewSchema>;
 export type BlueprintKind = z.infer<typeof blueprintKindSchema>;
 export type BlueprintOperation = z.infer<typeof blueprintOperationSchema>;
 
