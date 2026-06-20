@@ -161,7 +161,9 @@ export const TEMPLATE_SYNTAX_LEGEND = [
 
 export const TEMPLATE_QUICK_PATTERNS = [
   { label: "Ano / mês / arquivo", value: "{year}/{month}/{stem}{ext}" },
+  { label: "Data / pasta pai", value: "{date}/{parent}/{stem}{ext}" },
   { label: "Pasta pai / nome", value: "{parent}/{stem}{ext}" },
+  { label: "Avó / pai / nome", value: "{grandparent}/{parent}/{stem}{ext}" },
   { label: "Contador sequencial", value: "{year}/{counter}_{stem}{ext}" },
 ] as const;
 
@@ -170,6 +172,7 @@ export const TEMPLATE_TOKEN_GROUPS: TemplateToolboxGroup[] = [
     id: "datetime",
     label: "Data e hora",
     items: [
+      { name: "date", label: "Data", syntax: "{date}", hint: "Data atual no formato YYYY-MM-DD.", example: "2026-06-19" },
       { name: "year", label: "Ano", syntax: "{year}", hint: "Ano com 4 dígitos (relógio local).", example: "2026" },
       { name: "month", label: "Mês", syntax: "{month}", hint: "Mês com 2 dígitos.", example: "06" },
       { name: "day", label: "Dia", syntax: "{day}", hint: "Dia do mês com 2 dígitos.", example: "19" },
@@ -186,6 +189,7 @@ export const TEMPLATE_TOKEN_GROUPS: TemplateToolboxGroup[] = [
       { name: "stem", label: "Nome sem ext.", syntax: "{stem}", hint: "Nome sem extensão.", example: "relatorio" },
       { name: "ext", label: "Extensão", syntax: "{ext}", hint: "Extensão com ponto.", example: ".pdf" },
       { name: "parent", label: "Pasta pai", syntax: "{parent}", hint: "Nome da pasta imediatamente acima do arquivo.", example: "Docs" },
+      { name: "grandparent", label: "Pasta avó", syntax: "{grandparent}", hint: "Nome da pasta acima da pasta pai.", example: "Entrada" },
     ],
   },
   {
@@ -206,8 +210,23 @@ export const TEMPLATE_TRANSFORM_GROUPS: TemplateToolboxGroup[] = [
     items: [
       { name: "lower", label: "minúsculas", syntax: "[lower]", hint: "Converte todo o trecho para minúsculas.", example: "report" },
       { name: "upper", label: "MAIÚSCULAS", syntax: "[upper]", hint: "Converte todo o trecho para maiúsculas.", example: "REPORT" },
+      { name: "capitalized", label: "Capitalizado", syntax: "[capitalized]", hint: "Primeira letra em maiúscula e restante em minúscula.", example: "Relatorio mensal" },
+      { name: "title", label: "Title Case", syntax: "[title]", hint: "Primeira letra de cada palavra em maiúscula.", example: "Relatorio Mensal" },
       { name: "snake", label: "snake_case", syntax: "[snake]", hint: "Espaços e hífens viram underscore.", example: "meu_arquivo" },
+      { name: "camel", label: "camelCase", syntax: "[camel]", hint: "Formato camelCase para nomes técnicos.", example: "meuArquivo" },
+      { name: "pascal", label: "PascalCase", syntax: "[pascal]", hint: "Formato PascalCase para nomes técnicos.", example: "MeuArquivo" },
       { name: "kebab", label: "kebab-case", syntax: "[kebab]", hint: "Formato com hífens.", example: "meu-arquivo" },
+    ],
+  },
+  {
+    id: "substring",
+    label: "Recorte",
+    items: [
+      { name: "take", label: "Pegar início", syntax: "[take(12)]", hint: "Mantém os primeiros N caracteres.", example: "relatorio-fin" },
+      { name: "take_end", label: "Pegar fim", syntax: "[take(8, end)]", hint: "Mantém os últimos N caracteres.", example: "2026.pdf" },
+      { name: "skip", label: "Pular início", syntax: "[skip(3)]", hint: "Remove os primeiros N caracteres.", example: "atorio" },
+      { name: "skip_end", label: "Pular fim", syntax: "[skip(4, end)]", hint: "Remove os últimos N caracteres.", example: "relatorio" },
+      { name: "slice", label: "Fatiar", syntax: "[slice(0, 8)]", hint: "Mantém caracteres do índice inicial até o final exclusivo.", example: "relatori" },
     ],
   },
   {
@@ -216,6 +235,8 @@ export const TEMPLATE_TRANSFORM_GROUPS: TemplateToolboxGroup[] = [
     items: [
       { name: "trim", label: "trim", syntax: "[trim]", hint: "Remove espaços no início e fim.", example: "arquivo" },
       { name: "collapse_spaces", label: "colapsar espaços", syntax: "[collapse_spaces]", hint: "Múltiplos espaços viram um só.", example: "meu doc" },
+      { name: "strip_symbols", label: "remover símbolos", syntax: "[strip_symbols]", hint: "Remove símbolos e preserva letras, números e separadores comuns.", example: "arquivo.pdf" },
+      { name: "spaces_to_underscore", label: "espaços para _", syntax: "[spaces_to_underscore]", hint: "Troca espaços por underscore.", example: "meu_arquivo" },
       { name: "sanitize_windows_filename", label: "sanitizar Windows", syntax: "[sanitize_windows_filename]", hint: "Substitui caracteres inválidos no Windows.", example: "arquivo_seguro" },
     ],
   },
@@ -226,8 +247,12 @@ export const TEMPLATE_REGEX_GROUPS: TemplateToolboxGroup[] = [
     id: "presets",
     label: "Presets",
     items: [
-      { name: "removeDigits", label: "remover dígitos", syntax: "/removeDigits/", hint: "Remove todos os números do trecho.", example: "doc" },
-      { name: "stripSpecial", label: "remover especiais", syntax: "/stripSpecial/", hint: "Mantém letras, números, ponto, hífen e underscore.", example: "arquivo_1" },
+      { name: "remove_digits", label: "remover dígitos", syntax: "/remove_digits/", hint: "Remove todos os números do trecho.", example: "doc" },
+      { name: "strip_special", label: "remover especiais", syntax: "/strip_special/", hint: "Mantém letras, números, ponto, hífen e underscore.", example: "arquivo_1" },
+      { name: "extract_date", label: "extrair data", syntax: "/extract_date/", hint: "Retorna a primeira data encontrada no trecho.", example: "2026-06-19" },
+      { name: "remove_parens", label: "remover parênteses", syntax: "/remove_parens/", hint: "Remove blocos entre parênteses.", example: "arquivo final" },
+      { name: "digits_only", label: "somente dígitos", syntax: "/digits_only/", hint: "Mantém apenas números.", example: "20260619" },
+      { name: "letters_only", label: "somente letras", syntax: "/letters_only/", hint: "Mantém apenas letras.", example: "relatorio" },
     ],
   },
 ];
@@ -310,7 +335,7 @@ export function pipelineToDisplayString(pipeline: TemplatePipeline): string {
 
 export function parseTemplateDisplayString(input: string): TemplatePipeline {
   const segments: TemplateSegment[] = [];
-  const pattern = /\{([a-zA-Z_]+)\}|\[([a-zA-Z_]+)\]|\/([a-zA-Z_]+)\//g;
+  const pattern = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}|\[([^\]\r\n]+)\]|\/([a-zA-Z_][a-zA-Z0-9_]*)\//g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
