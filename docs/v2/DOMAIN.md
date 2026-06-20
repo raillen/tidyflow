@@ -1,6 +1,6 @@
 # Domínio — AutoFlow v2
 
-**Status:** `Planejado`
+**Status:** `Implementado (jobs)` · Blueprints: ver `BLUEPRINT-SPEC.md`
 
 Regras de negócio puras. Implementação Rust em `crates/autoflow-domain`. Tipos espelhados em TS via Specta + Zod.
 

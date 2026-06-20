@@ -126,11 +126,14 @@ notify detecta evento
 ### 4.3 Blueprint em evento
 
 ```
-notify detecta arquivo/pasta nova
-  → MatchBlueprint use case
-  → Tokenizer aplica rename / scaffolding
-  → Audit entry (tipo ORGANIZATION)
+notify detecta arquivo/pasta (WatchTarget::Blueprint)
+  → debounce (WatchConfig — realtime | polling | hybrid)
+  → ApplyBlueprint use case (search → routing → move|copy)
+  → Tokenizer + PathPolicy
+  → Audit entry (status ORGANIZED)
 ```
+
+Ver `BLUEPRINT-SPEC.md` para tipos File/Folder, routing e colisão.
 
 ---
 

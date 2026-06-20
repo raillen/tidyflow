@@ -113,18 +113,31 @@ Controle global da fila.
 
 CRUD padrão.
 
-### `blueprints_apply_batch`
-
-```typescript
-// Input: { id: string }
-// Output: { processed: number; errors: number }
-```
-
 ### `blueprints_preview_template`
 
 ```typescript
-// Input: { template: string; sample_path: string }
-// Output: { result_name: string; valid: boolean; error?: string }
+// Input: { pipeline: TemplatePipeline; sample_path: string; kind: "file" | "folder" }
+// Output: { result_path: string; result_name: string; valid: boolean; warnings: string[] }
+```
+
+### `blueprints_simulate`
+
+```typescript
+// Input: { id: string }
+// Output: {
+//   matched: number;
+//   skipped: number;
+//   collisions: number;
+//   sample: Array<{ source: string; target: string; action: string }>;
+//   warnings: string[];
+// }
+```
+
+### `blueprints_apply`
+
+```typescript
+// Input: { id: string }
+// Output: { processed: number; failed: number; execution_id?: string }
 ```
 
 ---
