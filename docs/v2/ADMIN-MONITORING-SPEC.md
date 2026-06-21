@@ -70,6 +70,8 @@ POST {serverUrl}/api/agents/{instanceId}/heartbeat
 
 O corpo enviado e o `AdminSignedEnvelope<AdminHeartbeatPayload>`.
 
+Quando o app esta em modo `managedAgent`, com URL do servidor e segredo configurado, o core inicia um worker em background para enviar heartbeats assinados no intervalo configurado.
+
 A fila local usa SQLite e registra:
 
 - id do comando;
@@ -229,7 +231,6 @@ Admin Web
 
 ## Próximos cortes
 
-1. Automatizar sincronizacao periodica do heartbeat assinado.
-2. Adicionar grupos de maquinas e acoes em lote multi-instancia.
-3. Adicionar RBAC e auditoria central.
-4. Implementar edicao remota de fluxos com validacao e previa.
+1. Adicionar grupos de maquinas e acoes em lote multi-instancia.
+2. Adicionar RBAC e auditoria central.
+3. Implementar edicao remota de fluxos com validacao e previa.

@@ -9,14 +9,15 @@ pub use watch::{WatchService, WatchTarget};
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use autoflow_domain::{
-    AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult, AdminEnvelopeKind,
-    AdminFleetSnapshot, AdminHeartbeatDelivery, AdminHeartbeatPayload, AdminQueuedCommand,
-    AdminSignedEnvelope, AppSettings, AuditExport, AuditExportFormat, AuditPage, AuditQuery,
-    AuditStatus, Blueprint, BlueprintSimulationReport, BlueprintSummary, DomainError, FolderPlan,
-    FolderPlanPreview, HealthStatus, Job, JobSummary, NewAuditEntry, SimulationReport,
-    TemplatePipeline, TemplatePreview,
+    AdminAgentMode, AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult,
+    AdminEnvelopeKind, AdminFleetSnapshot, AdminHeartbeatDelivery, AdminHeartbeatPayload,
+    AdminQueuedCommand, AdminSignedEnvelope, AppSettings, AuditExport, AuditExportFormat,
+    AuditPage, AuditQuery, AuditStatus, Blueprint, BlueprintSimulationReport, BlueprintSummary,
+    DomainError, FolderPlan, FolderPlanPreview, HealthStatus, Job, JobSummary, NewAuditEntry,
+    SimulationReport, TemplatePipeline, TemplatePreview,
 };
 use autoflow_infrastructure::{
     admin::SqliteAdminCommandStore,
@@ -91,7 +92,7 @@ impl AppState {
             queue.clone(),
         );
 
-        Ok(Self {
+        let state = Self {
             inner: Arc::new(AppStateInner {
                 settings,
                 jobs,
@@ -105,7 +106,10 @@ impl AppState {
                 watch,
                 instance_id,
             }),
-        })
+        };
+        state.start_admin_heartbeat_worker();
+
+        Ok(state)
     }
 
     pub fn instance_id(&self) -> &str {
@@ -205,6 +209,40 @@ impl AppState {
             message,
             sent_at,
         })
+    }
+
+    fn start_admin_heartbeat_worker(&self) {
+        let state = self.clone();
+
+        tokio::spawn(async move {
+            loop {
+                let wait_secs = match state.get_settings().await {
+                    Ok(settings) => {
+                        let wait_secs = admin_heartbeat_wait_secs(&settings);
+                        if should_send_admin_heartbeat(&settings) {
+                            if let Err(error) = state.admin_send_signed_heartbeat_once().await {
+                                tracing::warn!(
+                                    target = "autoflow::admin",
+                                    error = %error,
+                                    "failed to send admin heartbeat"
+                                );
+                            }
+                        }
+                        wait_secs
+                    }
+                    Err(error) => {
+                        tracing::warn!(
+                            target = "autoflow::admin",
+                            error = %error,
+                            "failed to read settings for admin heartbeat"
+                        );
+                        60
+                    }
+                };
+
+                tokio::time::sleep(Duration::from_secs(wait_secs)).await;
+            }
+        });
     }
 
     pub async fn admin_generate_agent_secret(&self) -> Result<(String, AppSettings), DomainError> {
@@ -580,4 +618,45 @@ fn admin_server_endpoint(server_url: &str, path: &str) -> String {
 
 fn truncate_message(message: &str, max_chars: usize) -> String {
     message.chars().take(max_chars).collect()
+}
+
+fn should_send_admin_heartbeat(settings: &AppSettings) -> bool {
+    settings.admin.enabled
+        && settings.admin.mode == AdminAgentMode::ManagedAgent
+        && settings.admin.enrollment_token_configured
+        && !settings.admin.server_url.trim().is_empty()
+}
+
+fn admin_heartbeat_wait_secs(settings: &AppSettings) -> u64 {
+    settings.admin.heartbeat_interval_secs.clamp(10, 3600) as u64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn admin_heartbeat_worker_requires_managed_agent_ready_state() {
+        let mut settings = AppSettings::default();
+        settings.admin.enabled = true;
+        settings.admin.mode = AdminAgentMode::ManagedAgent;
+        settings.admin.server_url = "https://admin.autoflow.local".into();
+        settings.admin.enrollment_token_configured = true;
+
+        assert!(should_send_admin_heartbeat(&settings));
+
+        settings.admin.enrollment_token_configured = false;
+        assert!(!should_send_admin_heartbeat(&settings));
+    }
+
+    #[test]
+    fn admin_heartbeat_wait_is_clamped_to_safe_range() {
+        let mut settings = AppSettings::default();
+
+        settings.admin.heartbeat_interval_secs = 1;
+        assert_eq!(admin_heartbeat_wait_secs(&settings), 10);
+
+        settings.admin.heartbeat_interval_secs = 7_200;
+        assert_eq!(admin_heartbeat_wait_secs(&settings), 3_600);
+    }
 }
