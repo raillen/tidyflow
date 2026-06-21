@@ -228,6 +228,32 @@ pub struct AdminCommandPollResponse {
     pub polled_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AdminCommandCompletionStatus {
+    Completed,
+    Failed,
+    Skipped,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminCommandCompletionRequest {
+    pub command_id: Uuid,
+    pub target_instance_id: String,
+    pub status: AdminCommandCompletionStatus,
+    pub message: String,
+    pub completed_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminCommandCompletionAccepted {
+    pub accepted: bool,
+    pub command: AdminQueuedCommand,
+    pub recorded_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminEnrollmentRequest {

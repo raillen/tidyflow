@@ -105,15 +105,18 @@ GET /api/admin-commands
 POST /api/admin-commands/batch
 POST /api/enrollments
 POST /api/agents/{instanceId}/commands/next
+POST /api/agents/{instanceId}/commands/{commandId}/completion
 POST /api/agents/{instanceId}/heartbeat
 POST /api/agents/{instanceId}/secret-rotation
 ```
 
 Os endpoints de grupos permitem criar grupos de maquinas por `instanceId` e listar os grupos cadastrados.
 
-O endpoint de lote recebe `AdminBatchCommandRequest`, resolve alvos diretos e grupos, remove duplicados e grava um `AdminQueuedCommand` pendente no servidor central. A entrega do comando para cada agent fica para o proximo corte de fila remota.
+O endpoint de lote recebe `AdminBatchCommandRequest`, resolve alvos diretos e grupos, remove duplicados e grava um `AdminQueuedCommand` pendente no servidor central.
 
 O endpoint de polling de comandos recebe `AdminSignedEnvelope<AdminCommandPollRequest>`, valida a assinatura do agent e retorna um `AdminCommandPollResponse`. Quando existe comando pendente para a instancia, a resposta contem um `AdminSignedEnvelope<AdminCommandAssignment>` com o comando reduzido para aquele `instanceId`.
+
+O endpoint de conclusao de comandos recebe `AdminSignedEnvelope<AdminCommandCompletionRequest>`, valida a assinatura do agent e registra o resultado terminal daquele alvo. O servidor atualiza a entrega individual e recalcula o status agregado do `AdminQueuedCommand`.
 
 O endpoint de matricula recebe `AdminEnrollmentTokenRequest`, valida o token de convite e cadastra o segredo inicial enviado pelo agent.
 
@@ -242,6 +245,6 @@ Admin Web
 
 ## Próximos cortes
 
-1. Registrar confirmacao/resultado dos comandos executados por cada agent.
-2. Adicionar RBAC e auditoria central.
-3. Implementar edicao remota de fluxos com validacao e previa.
+1. Adicionar RBAC e auditoria central.
+2. Implementar edicao remota de fluxos com validacao e previa.
+3. Ligar o painel web aos endpoints de grupos, lote e execucao remota.

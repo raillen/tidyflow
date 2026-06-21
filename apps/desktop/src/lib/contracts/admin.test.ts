@@ -5,6 +5,7 @@ import {
   adminAgentSecretRotationAcceptedSchema,
   adminBatchCommandAcceptedSchema,
   adminBatchCommandRequestSchema,
+  adminCommandCompletionAcceptedSchema,
   adminCommandPollResponseSchema,
   adminEnrollmentTokenRequestSchema,
   adminHeartbeatDeliverySchema,
@@ -12,6 +13,8 @@ import {
   adminMachineGroupRequestSchema,
   adminMachineGroupSchema,
   adminQueuedCommandSchema,
+  adminSignedCommandCompletionEnvelopeSchema,
+  adminSignedCommandPollEnvelopeSchema,
   adminSignedHeartbeatEnvelopeSchema,
   adminSignedSecretRotationEnvelopeSchema,
   adminFleetSnapshotSchema,
@@ -330,6 +333,22 @@ describe("admin contracts", () => {
 
     expect(accepted.command.status).toBe("pending");
 
+    const pollRequest = adminSignedCommandPollEnvelopeSchema.parse({
+      schemaVersion: "admin.transport.v1",
+      kind: "command",
+      instanceId: "local-direct",
+      issuedAt: "2026-06-21T10:00:00.000Z",
+      expiresAt: "2026-06-21T10:05:00.000Z",
+      nonce: "740e8400-e29b-41d4-a716-446655440000",
+      payloadHash: "abc123",
+      signature: "blake3:abc123",
+      payload: {
+        requestedAt: "2026-06-21T10:00:00.000Z",
+      },
+    });
+
+    expect(pollRequest.payload.requestedAt).toBe("2026-06-21T10:00:00.000Z");
+
     const poll = adminCommandPollResponseSchema.parse({
       assignment: {
         schemaVersion: "admin.transport.v1",
@@ -355,5 +374,48 @@ describe("admin contracts", () => {
     });
 
     expect(poll.assignment?.payload.targetInstanceId).toBe("local-direct");
+
+    const completionEnvelope = adminSignedCommandCompletionEnvelopeSchema.parse({
+      schemaVersion: "admin.transport.v1",
+      kind: "command",
+      instanceId: "local-direct",
+      issuedAt: "2026-06-21T10:01:00.000Z",
+      expiresAt: "2026-06-21T10:06:00.000Z",
+      nonce: "760e8400-e29b-41d4-a716-446655440000",
+      payloadHash: "abc123",
+      signature: "blake3:abc123",
+      payload: {
+        commandId: accepted.command.id,
+        targetInstanceId: "local-direct",
+        status: "completed",
+        message: "logs uploaded",
+        completedAt: "2026-06-21T10:01:00.000Z",
+      },
+    });
+
+    expect(completionEnvelope.payload.status).toBe("completed");
+
+    const completion = adminCommandCompletionAcceptedSchema.parse({
+      accepted: true,
+      command: {
+        ...accepted.command,
+        status: "completed",
+        result: {
+          accepted: true,
+          command: "requestLogs",
+          results: [
+            {
+              targetInstanceId: "local-direct",
+              status: "accepted",
+              message: "logs uploaded",
+            },
+          ],
+        },
+        updatedAt: "2026-06-21T10:01:00.000Z",
+      },
+      recordedAt: "2026-06-21T10:01:00.000Z",
+    });
+
+    expect(completion.command.result?.results[0]?.message).toBe("logs uploaded");
   });
 });

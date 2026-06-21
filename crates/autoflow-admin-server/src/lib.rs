@@ -5,7 +5,8 @@ use std::{
 
 use autoflow_domain::{
     AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminBatchCommandAccepted,
-    AdminBatchCommandRequest, AdminCommandAssignment, AdminCommandPollRequest,
+    AdminBatchCommandRequest, AdminCommandAssignment, AdminCommandCompletionAccepted,
+    AdminCommandCompletionRequest, AdminCommandCompletionStatus, AdminCommandPollRequest,
     AdminCommandPollResponse, AdminCommandResult, AdminCommandTargetResult,
     AdminCommandTargetStatus, AdminEnrollmentResponse, AdminEnrollmentTokenRequest,
     AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary, AdminHeartbeatAccepted,
@@ -64,6 +65,15 @@ struct AdminCommandDelivery {
     target_instance_id: String,
     status: AdminQueuedCommandStatus,
     assigned_at: Option<chrono::DateTime<Utc>>,
+    completed_at: Option<chrono::DateTime<Utc>>,
+    message: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct AdminCommandDeliveryState {
+    target_instance_id: String,
+    status: AdminQueuedCommandStatus,
+    message: Option<String>,
 }
 
 #[derive(Clone)]
@@ -250,25 +260,10 @@ impl AdminServerState {
         envelope: AdminSignedEnvelope<AdminCommandPollRequest>,
     ) -> Result<AdminCommandPollResponse, AdminServerError> {
         let path_instance_id = path_instance_id.trim();
-        if path_instance_id.is_empty() {
-            return Err(AdminServerError::MissingInstanceId);
-        }
-        if envelope.kind != AdminEnvelopeKind::Command {
-            return Err(AdminServerError::InvalidEnvelopeKind);
-        }
-        if envelope.instance_id != path_instance_id {
-            return Err(AdminServerError::EnvelopeInstanceMismatch);
-        }
-
         let now = Utc::now();
-        if envelope.expires_at < now {
-            return Err(AdminServerError::ExpiredEnvelope);
-        }
-
-        let secret = self.agent_secret(path_instance_id).await?;
-        if !envelope.verify(&secret).map_err(AdminServerError::from)? {
-            return Err(AdminServerError::InvalidSignature);
-        }
+        let secret = self
+            .verify_agent_command_envelope(path_instance_id, &envelope, now)
+            .await?;
 
         let assignment = self.assign_next_command(path_instance_id, now).await?;
         let signed_assignment = assignment
@@ -288,6 +283,36 @@ impl AdminServerState {
             assignment: signed_assignment,
             pending_count: self.pending_command_count(path_instance_id).await?,
             polled_at: now,
+        })
+    }
+
+    pub async fn complete_command(
+        &self,
+        path_instance_id: &str,
+        path_command_id: Uuid,
+        envelope: AdminSignedEnvelope<AdminCommandCompletionRequest>,
+    ) -> Result<AdminCommandCompletionAccepted, AdminServerError> {
+        let path_instance_id = path_instance_id.trim();
+        let now = Utc::now();
+        self.verify_agent_command_envelope(path_instance_id, &envelope, now)
+            .await?;
+
+        let completion = envelope.payload;
+        if completion.command_id != path_command_id {
+            return Err(AdminServerError::CommandPayloadMismatch);
+        }
+        if completion.target_instance_id != path_instance_id {
+            return Err(AdminServerError::CommandTargetMismatch);
+        }
+
+        let command = self
+            .record_command_completion(path_instance_id, path_command_id, completion, now)
+            .await?;
+
+        Ok(AdminCommandCompletionAccepted {
+            accepted: true,
+            command,
+            recorded_at: now,
         })
     }
 
@@ -377,6 +402,35 @@ impl AdminServerState {
         })
     }
 
+    async fn verify_agent_command_envelope<T>(
+        &self,
+        path_instance_id: &str,
+        envelope: &AdminSignedEnvelope<T>,
+        now: chrono::DateTime<Utc>,
+    ) -> Result<String, AdminServerError>
+    where
+        T: Serialize,
+    {
+        if path_instance_id.is_empty() {
+            return Err(AdminServerError::MissingInstanceId);
+        }
+        if envelope.kind != AdminEnvelopeKind::Command {
+            return Err(AdminServerError::InvalidEnvelopeKind);
+        }
+        if envelope.instance_id != path_instance_id {
+            return Err(AdminServerError::EnvelopeInstanceMismatch);
+        }
+        if envelope.expires_at < now {
+            return Err(AdminServerError::ExpiredEnvelope);
+        }
+
+        let secret = self.agent_secret(path_instance_id).await?;
+        if !envelope.verify(&secret).map_err(AdminServerError::from)? {
+            return Err(AdminServerError::InvalidSignature);
+        }
+        Ok(secret)
+    }
+
     async fn agent_secret(&self, instance_id: &str) -> Result<String, AdminServerError> {
         match &self.storage {
             AdminServerStorage::Memory(store) => store.agent_secret(instance_id),
@@ -442,6 +496,25 @@ impl AdminServerState {
         match &self.storage {
             AdminServerStorage::Memory(store) => store.pending_command_count(instance_id),
             AdminServerStorage::Sqlite(store) => store.pending_command_count(instance_id).await,
+        }
+    }
+
+    async fn record_command_completion(
+        &self,
+        instance_id: &str,
+        command_id: Uuid,
+        completion: AdminCommandCompletionRequest,
+        recorded_at: chrono::DateTime<Utc>,
+    ) -> Result<AdminQueuedCommand, AdminServerError> {
+        match &self.storage {
+            AdminServerStorage::Memory(store) => {
+                store.record_command_completion(instance_id, command_id, completion, recorded_at)
+            }
+            AdminServerStorage::Sqlite(store) => {
+                store
+                    .record_command_completion(instance_id, command_id, completion, recorded_at)
+                    .await
+            }
         }
     }
 
@@ -560,6 +633,8 @@ impl MemoryAdminServerStore {
                 target_instance_id: target_instance_id.clone(),
                 status: AdminQueuedCommandStatus::Pending,
                 assigned_at: None,
+                completed_at: None,
+                message: None,
             });
         }
         Ok(())
@@ -618,6 +693,52 @@ impl MemoryAdminServerStore {
             })
             .count() as u32)
     }
+
+    fn record_command_completion(
+        &self,
+        instance_id: &str,
+        command_id: Uuid,
+        completion: AdminCommandCompletionRequest,
+        recorded_at: chrono::DateTime<Utc>,
+    ) -> Result<AdminQueuedCommand, AdminServerError> {
+        let mut deliveries = self
+            .command_deliveries
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        let Some(delivery) = deliveries.iter_mut().find(|delivery| {
+            delivery.command_id == command_id && delivery.target_instance_id == instance_id
+        }) else {
+            return Err(AdminServerError::CommandTargetNotFound(
+                command_id,
+                instance_id.into(),
+            ));
+        };
+        if delivery.status != AdminQueuedCommandStatus::Running {
+            return Err(AdminServerError::CommandNotRunning(
+                command_id,
+                instance_id.into(),
+            ));
+        }
+
+        delivery.status = completion_status_to_command_status(completion.status);
+        delivery.completed_at = Some(completion.completed_at);
+        delivery.message = Some(completion_message(completion.status, &completion.message));
+
+        let delivery_states = command_delivery_states(&deliveries, command_id)?;
+
+        let mut commands = self
+            .command_queue
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        let command = commands
+            .get_mut(&command_id)
+            .ok_or(AdminServerError::CommandNotFound(command_id))?;
+        command.status = aggregate_command_status(&delivery_states);
+        command.result = command_result_from_deliveries(command.request.kind, &delivery_states);
+        command.updated_at = recorded_at;
+
+        Ok(command.clone())
+    }
 }
 
 impl SqliteAdminServerStore {
@@ -669,11 +790,27 @@ impl SqliteAdminServerStore {
                 status TEXT NOT NULL,
                 assigned_at TEXT,
                 completed_at TEXT,
+                message TEXT,
                 PRIMARY KEY (command_id, target_instance_id)
             )",
         )
         .execute(&self.pool)
         .await?;
+        self.ensure_command_delivery_message_column().await?;
+        Ok(())
+    }
+
+    async fn ensure_command_delivery_message_column(&self) -> Result<(), AdminServerError> {
+        let columns: Vec<(String,)> =
+            sqlx::query_as("SELECT name FROM pragma_table_info('admin_command_deliveries')")
+                .fetch_all(&self.pool)
+                .await?;
+        let has_message = columns.iter().any(|(name,)| name == "message");
+        if !has_message {
+            sqlx::query("ALTER TABLE admin_command_deliveries ADD COLUMN message TEXT")
+                .execute(&self.pool)
+                .await?;
+        }
         Ok(())
     }
 
@@ -824,8 +961,8 @@ impl SqliteAdminServerStore {
         for target_instance_id in target_instance_ids {
             sqlx::query(
                 "INSERT INTO admin_command_deliveries
-                    (command_id, target_instance_id, status, assigned_at, completed_at)
-                 VALUES (?, ?, 'pending', NULL, NULL)
+                    (command_id, target_instance_id, status, assigned_at, completed_at, message)
+                 VALUES (?, ?, 'pending', NULL, NULL, NULL)
                  ON CONFLICT(command_id, target_instance_id) DO NOTHING",
             )
             .bind(command.id.to_string())
@@ -910,6 +1047,131 @@ impl SqliteAdminServerStore {
 
         Ok(row.0.max(0) as u32)
     }
+
+    async fn record_command_completion(
+        &self,
+        instance_id: &str,
+        command_id: Uuid,
+        completion: AdminCommandCompletionRequest,
+        recorded_at: chrono::DateTime<Utc>,
+    ) -> Result<AdminQueuedCommand, AdminServerError> {
+        let command_id_text = command_id.to_string();
+        let current_status: Option<(String,)> = sqlx::query_as(
+            "SELECT status
+             FROM admin_command_deliveries
+             WHERE command_id = ? AND target_instance_id = ?",
+        )
+        .bind(&command_id_text)
+        .bind(instance_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some((current_status,)) = current_status else {
+            self.ensure_command_exists(command_id).await?;
+            return Err(AdminServerError::CommandTargetNotFound(
+                command_id,
+                instance_id.into(),
+            ));
+        };
+        if command_status_from_wire(&current_status)? != AdminQueuedCommandStatus::Running {
+            return Err(AdminServerError::CommandNotRunning(
+                command_id,
+                instance_id.into(),
+            ));
+        }
+
+        let message = completion_message(completion.status, &completion.message);
+        let status = completion_status_to_command_status(completion.status);
+        sqlx::query(
+            "UPDATE admin_command_deliveries
+             SET status = ?, completed_at = ?, message = ?
+             WHERE command_id = ? AND target_instance_id = ?",
+        )
+        .bind(command_status_to_wire(status))
+        .bind(completion.completed_at.to_rfc3339())
+        .bind(message)
+        .bind(&command_id_text)
+        .bind(instance_id)
+        .execute(&self.pool)
+        .await?;
+
+        let mut command = self.fetch_command(command_id).await?;
+        let delivery_states = self.fetch_command_delivery_states(command_id).await?;
+        command.status = aggregate_command_status(&delivery_states);
+        command.result = command_result_from_deliveries(command.request.kind, &delivery_states);
+        command.updated_at = recorded_at;
+
+        let result_payload = command
+            .result
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()
+            .map_err(|error| AdminServerError::Database(error.to_string()))?;
+        sqlx::query(
+            "UPDATE admin_server_commands
+             SET status = ?, result_payload = ?, updated_at = ?
+             WHERE id = ?",
+        )
+        .bind(command_status_to_wire(command.status))
+        .bind(result_payload)
+        .bind(command.updated_at.to_rfc3339())
+        .bind(&command_id_text)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(command)
+    }
+
+    async fn ensure_command_exists(&self, command_id: Uuid) -> Result<(), AdminServerError> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT id
+             FROM admin_server_commands
+             WHERE id = ?",
+        )
+        .bind(command_id.to_string())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.map(|_| ())
+            .ok_or(AdminServerError::CommandNotFound(command_id))
+    }
+
+    async fn fetch_command(
+        &self,
+        command_id: Uuid,
+    ) -> Result<AdminQueuedCommand, AdminServerError> {
+        let row: Option<AdminQueuedCommandRow> = sqlx::query_as(
+            "SELECT id, source, request_payload, status, result_payload, created_at, updated_at
+             FROM admin_server_commands
+             WHERE id = ?",
+        )
+        .bind(command_id.to_string())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.ok_or(AdminServerError::CommandNotFound(command_id))?
+            .try_into()
+    }
+
+    async fn fetch_command_delivery_states(
+        &self,
+        command_id: Uuid,
+    ) -> Result<Vec<AdminCommandDeliveryState>, AdminServerError> {
+        let rows: Vec<AdminCommandDeliveryRow> = sqlx::query_as(
+            "SELECT target_instance_id, status, message
+             FROM admin_command_deliveries
+             WHERE command_id = ?
+             ORDER BY target_instance_id",
+        )
+        .bind(command_id.to_string())
+        .fetch_all(&self.pool)
+        .await?;
+        if rows.is_empty() {
+            return Err(AdminServerError::CommandNotFound(command_id));
+        }
+
+        rows.into_iter().map(TryInto::try_into).collect()
+    }
 }
 
 #[derive(sqlx::FromRow)]
@@ -921,6 +1183,13 @@ struct AdminQueuedCommandRow {
     result_payload: Option<String>,
     created_at: String,
     updated_at: String,
+}
+
+#[derive(sqlx::FromRow)]
+struct AdminCommandDeliveryRow {
+    target_instance_id: String,
+    status: String,
+    message: Option<String>,
 }
 
 impl TryFrom<AdminQueuedCommandRow> for AdminQueuedCommand {
@@ -942,6 +1211,18 @@ impl TryFrom<AdminQueuedCommandRow> for AdminQueuedCommand {
                 .map_err(|error| AdminServerError::Database(error.to_string()))?,
             created_at: parse_datetime(&row.created_at)?,
             updated_at: parse_datetime(&row.updated_at)?,
+        })
+    }
+}
+
+impl TryFrom<AdminCommandDeliveryRow> for AdminCommandDeliveryState {
+    type Error = AdminServerError;
+
+    fn try_from(row: AdminCommandDeliveryRow) -> Result<Self, Self::Error> {
+        Ok(Self {
+            target_instance_id: row.target_instance_id,
+            status: command_status_from_wire(&row.status)?,
+            message: row.message,
         })
     }
 }
@@ -993,6 +1274,113 @@ fn normalize_instance_ids(instance_ids: Vec<String>) -> Vec<String> {
         normalized.push(instance_id);
     }
     normalized
+}
+
+fn command_delivery_states(
+    deliveries: &[AdminCommandDelivery],
+    command_id: Uuid,
+) -> Result<Vec<AdminCommandDeliveryState>, AdminServerError> {
+    let states: Vec<AdminCommandDeliveryState> = deliveries
+        .iter()
+        .filter(|delivery| delivery.command_id == command_id)
+        .map(|delivery| AdminCommandDeliveryState {
+            target_instance_id: delivery.target_instance_id.clone(),
+            status: delivery.status,
+            message: delivery.message.clone(),
+        })
+        .collect();
+    if states.is_empty() {
+        return Err(AdminServerError::CommandNotFound(command_id));
+    }
+    Ok(states)
+}
+
+fn completion_status_to_command_status(
+    status: AdminCommandCompletionStatus,
+) -> AdminQueuedCommandStatus {
+    match status {
+        AdminCommandCompletionStatus::Completed => AdminQueuedCommandStatus::Completed,
+        AdminCommandCompletionStatus::Failed => AdminQueuedCommandStatus::Failed,
+        AdminCommandCompletionStatus::Skipped => AdminQueuedCommandStatus::Skipped,
+    }
+}
+
+fn completion_message(status: AdminCommandCompletionStatus, message: &str) -> String {
+    let message = message.trim();
+    if !message.is_empty() {
+        return message.to_string();
+    }
+
+    match status {
+        AdminCommandCompletionStatus::Completed => "Comando concluido".into(),
+        AdminCommandCompletionStatus::Failed => "Comando falhou".into(),
+        AdminCommandCompletionStatus::Skipped => "Comando ignorado".into(),
+    }
+}
+
+fn aggregate_command_status(states: &[AdminCommandDeliveryState]) -> AdminQueuedCommandStatus {
+    if states.iter().any(|state| {
+        matches!(
+            state.status,
+            AdminQueuedCommandStatus::Pending | AdminQueuedCommandStatus::Running
+        )
+    }) {
+        return AdminQueuedCommandStatus::Running;
+    }
+    if states
+        .iter()
+        .any(|state| state.status == AdminQueuedCommandStatus::Failed)
+    {
+        return AdminQueuedCommandStatus::Failed;
+    }
+    if states
+        .iter()
+        .all(|state| state.status == AdminQueuedCommandStatus::Skipped)
+    {
+        return AdminQueuedCommandStatus::Skipped;
+    }
+    AdminQueuedCommandStatus::Completed
+}
+
+fn command_result_from_deliveries(
+    command: autoflow_domain::AdminCommandKind,
+    states: &[AdminCommandDeliveryState],
+) -> Option<AdminCommandResult> {
+    let results: Vec<AdminCommandTargetResult> = states
+        .iter()
+        .filter_map(command_target_result_from_delivery)
+        .collect();
+    if results.is_empty() {
+        return None;
+    }
+
+    Some(AdminCommandResult {
+        accepted: !results
+            .iter()
+            .any(|result| result.status == AdminCommandTargetStatus::Error),
+        command,
+        results,
+    })
+}
+
+fn command_target_result_from_delivery(
+    delivery: &AdminCommandDeliveryState,
+) -> Option<AdminCommandTargetResult> {
+    let status = match delivery.status {
+        AdminQueuedCommandStatus::Completed => AdminCommandTargetStatus::Accepted,
+        AdminQueuedCommandStatus::Failed => AdminCommandTargetStatus::Error,
+        AdminQueuedCommandStatus::Skipped => AdminCommandTargetStatus::Skipped,
+        AdminQueuedCommandStatus::Pending | AdminQueuedCommandStatus::Running => return None,
+    };
+
+    Some(AdminCommandTargetResult {
+        target_instance_id: delivery.target_instance_id.clone(),
+        status,
+        message: delivery
+            .message
+            .clone()
+            .unwrap_or_else(|| "Comando finalizado".into()),
+    })
 }
 
 fn queued_batch_result(
@@ -1074,6 +1462,10 @@ pub fn router(state: AdminServerState) -> Router {
             post(poll_next_command),
         )
         .route(
+            "/api/agents/{instance_id}/commands/{command_id}/completion",
+            post(complete_command),
+        )
+        .route(
             "/api/agents/{instance_id}/heartbeat",
             post(receive_heartbeat),
         )
@@ -1130,6 +1522,17 @@ async fn poll_next_command(
     Ok(Json(state.poll_next_command(&instance_id, envelope).await?))
 }
 
+async fn complete_command(
+    State(state): State<AdminServerState>,
+    Path((instance_id, command_id)): Path<(String, Uuid)>,
+    Json(envelope): Json<AdminSignedEnvelope<AdminCommandCompletionRequest>>,
+) -> Result<(StatusCode, Json<AdminCommandCompletionAccepted>), AdminServerError> {
+    let accepted = state
+        .complete_command(&instance_id, command_id, envelope)
+        .await?;
+    Ok((StatusCode::ACCEPTED, Json(accepted)))
+}
+
 async fn enroll_agent(
     State(state): State<AdminServerState>,
     Json(request): Json<AdminEnrollmentTokenRequest>,
@@ -1178,6 +1581,14 @@ pub enum AdminServerError {
     NoBatchTargets,
     #[error("admin command not found: {0}")]
     CommandNotFound(Uuid),
+    #[error("admin command completion payload does not match the route")]
+    CommandPayloadMismatch,
+    #[error("admin command completion target does not match the route")]
+    CommandTargetMismatch,
+    #[error("admin command target not found: {0} / {1}")]
+    CommandTargetNotFound(Uuid, String),
+    #[error("admin command target is not running: {0} / {1}")]
+    CommandNotRunning(Uuid, String),
     #[error("envelope kind is not valid for this endpoint")]
     InvalidEnvelopeKind,
     #[error("path instance id does not match envelope instance id")]
@@ -1216,6 +1627,8 @@ impl AdminServerError {
             | Self::MissingEnrollmentToken
             | Self::MissingMachineGroupName
             | Self::NoBatchTargets
+            | Self::CommandPayloadMismatch
+            | Self::CommandTargetMismatch
             | Self::InvalidEnvelopeKind
             | Self::EnvelopeInstanceMismatch
             | Self::PayloadInstanceMismatch
@@ -1223,7 +1636,9 @@ impl AdminServerError {
             | Self::EnvelopeValidation(_) => StatusCode::BAD_REQUEST,
             Self::AgentNotRegistered(_)
             | Self::CommandNotFound(_)
+            | Self::CommandTargetNotFound(_, _)
             | Self::MachineGroupNotFound(_) => StatusCode::NOT_FOUND,
+            Self::CommandNotRunning(_, _) => StatusCode::CONFLICT,
             Self::EnrollmentNotConfigured
             | Self::InvalidEnrollmentToken
             | Self::InvalidSignature => StatusCode::UNAUTHORIZED,
@@ -1243,6 +1658,10 @@ impl AdminServerError {
             Self::MachineGroupNotFound(_) => "machineGroupNotFound",
             Self::NoBatchTargets => "noBatchTargets",
             Self::CommandNotFound(_) => "commandNotFound",
+            Self::CommandPayloadMismatch => "commandPayloadMismatch",
+            Self::CommandTargetMismatch => "commandTargetMismatch",
+            Self::CommandTargetNotFound(_, _) => "commandTargetNotFound",
+            Self::CommandNotRunning(_, _) => "commandNotRunning",
             Self::InvalidEnvelopeKind => "invalidEnvelopeKind",
             Self::EnvelopeInstanceMismatch => "envelopeInstanceMismatch",
             Self::PayloadInstanceMismatch => "payloadInstanceMismatch",
@@ -1564,6 +1983,117 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn agent_reports_signed_command_completion() {
+        let state = AdminServerState::new();
+        state
+            .register_agent_secret("local-1", "agent-secret-1")
+            .await
+            .unwrap();
+        state
+            .register_agent_secret("local-2", "agent-secret-2")
+            .await
+            .unwrap();
+        let app = router(state.clone());
+        let group = state
+            .create_machine_group(machine_group_request(
+                "Operacao",
+                vec!["local-1", "local-2"],
+            ))
+            .await
+            .unwrap();
+        state
+            .enqueue_batch_command(batch_request(group.id, Vec::new()))
+            .await
+            .unwrap();
+
+        let first_poll_response = app
+            .clone()
+            .oneshot(json_post(
+                "/api/agents/local-1/commands/next",
+                serde_json::to_vec(&signed_command_poll("local-1", "agent-secret-1")).unwrap(),
+            ))
+            .await
+            .unwrap();
+        let first_poll = parse_body::<AdminCommandPollResponse>(first_poll_response).await;
+        let first_assignment = first_poll.assignment.unwrap().payload;
+        let command_id = first_assignment.command_id;
+
+        let first_completion_uri = format!("/api/agents/local-1/commands/{command_id}/completion");
+        let first_completion_response = app
+            .clone()
+            .oneshot(json_post(
+                &first_completion_uri,
+                serde_json::to_vec(&signed_command_completion(
+                    "local-1",
+                    "agent-secret-1",
+                    command_id,
+                    AdminCommandCompletionStatus::Completed,
+                    "logs enviados",
+                ))
+                .unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(first_completion_response.status(), StatusCode::ACCEPTED);
+        let first_completion =
+            parse_body::<AdminCommandCompletionAccepted>(first_completion_response).await;
+        assert_eq!(
+            first_completion.command.status,
+            AdminQueuedCommandStatus::Running
+        );
+        assert_eq!(
+            first_completion.command.result.unwrap().results[0].target_instance_id,
+            "local-1"
+        );
+
+        let second_poll_response = app
+            .clone()
+            .oneshot(json_post(
+                "/api/agents/local-2/commands/next",
+                serde_json::to_vec(&signed_command_poll("local-2", "agent-secret-2")).unwrap(),
+            ))
+            .await
+            .unwrap();
+        let second_poll = parse_body::<AdminCommandPollResponse>(second_poll_response).await;
+        assert_eq!(
+            second_poll.assignment.unwrap().payload.command_id,
+            command_id
+        );
+
+        let second_completion_uri = format!("/api/agents/local-2/commands/{command_id}/completion");
+        let second_completion_response = app
+            .oneshot(json_post(
+                &second_completion_uri,
+                serde_json::to_vec(&signed_command_completion(
+                    "local-2",
+                    "agent-secret-2",
+                    command_id,
+                    AdminCommandCompletionStatus::Failed,
+                    "falha ao coletar logs",
+                ))
+                .unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(second_completion_response.status(), StatusCode::ACCEPTED);
+        let second_completion =
+            parse_body::<AdminCommandCompletionAccepted>(second_completion_response).await;
+        assert_eq!(
+            second_completion.command.status,
+            AdminQueuedCommandStatus::Failed
+        );
+        let result = second_completion.command.result.unwrap();
+        assert!(!result.accepted);
+        assert_eq!(result.results.len(), 2);
+        assert!(result
+            .results
+            .iter()
+            .any(|target| target.status == AdminCommandTargetStatus::Error));
+    }
+
+    #[tokio::test]
     async fn rejects_command_poll_with_wrong_signature() {
         let state = AdminServerState::new();
         state
@@ -1696,6 +2226,59 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn sqlite_state_persists_command_completion() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let state = AdminServerState::with_sqlite_pool(pool.clone())
+            .await
+            .unwrap();
+        state
+            .register_agent_secret("local-1", "agent-secret")
+            .await
+            .unwrap();
+        let group = state
+            .create_machine_group(machine_group_request("Operacao", vec!["local-1"]))
+            .await
+            .unwrap();
+        state
+            .enqueue_batch_command(batch_request(group.id, Vec::new()))
+            .await
+            .unwrap();
+
+        let poll = state
+            .poll_next_command("local-1", signed_command_poll("local-1", "agent-secret"))
+            .await
+            .unwrap();
+        let command_id = poll.assignment.unwrap().payload.command_id;
+        state
+            .complete_command(
+                "local-1",
+                command_id,
+                signed_command_completion(
+                    "local-1",
+                    "agent-secret",
+                    command_id,
+                    AdminCommandCompletionStatus::Completed,
+                    "logs enviados",
+                ),
+            )
+            .await
+            .unwrap();
+
+        let restored = AdminServerState::with_sqlite_pool(pool).await.unwrap();
+        let commands = restored.list_queued_commands().await.unwrap();
+
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].status, AdminQueuedCommandStatus::Completed);
+        let result = commands[0].result.as_ref().unwrap();
+        assert!(result.accepted);
+        assert_eq!(result.results[0].message, "logs enviados");
+    }
+
+    #[tokio::test]
     async fn rotates_agent_secret_with_signed_request() {
         let state = AdminServerState::new();
         state
@@ -1777,6 +2360,29 @@ mod tests {
             instance_id.into(),
             AdminCommandPollRequest {
                 requested_at: Utc::now(),
+            },
+            secret,
+            300,
+        )
+        .unwrap()
+    }
+
+    fn signed_command_completion(
+        instance_id: &str,
+        secret: &str,
+        command_id: Uuid,
+        status: AdminCommandCompletionStatus,
+        message: &str,
+    ) -> AdminSignedEnvelope<AdminCommandCompletionRequest> {
+        AdminSignedEnvelope::sign(
+            AdminEnvelopeKind::Command,
+            instance_id.into(),
+            AdminCommandCompletionRequest {
+                command_id,
+                target_instance_id: instance_id.into(),
+                status,
+                message: message.into(),
+                completed_at: Utc::now(),
             },
             secret,
             300,

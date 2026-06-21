@@ -18,8 +18,9 @@ pub mod watch;
 
 pub use admin::{
     AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminBatchCommandAccepted,
-    AdminBatchCommandRequest, AdminCommandAssignment, AdminCommandCapability, AdminCommandKind,
-    AdminCommandPollRequest, AdminCommandPollResponse, AdminCommandQueueSummary,
+    AdminBatchCommandRequest, AdminCommandAssignment, AdminCommandCapability,
+    AdminCommandCompletionAccepted, AdminCommandCompletionRequest, AdminCommandCompletionStatus,
+    AdminCommandKind, AdminCommandPollRequest, AdminCommandPollResponse, AdminCommandQueueSummary,
     AdminCommandRequest, AdminCommandResult, AdminCommandSupport, AdminCommandTargetResult,
     AdminCommandTargetStatus, AdminEnrollmentRequest, AdminEnrollmentResponse,
     AdminEnrollmentTokenRequest, AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary,
