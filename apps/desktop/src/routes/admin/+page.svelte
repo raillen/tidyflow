@@ -36,6 +36,7 @@
     fetchAdminSignedHeartbeatPayload,
     listAdminCommands,
     processNextAdminCommand,
+    sendAdminSignedHeartbeatOnce,
   } from "$lib/core/ipc/client";
 
   let snapshot = $state<AdminFleetSnapshot | null>(null);
@@ -247,6 +248,21 @@
         error instanceof Error
           ? error.message
           : "Configure o segredo do agent antes de copiar o heartbeat assinado.";
+    }
+  }
+
+  async function sendSignedHeartbeat() {
+    message = null;
+    try {
+      const delivery = await sendAdminSignedHeartbeatOnce();
+      message = delivery.accepted
+        ? `Heartbeat enviado: ${delivery.statusCode ?? "sem status"}`
+        : `Heartbeat recusado: ${delivery.statusCode ?? "sem status"} · ${delivery.message}`;
+    } catch (error) {
+      message =
+        error instanceof Error
+          ? error.message
+          : "Configure servidor e segredo antes de enviar heartbeat.";
     }
   }
 </script>
@@ -537,6 +553,9 @@
               </button>
               <button class="btn" type="button" onclick={copySignedHeartbeatPayload} disabled={!heartbeat}>
                 Copiar assinado
+              </button>
+              <button class="btn primary" type="button" onclick={sendSignedHeartbeat} disabled={!heartbeat}>
+                Enviar
               </button>
             </div>
           </div>

@@ -12,11 +12,11 @@ use std::sync::Arc;
 
 use autoflow_domain::{
     AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult, AdminEnvelopeKind,
-    AdminFleetSnapshot, AdminHeartbeatPayload, AdminQueuedCommand, AdminSignedEnvelope,
-    AppSettings, AuditExport, AuditExportFormat, AuditPage, AuditQuery, AuditStatus, Blueprint,
-    BlueprintSimulationReport, BlueprintSummary, DomainError, FolderPlan, FolderPlanPreview,
-    HealthStatus, Job, JobSummary, NewAuditEntry, SimulationReport, TemplatePipeline,
-    TemplatePreview,
+    AdminFleetSnapshot, AdminHeartbeatDelivery, AdminHeartbeatPayload, AdminQueuedCommand,
+    AdminSignedEnvelope, AppSettings, AuditExport, AuditExportFormat, AuditPage, AuditQuery,
+    AuditStatus, Blueprint, BlueprintSimulationReport, BlueprintSummary, DomainError, FolderPlan,
+    FolderPlanPreview, HealthStatus, Job, JobSummary, NewAuditEntry, SimulationReport,
+    TemplatePipeline, TemplatePreview,
 };
 use autoflow_infrastructure::{
     admin::SqliteAdminCommandStore,
@@ -156,6 +156,55 @@ impl AppState {
             &signing_secret,
             ttl_secs,
         )
+    }
+
+    pub async fn admin_send_signed_heartbeat_once(
+        &self,
+    ) -> Result<AdminHeartbeatDelivery, DomainError> {
+        let settings = self.get_settings().await?;
+        if !settings.admin.enabled {
+            return Err(DomainError::Validation(
+                "admin monitoring is disabled".into(),
+            ));
+        }
+        if settings.admin.server_url.trim().is_empty() {
+            return Err(DomainError::Validation(
+                "admin server URL is required before sending heartbeat".into(),
+            ));
+        }
+
+        let endpoint = admin_server_endpoint(
+            &settings.admin.server_url,
+            &format!("/api/agents/{}/heartbeat", self.instance_id()),
+        );
+        let envelope = self.admin_signed_heartbeat_payload().await?;
+        let sent_at = chrono::Utc::now();
+        let response = reqwest::Client::new()
+            .post(&endpoint)
+            .json(&envelope)
+            .send()
+            .await
+            .map_err(|error| DomainError::Database(error.to_string()))?;
+
+        let status = response.status();
+        let status_code = Some(status.as_u16());
+        let body = response.text().await.unwrap_or_default();
+        let message = if body.trim().is_empty() {
+            status
+                .canonical_reason()
+                .unwrap_or("heartbeat sent")
+                .to_string()
+        } else {
+            truncate_message(body.trim(), 500)
+        };
+
+        Ok(AdminHeartbeatDelivery {
+            endpoint,
+            status_code,
+            accepted: status.is_success(),
+            message,
+            sent_at,
+        })
     }
 
     pub async fn admin_generate_agent_secret(&self) -> Result<(String, AppSettings), DomainError> {
@@ -523,4 +572,12 @@ fn admin_command_name(kind: autoflow_domain::AdminCommandKind) -> &'static str {
 
 fn generate_admin_agent_secret() -> String {
     format!("af_{}_{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
+}
+
+fn admin_server_endpoint(server_url: &str, path: &str) -> String {
+    format!("{}{}", server_url.trim().trim_end_matches('/'), path)
+}
+
+fn truncate_message(message: &str, max_chars: usize) -> String {
+    message.chars().take(max_chars).collect()
 }

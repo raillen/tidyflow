@@ -189,6 +189,16 @@ pub struct AdminHeartbeatPayload {
     pub pending_command_count: u32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminHeartbeatDelivery {
+    pub endpoint: String,
+    pub status_code: Option<u16>,
+    pub accepted: bool,
+    pub message: String,
+    pub sent_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum AdminEnvelopeKind {

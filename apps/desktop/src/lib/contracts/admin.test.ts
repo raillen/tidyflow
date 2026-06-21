@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   adminCommandRequestSchema,
   adminCommandResultSchema,
+  adminHeartbeatDeliverySchema,
   adminHeartbeatPayloadSchema,
   adminQueuedCommandSchema,
   adminSignedHeartbeatEnvelopeSchema,
@@ -177,6 +178,15 @@ describe("admin contracts", () => {
     });
 
     expect(envelope.kind).toBe("heartbeat");
+    const delivery = adminHeartbeatDeliverySchema.parse({
+      endpoint: "https://admin.autoflow.local/api/agents/local-abc/heartbeat",
+      statusCode: 202,
+      accepted: true,
+      message: "accepted",
+      sentAt: "2026-06-21T10:00:00.000Z",
+    });
+
+    expect(delivery.accepted).toBe(true);
     expect(() =>
       adminHeartbeatPayloadSchema.parse({
         instance: null,

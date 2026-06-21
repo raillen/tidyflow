@@ -24,6 +24,7 @@ A primeira fundação já existe no app desktop:
 - comando IPC `admin_fleet_snapshot`;
 - comando IPC `admin_heartbeat_payload`;
 - comando IPC `admin_signed_heartbeat_payload`;
+- comando IPC `admin_send_signed_heartbeat_once`;
 - comandos IPC `admin_agent_secret_generate`, `admin_agent_secret_set` e `admin_agent_secret_clear`;
 - comando IPC `admin_dispatch_command`;
 - comandos IPC para enfileirar, listar, resumir e processar a fila local;
@@ -60,6 +61,14 @@ O envelope assinado (`AdminSignedEnvelope`) registra:
 - assinatura `blake3`.
 
 O segredo de assinatura vem do cofre do sistema operacional. Ele nao e salvo em texto claro no SQLite. O SQLite guarda apenas o indicador `enrollmentTokenConfigured` para a UI.
+
+O envio manual de heartbeat assinado usa:
+
+```text
+POST {serverUrl}/api/agents/{instanceId}/heartbeat
+```
+
+O corpo enviado e o `AdminSignedEnvelope<AdminHeartbeatPayload>`.
 
 A fila local usa SQLite e registra:
 
@@ -154,9 +163,9 @@ Admin Web
 
 ## Próximos cortes
 
-1. Criar servidor admin minimo com cadastro de instancias.
+1. Criar servidor admin minimo com cadastro de instancias e endpoint de heartbeat.
 2. Implementar matricula por token/convite e rotacao de segredo do agent.
-3. Sincronizar heartbeat assinado com o servidor.
+3. Automatizar sincronizacao periodica do heartbeat assinado.
 4. Adicionar grupos de maquinas e acoes em lote multi-instancia.
 5. Adicionar RBAC e auditoria central.
 6. Implementar edicao remota de fluxos com validacao e previa.

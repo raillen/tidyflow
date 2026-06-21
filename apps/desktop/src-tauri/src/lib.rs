@@ -110,6 +110,7 @@ pub fn run() {
             commands::admin_fleet_snapshot,
             commands::admin_heartbeat_payload,
             commands::admin_signed_heartbeat_payload,
+            commands::admin_send_signed_heartbeat_once,
             commands::admin_agent_secret_generate,
             commands::admin_agent_secret_set,
             commands::admin_agent_secret_clear,

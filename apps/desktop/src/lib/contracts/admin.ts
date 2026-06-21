@@ -116,6 +116,14 @@ export const adminHeartbeatPayloadSchema = z.object({
   pendingCommandCount: z.number().int().nonnegative(),
 });
 
+export const adminHeartbeatDeliverySchema = z.object({
+  endpoint: z.string(),
+  statusCode: z.number().int().min(100).max(599).nullable(),
+  accepted: z.boolean(),
+  message: z.string(),
+  sentAt: z.string().datetime(),
+});
+
 export const adminSignedHeartbeatEnvelopeSchema = z.object({
   schemaVersion: z.literal("admin.transport.v1"),
   kind: z.literal("heartbeat"),
@@ -193,6 +201,7 @@ export type AdminFleetSnapshot = z.infer<typeof adminFleetSnapshotSchema>;
 export type AdminEnrollmentRequest = z.infer<typeof adminEnrollmentRequestSchema>;
 export type AdminEnrollmentResponse = z.infer<typeof adminEnrollmentResponseSchema>;
 export type AdminHeartbeatPayload = z.infer<typeof adminHeartbeatPayloadSchema>;
+export type AdminHeartbeatDelivery = z.infer<typeof adminHeartbeatDeliverySchema>;
 export type AdminSignedHeartbeatEnvelope = z.infer<typeof adminSignedHeartbeatEnvelopeSchema>;
 export type AdminCommandRequest = z.infer<typeof adminCommandRequestSchema>;
 export type AdminCommandResult = z.infer<typeof adminCommandResultSchema>;

@@ -4,6 +4,7 @@ import {
   adminCommandQueueSummarySchema,
   adminCommandResultSchema,
   adminFleetSnapshotSchema,
+  adminHeartbeatDeliverySchema,
   adminHeartbeatPayloadSchema,
   adminQueuedCommandSchema,
   adminSignedHeartbeatEnvelopeSchema,
@@ -11,6 +12,7 @@ import {
   type AdminCommandQueueSummary,
   type AdminCommandResult,
   type AdminFleetSnapshot,
+  type AdminHeartbeatDelivery,
   type AdminHeartbeatPayload,
   type AdminQueuedCommand,
   type AdminSignedHeartbeatEnvelope,
@@ -91,6 +93,11 @@ export async function fetchAdminHeartbeatPayload(): Promise<AdminHeartbeatPayloa
 export async function fetchAdminSignedHeartbeatPayload(): Promise<AdminSignedHeartbeatEnvelope> {
   const raw: unknown = await invoke("admin_signed_heartbeat_payload");
   return adminSignedHeartbeatEnvelopeSchema.parse(raw);
+}
+
+export async function sendAdminSignedHeartbeatOnce(): Promise<AdminHeartbeatDelivery> {
+  const raw: unknown = await invoke("admin_send_signed_heartbeat_once");
+  return adminHeartbeatDeliverySchema.parse(raw);
 }
 
 export async function generateAdminAgentSecret(): Promise<GeneratedAdminAgentSecret> {

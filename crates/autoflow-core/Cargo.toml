@@ -18,3 +18,4 @@ uuid = { workspace = true }
 notify-debouncer-full = { workspace = true }
 notify = { workspace = true }
 walkdir = { workspace = true }
+reqwest = { workspace = true }

@@ -20,10 +20,10 @@ pub use admin::{
     AdminCommandCapability, AdminCommandKind, AdminCommandQueueSummary, AdminCommandRequest,
     AdminCommandResult, AdminCommandSupport, AdminCommandTargetResult, AdminCommandTargetStatus,
     AdminEnrollmentRequest, AdminEnrollmentResponse, AdminEnvelopeKind, AdminFleetSnapshot,
-    AdminFleetSummary, AdminHardwareProfile, AdminHeartbeatPayload, AdminInstanceSnapshot,
-    AdminInstanceStatus, AdminJobRuntimeStatus, AdminManagedJob, AdminManagementProfile,
-    AdminNetworkInterface, AdminNetworkProfile, AdminQueuedCommand, AdminQueuedCommandStatus,
-    AdminSignedEnvelope,
+    AdminFleetSummary, AdminHardwareProfile, AdminHeartbeatDelivery, AdminHeartbeatPayload,
+    AdminInstanceSnapshot, AdminInstanceStatus, AdminJobRuntimeStatus, AdminManagedJob,
+    AdminManagementProfile, AdminNetworkInterface, AdminNetworkProfile, AdminQueuedCommand,
+    AdminQueuedCommandStatus, AdminSignedEnvelope,
 };
 pub use audit::{
     AuditEntry, AuditExport, AuditExportFormat, AuditPage, AuditQuery, AuditStatus, AuditSummary,

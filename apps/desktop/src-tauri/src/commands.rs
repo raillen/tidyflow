@@ -1,10 +1,11 @@
 use autoflow_core::AppState;
 use autoflow_domain::{
     ActiveExecution, AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult,
-    AdminFleetSnapshot, AdminHeartbeatPayload, AdminQueuedCommand, AdminSignedEnvelope,
-    AppSettings, AuditEntry, AuditExport, AuditExportFormat, AuditPage, AuditQuery, Blueprint,
-    BlueprintSimulationReport, BlueprintSummary, FolderPlan, FolderPlanPreview, HealthStatus, Job,
-    JobSummary, SimulationReport, TemplatePipeline, TemplatePreview,
+    AdminFleetSnapshot, AdminHeartbeatDelivery, AdminHeartbeatPayload, AdminQueuedCommand,
+    AdminSignedEnvelope, AppSettings, AuditEntry, AuditExport, AuditExportFormat, AuditPage,
+    AuditQuery, Blueprint, BlueprintSimulationReport, BlueprintSummary, FolderPlan,
+    FolderPlanPreview, HealthStatus, Job, JobSummary, SimulationReport, TemplatePipeline,
+    TemplatePreview,
 };
 use autoflow_infrastructure::ui_state::MissedScheduleEntry;
 use serde::Serialize;
@@ -66,6 +67,16 @@ pub async fn admin_signed_heartbeat_payload(
 ) -> Result<AdminSignedEnvelope<AdminHeartbeatPayload>, String> {
     state
         .admin_signed_heartbeat_payload()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_send_signed_heartbeat_once(
+    state: State<'_, AppState>,
+) -> Result<AdminHeartbeatDelivery, String> {
+    state
+        .admin_send_signed_heartbeat_once()
         .await
         .map_err(|e| e.to_string())
 }
