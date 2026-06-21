@@ -82,7 +82,9 @@ impl WatchConfig {
         match &self.detection {
             WatchDetectionMode::Realtime => Ok(()),
             WatchDetectionMode::Polling { interval_secs }
-            | WatchDetectionMode::Hybrid { poll_interval_secs: interval_secs } => {
+            | WatchDetectionMode::Hybrid {
+                poll_interval_secs: interval_secs,
+            } => {
                 if *interval_secs < 5 || *interval_secs > 3600 {
                     Err(crate::DomainError::Validation(
                         "watch polling interval must be between 5 and 3600 seconds".into(),
@@ -98,9 +100,7 @@ impl WatchConfig {
         match &self.detection {
             WatchDetectionMode::Realtime => None,
             WatchDetectionMode::Polling { interval_secs } => Some(*interval_secs),
-            WatchDetectionMode::Hybrid {
-                poll_interval_secs,
-            } => Some(*poll_interval_secs),
+            WatchDetectionMode::Hybrid { poll_interval_secs } => Some(*poll_interval_secs),
         }
     }
 

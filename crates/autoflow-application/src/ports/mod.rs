@@ -1,4 +1,4 @@
-use autoflow_domain::{AppSettings, DomainError, Job, JobSummary};
+use autoflow_domain::{AppSettings, AuditPage, AuditQuery, DomainError, Job, JobSummary};
 use uuid::Uuid;
 
 pub mod blueprint_store;
@@ -22,5 +22,9 @@ pub trait JobStore: Send + Sync {
 #[async_trait::async_trait]
 pub trait AuditStore: Send + Sync {
     async fn append(&self, entry: autoflow_domain::NewAuditEntry) -> Result<(), DomainError>;
-    async fn list_recent(&self, limit: i64) -> Result<Vec<autoflow_domain::AuditEntry>, DomainError>;
+    async fn list_recent(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<autoflow_domain::AuditEntry>, DomainError>;
+    async fn query(&self, query: AuditQuery) -> Result<AuditPage, DomainError>;
 }

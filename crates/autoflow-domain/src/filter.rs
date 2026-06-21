@@ -47,7 +47,12 @@ impl FilterEngine {
         })
     }
 
-    pub fn should_process(&self, file: &Path, job: &Job, source_root: &Path) -> Result<bool, String> {
+    pub fn should_process(
+        &self,
+        file: &Path,
+        job: &Job,
+        source_root: &Path,
+    ) -> Result<bool, String> {
         let filters = &job.filters;
         let meta = fs::metadata(file).map_err(|e| e.to_string())?;
 
@@ -239,7 +244,8 @@ pub fn collect_files(job: &Job) -> Result<Vec<PathBuf>, std::io::Error> {
         return Ok(files);
     }
 
-    let engine = FilterEngine::from_job(job).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    let engine = FilterEngine::from_job(job)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
     if source.is_file() {
         if engine.should_process(source, job, source).unwrap_or(false) {
@@ -269,9 +275,7 @@ pub fn collect_files(job: &Job) -> Result<Vec<PathBuf>, std::io::Error> {
         for entry in fs::read_dir(source)? {
             let entry = entry?;
             let path = entry.path();
-            if path.is_file()
-                && engine.should_process(&path, job, source).unwrap_or(false)
-            {
+            if path.is_file() && engine.should_process(&path, job, source).unwrap_or(false) {
                 files.push(path);
             }
         }

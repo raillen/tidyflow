@@ -261,19 +261,13 @@ impl WatchService {
 
 fn should_watch_job(job: &Job) -> bool {
     job.enabled
-        && job
-            .watch
-            .as_ref()
-            .is_some_and(|watch| watch.enabled)
+        && job.watch.as_ref().is_some_and(|watch| watch.enabled)
         && Path::new(&job.source_path).exists()
 }
 
 fn should_watch_blueprint(blueprint: &Blueprint) -> bool {
     blueprint.enabled
-        && blueprint
-            .watch
-            .as_ref()
-            .is_some_and(|watch| watch.enabled)
+        && blueprint.watch.as_ref().is_some_and(|watch| watch.enabled)
         && Path::new(&blueprint.root_path).exists()
 }
 

@@ -25,8 +25,8 @@ impl SqliteSettingsStore {
     }
 
     async fn save(&self, settings: &AppSettings) -> Result<(), DomainError> {
-        let payload = serde_json::to_string(settings)
-            .map_err(|e| DomainError::Database(e.to_string()))?;
+        let payload =
+            serde_json::to_string(settings).map_err(|e| DomainError::Database(e.to_string()))?;
         sqlx::query(
             "INSERT INTO settings (id, payload) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload",
         )
@@ -46,19 +46,19 @@ impl SettingsStore for SqliteSettingsStore {
                 let row: (String,) = sqlx::query_as("SELECT payload FROM settings WHERE id = 1")
                     .fetch_one(&self.pool)
                     .await
-                    .unwrap_or_else(|_| {
-                        (serde_json::to_string(&AppSettings::default()).unwrap(),)
-                    });
-                serde_json::from_str(&row.0).unwrap_or_default()
+                    .unwrap_or_else(|_| (serde_json::to_string(&AppSettings::default()).unwrap(),));
+                serde_json::from_str::<AppSettings>(&row.0)
+                    .unwrap_or_default()
+                    .normalized()
             })
         })
     }
 
     fn update(&self, settings: AppSettings) -> Result<(), DomainError> {
+        let settings = settings.normalized();
         settings.validate()?;
         tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current()
-                .block_on(async { self.save(&settings).await })
+            tokio::runtime::Handle::current().block_on(async { self.save(&settings).await })
         })
     }
 }
@@ -71,13 +71,15 @@ impl SqliteSettingsStore {
             .map_err(|e| DomainError::Database(e.to_string()))?;
 
         match row {
-            Some((payload,)) => serde_json::from_str(&payload)
+            Some((payload,)) => serde_json::from_str::<AppSettings>(&payload)
+                .map(AppSettings::normalized)
                 .map_err(|e| DomainError::Database(e.to_string())),
             None => Ok(AppSettings::default()),
         }
     }
 
     pub async fn update_async(&self, settings: AppSettings) -> Result<(), DomainError> {
+        let settings = settings.normalized();
         settings.validate()?;
         self.save(&settings).await
     }

@@ -32,7 +32,22 @@ export function applyAccentColor(accentColor: AccentColor): void {
   );
 }
 
-export function applyAppearance(settings: Pick<AppSettings, "theme" | "accentColor">): void {
+export function applyInterfaceFont(interfaceFont: string): void {
+  const root = document.documentElement;
+  const font = {
+    system: '"Segoe UI Variable", "Segoe UI", system-ui, sans-serif',
+    inter: '"Inter", "Segoe UI", system-ui, sans-serif',
+    roboto: '"Roboto", "Segoe UI", system-ui, sans-serif',
+    "public-sans": '"Public Sans", "Segoe UI", system-ui, sans-serif',
+    "jetbrains-mono": '"JetBrains Mono", "Cascadia Mono", monospace',
+  }[interfaceFont] ?? '"Segoe UI Variable", "Segoe UI", system-ui, sans-serif';
+  root.style.setProperty("--font-ui", font);
+}
+
+export function applyAppearance(
+  settings: Pick<AppSettings, "theme" | "accentColor"> & Partial<Pick<AppSettings, "interfaceFont">>,
+): void {
   applyTheme(settings.theme);
   applyAccentColor(settings.accentColor);
+  applyInterfaceFont(settings.interfaceFont ?? "system");
 }

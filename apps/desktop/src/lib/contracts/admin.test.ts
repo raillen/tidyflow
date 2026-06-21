@@ -1,0 +1,188 @@
+import { describe, expect, it } from "vitest";
+import {
+  adminCommandRequestSchema,
+  adminCommandResultSchema,
+  adminHeartbeatPayloadSchema,
+  adminQueuedCommandSchema,
+  adminSignedHeartbeatEnvelopeSchema,
+  adminFleetSnapshotSchema,
+  commandKindLabel,
+  createAdminCommandRequest,
+  instanceStatusLabel,
+} from "./admin";
+
+describe("admin contracts", () => {
+  it("accepts a local fleet snapshot", () => {
+    const parsed = adminFleetSnapshotSchema.parse({
+      generatedAt: "2026-06-21T10:00:00.000Z",
+      summary: {
+        totalInstances: 1,
+        onlineInstances: 1,
+        warningInstances: 0,
+        offlineInstances: 0,
+        totalJobs: 1,
+        runningJobs: 0,
+      },
+      instances: [
+        {
+          instanceId: "local-abc",
+          displayName: "WORKSTATION-01",
+          status: "online",
+          lastSeenAt: "2026-06-21T10:00:00.000Z",
+          hardware: {
+            hostName: "WORKSTATION-01",
+            operatingSystem: "windows",
+            architecture: "x86_64",
+            cpuThreads: 8,
+            totalMemoryMb: null,
+            appVersion: "0.2.0",
+          },
+          network: {
+            domain: "REDE",
+            interfaces: [{ name: "hostname", address: "WORKSTATION-01", kind: "host" }],
+          },
+          management: {
+            enabled: true,
+            mode: "localOnly",
+            serverUrl: null,
+            allowRemoteCommands: false,
+            allowBatchCommands: false,
+            heartbeatIntervalSecs: 30,
+            inventoryIntervalSecs: 300,
+          },
+          jobs: [
+            {
+              id: "550e8400-e29b-41d4-a716-446655440000",
+              name: "Backup",
+              mode: "copy",
+              enabled: true,
+              sourcePath: "C:/in",
+              targetPath: "D:/out",
+              lastRun: null,
+              nextRun: null,
+              status: "idle",
+            },
+          ],
+          activeExecutions: [],
+          capabilities: [
+            {
+              kind: "startJob",
+              label: "Iniciar fluxo",
+              support: "available",
+              scope: "maquina/fluxo",
+              requiresConfirmation: false,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(parsed.summary.onlineInstances).toBe(1);
+    expect(instanceStatusLabel(parsed.instances[0].status)).toBe("Online");
+  });
+
+  it("builds a start command request", () => {
+    const request = createAdminCommandRequest(
+      "startJob",
+      "local-abc",
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
+
+    expect(adminCommandRequestSchema.parse(request).jobIds).toHaveLength(1);
+    expect(commandKindLabel(request.kind)).toBe("Iniciar");
+  });
+
+  it("accepts command results", () => {
+    const parsed = adminCommandResultSchema.parse({
+      accepted: true,
+      command: "startJob",
+      results: [{ targetInstanceId: "local-abc", status: "accepted", message: "ok" }],
+    });
+
+    expect(parsed.results[0].status).toBe("accepted");
+  });
+
+  it("accepts heartbeat and queued command payloads", () => {
+    const snapshot = adminFleetSnapshotSchema.parse({
+      generatedAt: "2026-06-21T10:00:00.000Z",
+      summary: {
+        totalInstances: 0,
+        onlineInstances: 0,
+        warningInstances: 0,
+        offlineInstances: 0,
+        totalJobs: 0,
+        runningJobs: 0,
+      },
+      instances: [],
+    });
+
+    expect(snapshot.instances).toHaveLength(0);
+
+    const command = adminQueuedCommandSchema.parse({
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      source: "server",
+      request: { kind: "requestLogs", targetInstanceIds: [], jobIds: [], executionIds: [], reason: null },
+      status: "pending",
+      result: null,
+      createdAt: "2026-06-21T10:00:00.000Z",
+      updatedAt: "2026-06-21T10:00:00.000Z",
+    });
+
+    expect(command.status).toBe("pending");
+    const heartbeatInstance = {
+      instanceId: "local-abc",
+      displayName: "WORKSTATION-01",
+      status: "online",
+      lastSeenAt: "2026-06-21T10:00:00.000Z",
+      hardware: {
+        hostName: "WORKSTATION-01",
+        operatingSystem: "windows",
+        architecture: "x86_64",
+        cpuThreads: 8,
+        totalMemoryMb: null,
+        appVersion: "0.2.0",
+      },
+      network: {
+        domain: null,
+        interfaces: [{ name: "hostname", address: "WORKSTATION-01", kind: "host" }],
+      },
+      management: {
+        enabled: true,
+        mode: "localOnly",
+        serverUrl: null,
+        allowRemoteCommands: false,
+        allowBatchCommands: false,
+        heartbeatIntervalSecs: 30,
+        inventoryIntervalSecs: 300,
+      },
+      jobs: [],
+      activeExecutions: [],
+      capabilities: [],
+    };
+    const heartbeat = adminHeartbeatPayloadSchema.parse({
+      instance: heartbeatInstance,
+      generatedAt: "2026-06-21T10:00:00.000Z",
+      pendingCommandCount: 0,
+    });
+    const envelope = adminSignedHeartbeatEnvelopeSchema.parse({
+      schemaVersion: "admin.transport.v1",
+      kind: "heartbeat",
+      instanceId: "local-abc",
+      issuedAt: "2026-06-21T10:00:00.000Z",
+      expiresAt: "2026-06-21T10:05:00.000Z",
+      nonce: "550e8400-e29b-41d4-a716-446655440000",
+      payloadHash: "abc123",
+      signature: "blake3:abc123",
+      payload: heartbeat,
+    });
+
+    expect(envelope.kind).toBe("heartbeat");
+    expect(() =>
+      adminHeartbeatPayloadSchema.parse({
+        instance: null,
+        generatedAt: "2026-06-21T10:00:00.000Z",
+        pendingCommandCount: 0,
+      }),
+    ).toThrow();
+  });
+});

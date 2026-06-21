@@ -14,12 +14,11 @@ impl SqliteUiStateStore {
     }
 
     pub async fn get(&self, key: &str) -> Result<Option<Value>, DomainError> {
-        let row: Option<(String,)> =
-            sqlx::query_as("SELECT payload FROM ui_state WHERE key = ?")
-                .bind(key)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| DomainError::Database(e.to_string()))?;
+        let row: Option<(String,)> = sqlx::query_as("SELECT payload FROM ui_state WHERE key = ?")
+            .bind(key)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DomainError::Database(e.to_string()))?;
 
         match row {
             Some((payload,)) => serde_json::from_str(&payload)
@@ -30,8 +29,8 @@ impl SqliteUiStateStore {
     }
 
     pub async fn save(&self, key: &str, payload: Value) -> Result<Value, DomainError> {
-        let serialized = serde_json::to_string(&payload)
-            .map_err(|e| DomainError::Database(e.to_string()))?;
+        let serialized =
+            serde_json::to_string(&payload).map_err(|e| DomainError::Database(e.to_string()))?;
         let now = Utc::now().to_rfc3339();
 
         sqlx::query(
@@ -108,13 +107,15 @@ impl SqliteMissedScheduleStore {
 
         Ok(rows
             .into_iter()
-            .map(|(id, job_id, job_name, scheduled_at, detected_at)| MissedScheduleEntry {
-                id,
-                job_id,
-                job_name,
-                scheduled_at,
-                detected_at,
-            })
+            .map(
+                |(id, job_id, job_name, scheduled_at, detected_at)| MissedScheduleEntry {
+                    id,
+                    job_id,
+                    job_name,
+                    scheduled_at,
+                    detected_at,
+                },
+            )
             .collect())
     }
 

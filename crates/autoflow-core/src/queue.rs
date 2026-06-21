@@ -3,9 +3,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use autoflow_application::execution::{run_job, CompletedCallback, ProgressCallback};
-use autoflow_domain::{
-    ActiveExecution, DomainError, ExecutionCompleted, ExecutionProgress,
-};
+use autoflow_domain::{ActiveExecution, DomainError, ExecutionCompleted, ExecutionProgress};
 use autoflow_infrastructure::{audit::SqliteAuditStore, jobs::SqliteJobStore};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -108,10 +106,7 @@ impl JobQueue {
                                     {
                                         active.write().unwrap().remove(&completed.execution_id);
                                         running.write().unwrap().remove(&completed.job_id);
-                                        cancel_map
-                                            .write()
-                                            .unwrap()
-                                            .remove(&completed.execution_id);
+                                        cancel_map.write().unwrap().remove(&completed.execution_id);
                                     }
                                     events(ExecutionEvent::Completed(completed));
                                 })
@@ -147,9 +142,7 @@ impl JobQueue {
                         });
                     }
                     QueueMessage::Cancel { execution_id } => {
-                        if let Some(token) =
-                            cancel_worker.write().unwrap().remove(&execution_id)
-                        {
+                        if let Some(token) = cancel_worker.write().unwrap().remove(&execution_id) {
                             token.cancel();
                         }
                     }
@@ -189,11 +182,6 @@ impl JobQueue {
     }
 
     pub fn list_active(&self) -> Vec<ActiveExecution> {
-        self.active
-            .read()
-            .unwrap()
-            .values()
-            .cloned()
-            .collect()
+        self.active.read().unwrap().values().cloned().collect()
     }
 }

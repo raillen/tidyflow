@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { auditEntrySchema, formatFileSize, formatDuration } from "./audit";
+import {
+  auditEntrySchema,
+  auditExportSchema,
+  auditFailureRate,
+  auditPageSchema,
+  auditQuerySchema,
+  formatDuration,
+  formatFileSize,
+} from "./audit";
 
 describe("auditEntrySchema", () => {
   it("accepts payload from Rust audit_list_recent", () => {
@@ -29,5 +37,46 @@ describe("formatters", () => {
   it("formats duration", () => {
     expect(formatDuration(450)).toBe("450 ms");
     expect(formatDuration(1500)).toBe("1.50 s");
+  });
+});
+
+describe("audit query contracts", () => {
+  it("accepts paginated audit payload with analytics", () => {
+    const parsed = auditPageSchema.parse({
+      entries: [],
+      total: 10,
+      limit: 100,
+      offset: 0,
+      summary: {
+        total: 10,
+        copied: 4,
+        moved: 2,
+        ignored: 1,
+        failed: 3,
+        organized: 0,
+        totalBytes: 4096,
+        averageDurationMs: 25.5,
+        latestAt: "2026-06-19T12:00:00.000Z",
+      },
+    });
+
+    expect(auditFailureRate(parsed.summary)).toBe(0.3);
+  });
+
+  it("normalizes default query values", () => {
+    const parsed = auditQuerySchema.parse({});
+
+    expect(parsed.limit).toBe(100);
+    expect(parsed.offset).toBe(0);
+  });
+
+  it("accepts export payload", () => {
+    const parsed = auditExportSchema.parse({
+      fileName: "audit.csv",
+      mimeType: "text/csv",
+      content: "id,status\n1,COPIED\n",
+    });
+
+    expect(parsed.fileName).toBe("audit.csv");
   });
 });

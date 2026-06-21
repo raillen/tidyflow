@@ -53,9 +53,7 @@ async fn tick(
         }
 
         if now - next_run > ChronoDuration::seconds(MISSED_GRACE_SECS) {
-            missed
-                .record(summary.id, &summary.name, next_run)
-                .await?;
+            missed.record(summary.id, &summary.name, next_run).await?;
         }
 
         if let Err(error) = queue.enqueue(summary.id) {

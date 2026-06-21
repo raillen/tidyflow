@@ -3,6 +3,7 @@
   import {
     Blueprint,
     ClockCounterClockwise,
+    DesktopTower,
     FlowArrow,
     GearSix,
     SquaresFour,
@@ -13,6 +14,7 @@
     { href: "/", label: "Dashboard", icon: SquaresFour },
     { href: "/flows", label: "Fluxos", icon: FlowArrow },
     { href: "/blueprints", label: "Blueprints", icon: Blueprint },
+    { href: "/admin", label: "Admin", icon: DesktopTower },
     { href: "/history", label: "Histórico", icon: ClockCounterClockwise },
     { href: "/settings", label: "Configurações", icon: GearSix },
   ];

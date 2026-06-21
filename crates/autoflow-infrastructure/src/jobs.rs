@@ -14,8 +14,8 @@ impl SqliteJobStore {
     }
 
     fn deserialize(payload: &str) -> Result<Job, DomainError> {
-        let mut job: Job = serde_json::from_str(payload)
-            .map_err(|e| DomainError::Database(e.to_string()))?;
+        let mut job: Job =
+            serde_json::from_str(payload).map_err(|e| DomainError::Database(e.to_string()))?;
         job.normalize();
         Ok(job)
     }
@@ -52,8 +52,8 @@ impl JobStore for SqliteJobStore {
 
     async fn save(&self, job: &Job) -> Result<(), DomainError> {
         job.validate()?;
-        let payload = serde_json::to_string(job)
-            .map_err(|e| DomainError::Database(e.to_string()))?;
+        let payload =
+            serde_json::to_string(job).map_err(|e| DomainError::Database(e.to_string()))?;
         let now = Utc::now().to_rfc3339();
 
         sqlx::query(

@@ -1,5 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
+  adminCommandRequestSchema,
+  adminCommandQueueSummarySchema,
+  adminCommandResultSchema,
+  adminFleetSnapshotSchema,
+  adminHeartbeatPayloadSchema,
+  adminQueuedCommandSchema,
+  adminSignedHeartbeatEnvelopeSchema,
+  type AdminCommandRequest,
+  type AdminCommandQueueSummary,
+  type AdminCommandResult,
+  type AdminFleetSnapshot,
+  type AdminHeartbeatPayload,
+  type AdminQueuedCommand,
+  type AdminSignedHeartbeatEnvelope,
+} from "$lib/contracts/admin";
+import {
   appSettingsSchema,
   healthStatusSchema,
   type AppSettings,
@@ -17,7 +33,17 @@ import {
   type SimulationReport,
 } from "$lib/contracts/job";
 import { z } from "zod";
-import { auditEntrySchema, type AuditEntry } from "$lib/contracts/audit";
+import {
+  auditEntrySchema,
+  auditExportSchema,
+  auditPageSchema,
+  auditQuerySchema,
+  type AuditEntry,
+  type AuditExport,
+  type AuditExportFormat,
+  type AuditPage,
+  type AuditQuery,
+} from "$lib/contracts/audit";
 import {
   blueprintSchema,
   blueprintSimulationReportSchema,
@@ -48,6 +74,60 @@ export async function fetchSettings(): Promise<AppSettings> {
 export async function saveSettings(settings: AppSettings): Promise<AppSettings> {
   const raw: unknown = await invoke("settings_update", { settings });
   return appSettingsSchema.parse(raw);
+}
+
+export async function fetchAdminFleetSnapshot(): Promise<AdminFleetSnapshot> {
+  const raw: unknown = await invoke("admin_fleet_snapshot");
+  return adminFleetSnapshotSchema.parse(raw);
+}
+
+export async function fetchAdminHeartbeatPayload(): Promise<AdminHeartbeatPayload> {
+  const raw: unknown = await invoke("admin_heartbeat_payload");
+  return adminHeartbeatPayloadSchema.parse(raw);
+}
+
+export async function fetchAdminSignedHeartbeatPayload(
+  signingSecret: string,
+): Promise<AdminSignedHeartbeatEnvelope> {
+  const raw: unknown = await invoke("admin_signed_heartbeat_payload", {
+    signingSecret,
+  });
+  return adminSignedHeartbeatEnvelopeSchema.parse(raw);
+}
+
+export async function dispatchAdminCommand(
+  request: AdminCommandRequest,
+): Promise<AdminCommandResult> {
+  const raw: unknown = await invoke("admin_dispatch_command", {
+    request: adminCommandRequestSchema.parse(request),
+  });
+  return adminCommandResultSchema.parse(raw);
+}
+
+export async function enqueueAdminCommand(
+  request: AdminCommandRequest,
+  source = "local-ui",
+): Promise<AdminQueuedCommand> {
+  const raw: unknown = await invoke("admin_enqueue_command", {
+    request: adminCommandRequestSchema.parse(request),
+    source,
+  });
+  return adminQueuedCommandSchema.parse(raw);
+}
+
+export async function listAdminCommands(limit = 50): Promise<AdminQueuedCommand[]> {
+  const raw: unknown = await invoke("admin_list_commands", { limit });
+  return z.array(adminQueuedCommandSchema).parse(raw);
+}
+
+export async function fetchAdminCommandQueueSummary(): Promise<AdminCommandQueueSummary> {
+  const raw: unknown = await invoke("admin_command_queue_summary");
+  return adminCommandQueueSummarySchema.parse(raw);
+}
+
+export async function processNextAdminCommand(): Promise<AdminQueuedCommand | null> {
+  const raw: unknown = await invoke("admin_process_next_command");
+  return raw === null ? null : adminQueuedCommandSchema.parse(raw);
 }
 
 export async function listJobs(): Promise<JobSummary[]> {
@@ -100,6 +180,24 @@ export async function cancelExecution(executionId: string): Promise<void> {
 export async function listRecentAudit(limit = 100): Promise<AuditEntry[]> {
   const raw: unknown = await invoke("audit_list_recent", { limit });
   return z.array(auditEntrySchema).parse(raw);
+}
+
+export async function queryAudit(query: AuditQuery): Promise<AuditPage> {
+  const raw: unknown = await invoke("audit_query", {
+    query: auditQuerySchema.parse(query),
+  });
+  return auditPageSchema.parse(raw);
+}
+
+export async function exportAudit(
+  query: AuditQuery,
+  format: AuditExportFormat,
+): Promise<AuditExport> {
+  const raw: unknown = await invoke("audit_export", {
+    query: auditQuerySchema.parse(query),
+    format,
+  });
+  return auditExportSchema.parse(raw);
 }
 
 export async function listBlueprints(): Promise<BlueprintSummary[]> {

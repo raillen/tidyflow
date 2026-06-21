@@ -22,8 +22,52 @@ export const auditEntrySchema = z.object({
   createdAt: z.string().datetime(),
 });
 
+export const auditQuerySchema = z.object({
+  search: z.string().nullable().optional(),
+  status: auditStatusSchema.nullable().optional(),
+  jobId: z.string().uuid().nullable().optional(),
+  blueprintId: z.string().uuid().nullable().optional(),
+  dateFrom: z.string().datetime().nullable().optional(),
+  dateTo: z.string().datetime().nullable().optional(),
+  limit: z.number().int().min(1).max(1000).default(100),
+  offset: z.number().int().min(0).default(0),
+});
+
+export const auditSummarySchema = z.object({
+  total: z.number().int(),
+  copied: z.number().int(),
+  moved: z.number().int(),
+  ignored: z.number().int(),
+  failed: z.number().int(),
+  organized: z.number().int(),
+  totalBytes: z.number().int(),
+  averageDurationMs: z.number(),
+  latestAt: z.string().datetime().nullable(),
+});
+
+export const auditPageSchema = z.object({
+  entries: z.array(auditEntrySchema),
+  total: z.number().int(),
+  limit: z.number().int(),
+  offset: z.number().int(),
+  summary: auditSummarySchema,
+});
+
+export const auditExportFormatSchema = z.enum(["csv", "json"]);
+
+export const auditExportSchema = z.object({
+  fileName: z.string(),
+  mimeType: z.string(),
+  content: z.string(),
+});
+
 export type AuditStatus = z.infer<typeof auditStatusSchema>;
 export type AuditEntry = z.infer<typeof auditEntrySchema>;
+export type AuditQuery = z.infer<typeof auditQuerySchema>;
+export type AuditSummary = z.infer<typeof auditSummarySchema>;
+export type AuditPage = z.infer<typeof auditPageSchema>;
+export type AuditExportFormat = z.infer<typeof auditExportFormatSchema>;
+export type AuditExport = z.infer<typeof auditExportSchema>;
 
 export const AUDIT_STATUS_OPTIONS = [
   { value: "all" as const, label: "Todos" },
@@ -66,4 +110,22 @@ export function formatDateTime(iso: string): string {
     dateStyle: "short",
     timeStyle: "medium",
   }).format(new Date(iso));
+}
+
+export function auditFailureRate(summary: AuditSummary): number {
+  if (summary.total === 0) return 0;
+  return summary.failed / summary.total;
+}
+
+export function createDefaultAuditQuery(): AuditQuery {
+  return {
+    search: null,
+    status: null,
+    jobId: null,
+    blueprintId: null,
+    dateFrom: null,
+    dateTo: null,
+    limit: 100,
+    offset: 0,
+  };
 }

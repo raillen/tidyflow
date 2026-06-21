@@ -1,8 +1,10 @@
 use autoflow_core::AppState;
 use autoflow_domain::{
-    ActiveExecution, AppSettings, AuditEntry, Blueprint, BlueprintSimulationReport,
-    BlueprintSummary, FolderPlan, FolderPlanPreview, HealthStatus, Job, JobSummary,
-    SimulationReport, TemplatePipeline, TemplatePreview,
+    ActiveExecution, AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult,
+    AdminFleetSnapshot, AdminHeartbeatPayload, AdminQueuedCommand, AdminSignedEnvelope,
+    AppSettings, AuditEntry, AuditExport, AuditExportFormat, AuditPage, AuditQuery, Blueprint,
+    BlueprintSimulationReport, BlueprintSummary, FolderPlan, FolderPlanPreview, HealthStatus, Job,
+    JobSummary, SimulationReport, TemplatePipeline, TemplatePreview,
 };
 use autoflow_infrastructure::ui_state::MissedScheduleEntry;
 use serde_json::Value;
@@ -26,6 +28,88 @@ pub async fn settings_update(
 ) -> Result<AppSettings, String> {
     state
         .update_settings(settings)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_fleet_snapshot(
+    state: State<'_, AppState>,
+) -> Result<AdminFleetSnapshot, String> {
+    state
+        .admin_fleet_snapshot()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_heartbeat_payload(
+    state: State<'_, AppState>,
+) -> Result<AdminHeartbeatPayload, String> {
+    state
+        .admin_heartbeat_payload()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_signed_heartbeat_payload(
+    state: State<'_, AppState>,
+    signing_secret: String,
+) -> Result<AdminSignedEnvelope<AdminHeartbeatPayload>, String> {
+    state
+        .admin_signed_heartbeat_payload(signing_secret)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_dispatch_command(
+    state: State<'_, AppState>,
+    request: AdminCommandRequest,
+) -> Result<AdminCommandResult, String> {
+    Ok(state.admin_dispatch_command(request).await)
+}
+
+#[tauri::command]
+pub async fn admin_enqueue_command(
+    state: State<'_, AppState>,
+    request: AdminCommandRequest,
+    source: String,
+) -> Result<AdminQueuedCommand, String> {
+    state
+        .admin_enqueue_command(request, source)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_list_commands(
+    state: State<'_, AppState>,
+    limit: i64,
+) -> Result<Vec<AdminQueuedCommand>, String> {
+    state
+        .admin_list_commands(limit)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_command_queue_summary(
+    state: State<'_, AppState>,
+) -> Result<AdminCommandQueueSummary, String> {
+    state
+        .admin_command_queue_summary()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_process_next_command(
+    state: State<'_, AppState>,
+) -> Result<Option<AdminQueuedCommand>, String> {
+    state
+        .admin_process_next_command()
         .await
         .map_err(|e| e.to_string())
 }
@@ -108,12 +192,39 @@ pub async fn audit_list_recent(
 }
 
 #[tauri::command]
-pub async fn ui_state_get(state: State<'_, AppState>, key: String) -> Result<Option<Value>, String> {
+pub async fn audit_query(
+    state: State<'_, AppState>,
+    query: AuditQuery,
+) -> Result<AuditPage, String> {
+    state.query_audit(query).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn audit_export(
+    state: State<'_, AppState>,
+    query: AuditQuery,
+    format: AuditExportFormat,
+) -> Result<AuditExport, String> {
+    state
+        .export_audit(query, format)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn ui_state_get(
+    state: State<'_, AppState>,
+    key: String,
+) -> Result<Option<Value>, String> {
     state.ui_state_get(key).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn ui_state_save(state: State<'_, AppState>, key: String, payload: Value) -> Result<Value, String> {
+pub async fn ui_state_save(
+    state: State<'_, AppState>,
+    key: String,
+    payload: Value,
+) -> Result<Value, String> {
     state
         .ui_state_save(key, payload)
         .await
@@ -132,7 +243,10 @@ pub async fn jobs_list_missed_schedules(
 
 #[tauri::command]
 pub async fn jobs_clear_missed_schedules(state: State<'_, AppState>) -> Result<(), String> {
-    state.clear_missed_schedules().await.map_err(|e| e.to_string())
+    state
+        .clear_missed_schedules()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -147,13 +261,25 @@ pub async fn blueprints_get(state: State<'_, AppState>, id: String) -> Result<Bl
 }
 
 #[tauri::command]
-pub async fn blueprints_create(state: State<'_, AppState>, blueprint: Blueprint) -> Result<Blueprint, String> {
-    state.create_blueprint(blueprint).await.map_err(|e| e.to_string())
+pub async fn blueprints_create(
+    state: State<'_, AppState>,
+    blueprint: Blueprint,
+) -> Result<Blueprint, String> {
+    state
+        .create_blueprint(blueprint)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn blueprints_update(state: State<'_, AppState>, blueprint: Blueprint) -> Result<Blueprint, String> {
-    state.update_blueprint(blueprint).await.map_err(|e| e.to_string())
+pub async fn blueprints_update(
+    state: State<'_, AppState>,
+    blueprint: Blueprint,
+) -> Result<Blueprint, String> {
+    state
+        .update_blueprint(blueprint)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -168,11 +294,17 @@ pub async fn blueprints_simulate(
     id: String,
 ) -> Result<BlueprintSimulationReport, String> {
     let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
-    state.simulate_blueprint(id).await.map_err(|e| e.to_string())
+    state
+        .simulate_blueprint(id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn blueprints_apply(state: State<'_, AppState>, id: String) -> Result<(u32, u32), String> {
+pub async fn blueprints_apply(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(u32, u32), String> {
     let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
     state.apply_blueprint(id).await.map_err(|e| e.to_string())
 }

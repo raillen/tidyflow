@@ -95,10 +95,9 @@ pub fn run() {
                 }
             });
 
-            let state = tauri::async_runtime::block_on(async {
-                AppState::new(data_dir, events).await
-            })
-            .expect("failed to initialize AutoFlow application state");
+            let state =
+                tauri::async_runtime::block_on(async { AppState::new(data_dir, events).await })
+                    .expect("failed to initialize AutoFlow application state");
 
             wire_missed_schedule_notifications(app, state.clone());
             app.manage(state);
@@ -108,6 +107,14 @@ pub fn run() {
             commands::health,
             commands::settings_get,
             commands::settings_update,
+            commands::admin_fleet_snapshot,
+            commands::admin_heartbeat_payload,
+            commands::admin_signed_heartbeat_payload,
+            commands::admin_dispatch_command,
+            commands::admin_enqueue_command,
+            commands::admin_list_commands,
+            commands::admin_command_queue_summary,
+            commands::admin_process_next_command,
             commands::jobs_list,
             commands::jobs_get,
             commands::jobs_create,
@@ -119,6 +126,8 @@ pub fn run() {
             commands::executions_list_active,
             commands::executions_cancel,
             commands::audit_list_recent,
+            commands::audit_query,
+            commands::audit_export,
             commands::ui_state_get,
             commands::ui_state_save,
             commands::jobs_list_missed_schedules,

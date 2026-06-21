@@ -28,12 +28,12 @@ impl ScheduleConfig {
             return Ok(());
         }
         match &self.rule {
-            ScheduleRule::Interval { minutes } if *minutes == 0 => Err(crate::DomainError::Validation(
-                "schedule interval minutes must be >= 1".into(),
-            )),
-            ScheduleRule::Daily { hour, minute } if *hour > 23 || *minute > 59 => {
-                Err(crate::DomainError::Validation("invalid daily schedule time".into()))
-            }
+            ScheduleRule::Interval { minutes } if *minutes == 0 => Err(
+                crate::DomainError::Validation("schedule interval minutes must be >= 1".into()),
+            ),
+            ScheduleRule::Daily { hour, minute } if *hour > 23 || *minute > 59 => Err(
+                crate::DomainError::Validation("invalid daily schedule time".into()),
+            ),
             ScheduleRule::Weekly { days, hour, minute } => {
                 if days.is_empty() || days.iter().any(|d| *d > 6) {
                     return Err(crate::DomainError::Validation(

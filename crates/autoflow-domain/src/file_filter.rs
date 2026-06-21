@@ -93,8 +93,20 @@ pub fn built_in_exclude_presets() -> &'static [(&'static str, &'static [&'static
         ("node_modules", &["**/node_modules/**"]),
         ("git", &["**/.git/**", "**/.gitignore"]),
         ("temp", &["**/temp/**", "**/tmp/**", "**/*.tmp"]),
-        ("system", &["**/Thumbs.db", "**/.DS_Store", "**/desktop.ini"]),
-        ("build", &["**/target/**", "**/dist/**", "**/build/**", "**/bin/**", "**/obj/**"]),
+        (
+            "system",
+            &["**/Thumbs.db", "**/.DS_Store", "**/desktop.ini"],
+        ),
+        (
+            "build",
+            &[
+                "**/target/**",
+                "**/dist/**",
+                "**/build/**",
+                "**/bin/**",
+                "**/obj/**",
+            ],
+        ),
     ]
 }
 

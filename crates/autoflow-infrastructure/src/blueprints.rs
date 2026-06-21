@@ -14,8 +14,8 @@ impl SqliteBlueprintStore {
     }
 
     fn deserialize(payload: &str) -> Result<Blueprint, DomainError> {
-        let mut blueprint: Blueprint = serde_json::from_str(payload)
-            .map_err(|e| DomainError::Database(e.to_string()))?;
+        let mut blueprint: Blueprint =
+            serde_json::from_str(payload).map_err(|e| DomainError::Database(e.to_string()))?;
         blueprint.normalize();
         Ok(blueprint)
     }
@@ -45,12 +45,11 @@ impl BlueprintStore for SqliteBlueprintStore {
     }
 
     async fn get(&self, id: Uuid) -> Result<Blueprint, DomainError> {
-        let row: Option<(String,)> =
-            sqlx::query_as("SELECT payload FROM blueprints WHERE id = ?")
-                .bind(id.to_string())
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| DomainError::Database(e.to_string()))?;
+        let row: Option<(String,)> = sqlx::query_as("SELECT payload FROM blueprints WHERE id = ?")
+            .bind(id.to_string())
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DomainError::Database(e.to_string()))?;
 
         match row {
             Some((payload,)) => Self::deserialize(&payload),
@@ -60,8 +59,8 @@ impl BlueprintStore for SqliteBlueprintStore {
 
     async fn save(&self, blueprint: &Blueprint) -> Result<(), DomainError> {
         blueprint.validate()?;
-        let payload = serde_json::to_string(blueprint)
-            .map_err(|e| DomainError::Database(e.to_string()))?;
+        let payload =
+            serde_json::to_string(blueprint).map_err(|e| DomainError::Database(e.to_string()))?;
         let now = Utc::now().to_rfc3339();
 
         sqlx::query(

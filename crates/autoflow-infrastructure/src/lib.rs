@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod audit;
 pub mod blueprints;
 pub mod database;
