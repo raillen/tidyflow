@@ -123,6 +123,23 @@ No backend SQLite, a tabela `admin_agents` guarda:
 
 Antes de producao, o segredo central deve migrar para cofre, KMS ou criptografia em repouso.
 
+Execucao local do servidor:
+
+```text
+cargo run -p autoflow-admin-server
+```
+
+Variaveis de configuracao:
+
+```text
+AUTOFLOW_ADMIN_BIND=127.0.0.1:7840
+AUTOFLOW_ADMIN_DB=autoflow-admin.sqlite
+AUTOFLOW_ADMIN_BOOTSTRAP_INSTANCE_ID=local-...
+AUTOFLOW_ADMIN_BOOTSTRAP_SECRET=af_...
+```
+
+O bind padrao usa `127.0.0.1` para desenvolvimento local. Para rede ou web, usar HTTPS, firewall e autenticacao antes de expor o servico.
+
 ## Dados por instância
 
 Cada instância deve expor:
@@ -205,9 +222,8 @@ Admin Web
 
 ## Próximos cortes
 
-1. Criar binario/servico do servidor admin com configuracao de bind e banco.
-2. Implementar matricula por token/convite e rotacao de segredo do agent.
-3. Automatizar sincronizacao periodica do heartbeat assinado.
-4. Adicionar grupos de maquinas e acoes em lote multi-instancia.
-5. Adicionar RBAC e auditoria central.
-6. Implementar edicao remota de fluxos com validacao e previa.
+1. Implementar matricula por token/convite e rotacao de segredo do agent.
+2. Automatizar sincronizacao periodica do heartbeat assinado.
+3. Adicionar grupos de maquinas e acoes em lote multi-instancia.
+4. Adicionar RBAC e auditoria central.
+5. Implementar edicao remota de fluxos com validacao e previa.
