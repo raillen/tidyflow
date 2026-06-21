@@ -81,6 +81,33 @@ A fila local usa SQLite e registra:
 
 O painel local ja consegue enfileirar comandos e processar o proximo pendente. No modo web, o servidor central deve inserir comandos assinados nessa fila.
 
+## Servidor admin minimo
+
+O crate `autoflow-admin-server` inicia a base HTTP do painel central.
+
+Nesta etapa ele roda com estado em memoria. Isso permite validar o contrato entre agent e servidor antes de fixar banco central, RBAC e deployment web.
+
+Endpoints implementados:
+
+```text
+GET /health
+GET /api/fleet
+POST /api/agents/{instanceId}/heartbeat
+```
+
+O endpoint de heartbeat recebe `AdminSignedEnvelope<AdminHeartbeatPayload>` e valida:
+
+- agent registrado no servidor;
+- tipo do envelope igual a `heartbeat`;
+- `instanceId` da rota igual ao `instanceId` do envelope;
+- envelope ainda nao expirado;
+- assinatura `blake3` com o segredo do agent;
+- `instanceId` do payload igual ao da rota.
+
+Quando o heartbeat e aceito, o servidor atualiza o ultimo snapshot da instancia e retorna `AdminHeartbeatAccepted`.
+
+O cadastro de segredo do agent existe como metodo interno do estado do servidor. Ele ainda nao foi exposto por HTTP porque matricula por token/convite precisa de autenticacao propria.
+
 ## Dados por instância
 
 Cada instância deve expor:
@@ -163,7 +190,7 @@ Admin Web
 
 ## Próximos cortes
 
-1. Criar servidor admin minimo com cadastro de instancias e endpoint de heartbeat.
+1. Persistir o servidor admin em banco central e carregar segredos cadastrados.
 2. Implementar matricula por token/convite e rotacao de segredo do agent.
 3. Automatizar sincronizacao periodica do heartbeat assinado.
 4. Adicionar grupos de maquinas e acoes em lote multi-instancia.

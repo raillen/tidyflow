@@ -1,0 +1,17 @@
+[package]
+name = "autoflow-admin-server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+autoflow-domain = { path = "../autoflow-domain" }
+axum = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+uuid = { workspace = true }

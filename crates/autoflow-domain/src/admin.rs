@@ -199,6 +199,15 @@ pub struct AdminHeartbeatDelivery {
     pub sent_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminHeartbeatAccepted {
+    pub accepted: bool,
+    pub instance_id: String,
+    pub received_at: DateTime<Utc>,
+    pub message: String,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum AdminEnvelopeKind {

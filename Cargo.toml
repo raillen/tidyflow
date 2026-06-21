@@ -5,6 +5,7 @@ members = [
     "crates/autoflow-application",
     "crates/autoflow-infrastructure",
     "crates/autoflow-core",
+    "crates/autoflow-admin-server",
     "apps/desktop/src-tauri",
 ]
 
@@ -31,6 +32,8 @@ blake3 = "1"
 globset = "0.4"
 regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+axum = { version = "0.8", features = ["json"] }
+tower = { version = "0.5", features = ["util"] }
 zip = { version = "2", default-features = false, features = ["deflate", "aes-crypto", "time"] }
 keyring = "3"
 chrono-tz = "0.10"
