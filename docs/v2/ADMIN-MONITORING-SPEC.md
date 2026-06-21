@@ -97,8 +97,11 @@ Endpoints implementados:
 ```text
 GET /health
 GET /api/fleet
+POST /api/enrollments
 POST /api/agents/{instanceId}/heartbeat
 ```
+
+O endpoint de matricula recebe `AdminEnrollmentTokenRequest`, valida o token de convite e cadastra o segredo inicial enviado pelo agent.
 
 O endpoint de heartbeat recebe `AdminSignedEnvelope<AdminHeartbeatPayload>` e valida:
 
@@ -134,6 +137,7 @@ Variaveis de configuracao:
 ```text
 AUTOFLOW_ADMIN_BIND=127.0.0.1:7840
 AUTOFLOW_ADMIN_DB=autoflow-admin.sqlite
+AUTOFLOW_ADMIN_ENROLLMENT_TOKEN=convite-temporario
 AUTOFLOW_ADMIN_BOOTSTRAP_INSTANCE_ID=local-...
 AUTOFLOW_ADMIN_BOOTSTRAP_SECRET=af_...
 ```
@@ -222,7 +226,7 @@ Admin Web
 
 ## Próximos cortes
 
-1. Implementar matricula por token/convite e rotacao de segredo do agent.
+1. Implementar rotacao de segredo do agent.
 2. Automatizar sincronizacao periodica do heartbeat assinado.
 3. Adicionar grupos de maquinas e acoes em lote multi-instancia.
 4. Adicionar RBAC e auditoria central.

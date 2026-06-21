@@ -1,11 +1,12 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
 };
 
 use autoflow_domain::{
-    AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary, AdminHeartbeatAccepted,
-    AdminHeartbeatPayload, AdminInstanceSnapshot, AdminSignedEnvelope,
+    AdminEnrollmentResponse, AdminEnrollmentTokenRequest, AdminEnvelopeKind, AdminFleetSnapshot,
+    AdminFleetSummary, AdminHeartbeatAccepted, AdminHeartbeatPayload, AdminInstanceSnapshot,
+    AdminSignedEnvelope,
 };
 use axum::{
     extract::{Path, State},
@@ -40,6 +41,7 @@ impl AdminServerHealth {
 #[derive(Clone)]
 pub struct AdminServerState {
     storage: AdminServerStorage,
+    enrollment_tokens: Arc<RwLock<HashSet<String>>>,
 }
 
 #[derive(Default)]
@@ -63,6 +65,7 @@ impl Default for AdminServerState {
     fn default() -> Self {
         Self {
             storage: AdminServerStorage::Memory(Arc::new(MemoryAdminServerStore::default())),
+            enrollment_tokens: Arc::new(RwLock::new(HashSet::new())),
         }
     }
 }
@@ -76,7 +79,21 @@ impl AdminServerState {
         let store = SqliteAdminServerStore::new(pool).await?;
         Ok(Self {
             storage: AdminServerStorage::Sqlite(store),
+            enrollment_tokens: Arc::new(RwLock::new(HashSet::new())),
         })
+    }
+
+    pub fn register_enrollment_token(
+        &self,
+        token: impl Into<String>,
+    ) -> Result<(), AdminServerError> {
+        let token = normalize_required_secret(token, AdminServerError::MissingEnrollmentToken)?;
+        let mut tokens = self
+            .enrollment_tokens
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        tokens.insert(token);
+        Ok(())
     }
 
     pub async fn register_agent_secret(
@@ -92,6 +109,35 @@ impl AdminServerState {
                 store.register_agent_secret(&instance_id, &secret).await
             }
         }
+    }
+
+    pub async fn enroll_agent(
+        &self,
+        request: AdminEnrollmentTokenRequest,
+    ) -> Result<AdminEnrollmentResponse, AdminServerError> {
+        let token =
+            normalize_required_secret(request.token, AdminServerError::MissingEnrollmentToken)?;
+        self.ensure_enrollment_token(&token)?;
+
+        let instance_id = normalize_instance_id(&request.instance.instance_id)?;
+        let agent_secret =
+            normalize_required_secret(request.agent_secret, AdminServerError::MissingAgentSecret)?;
+
+        self.register_agent_secret(instance_id.clone(), agent_secret)
+            .await?;
+
+        let now = Utc::now();
+        let mut instance = request.instance;
+        instance.instance_id = instance_id.clone();
+        instance.last_seen_at = now;
+        self.save_instance(&instance).await?;
+
+        Ok(AdminEnrollmentResponse {
+            accepted: true,
+            instance_id,
+            issued_at: now,
+            message: "Agent matriculado".into(),
+        })
     }
 
     pub async fn fleet_snapshot(&self) -> Result<AdminFleetSnapshot, AdminServerError> {
@@ -169,6 +215,22 @@ impl AdminServerState {
             AdminServerStorage::Memory(store) => store.list_instances(),
             AdminServerStorage::Sqlite(store) => store.list_instances().await,
         }
+    }
+
+    fn ensure_enrollment_token(&self, token: &str) -> Result<(), AdminServerError> {
+        let tokens = self
+            .enrollment_tokens
+            .read()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+
+        if tokens.is_empty() {
+            return Err(AdminServerError::EnrollmentNotConfigured);
+        }
+        if !tokens.contains(token) {
+            return Err(AdminServerError::InvalidEnrollmentToken);
+        }
+
+        Ok(())
     }
 }
 
@@ -321,23 +383,36 @@ fn normalize_agent_secret(
     instance_id: impl Into<String>,
     secret: impl Into<String>,
 ) -> Result<(String, String), AdminServerError> {
-    let instance_id = instance_id.into().trim().to_string();
-    let secret = secret.into().trim().to_string();
+    let instance_id = normalize_instance_id(&instance_id.into())?;
+    let secret = normalize_required_secret(secret, AdminServerError::MissingAgentSecret)?;
 
+    Ok((instance_id, secret))
+}
+
+fn normalize_instance_id(instance_id: &str) -> Result<String, AdminServerError> {
+    let instance_id = instance_id.trim().to_string();
     if instance_id.is_empty() {
         return Err(AdminServerError::MissingInstanceId);
     }
-    if secret.is_empty() {
-        return Err(AdminServerError::MissingAgentSecret);
-    }
+    Ok(instance_id)
+}
 
-    Ok((instance_id, secret))
+fn normalize_required_secret(
+    secret: impl Into<String>,
+    missing_error: AdminServerError,
+) -> Result<String, AdminServerError> {
+    let secret = secret.into().trim().to_string();
+    if secret.is_empty() {
+        return Err(missing_error);
+    }
+    Ok(secret)
 }
 
 pub fn router(state: AdminServerState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/api/fleet", get(fleet_snapshot))
+        .route("/api/enrollments", post(enroll_agent))
         .route(
             "/api/agents/{instance_id}/heartbeat",
             post(receive_heartbeat),
@@ -355,6 +430,14 @@ async fn fleet_snapshot(
     Ok(Json(state.fleet_snapshot().await?))
 }
 
+async fn enroll_agent(
+    State(state): State<AdminServerState>,
+    Json(request): Json<AdminEnrollmentTokenRequest>,
+) -> Result<(StatusCode, Json<AdminEnrollmentResponse>), AdminServerError> {
+    let response = state.enroll_agent(request).await?;
+    Ok((StatusCode::CREATED, Json(response)))
+}
+
 async fn receive_heartbeat(
     State(state): State<AdminServerState>,
     Path(instance_id): Path<String>,
@@ -370,6 +453,12 @@ pub enum AdminServerError {
     MissingInstanceId,
     #[error("agent secret is required")]
     MissingAgentSecret,
+    #[error("enrollment token is required")]
+    MissingEnrollmentToken,
+    #[error("enrollment token is not configured")]
+    EnrollmentNotConfigured,
+    #[error("enrollment token is invalid")]
+    InvalidEnrollmentToken,
     #[error("agent is not registered: {0}")]
     AgentNotRegistered(String),
     #[error("envelope kind must be heartbeat")]
@@ -407,13 +496,16 @@ impl AdminServerError {
         match self {
             Self::MissingInstanceId
             | Self::MissingAgentSecret
+            | Self::MissingEnrollmentToken
             | Self::InvalidEnvelopeKind
             | Self::EnvelopeInstanceMismatch
             | Self::PayloadInstanceMismatch
             | Self::ExpiredEnvelope
             | Self::EnvelopeValidation(_) => StatusCode::BAD_REQUEST,
             Self::AgentNotRegistered(_) => StatusCode::NOT_FOUND,
-            Self::InvalidSignature => StatusCode::UNAUTHORIZED,
+            Self::EnrollmentNotConfigured
+            | Self::InvalidEnrollmentToken
+            | Self::InvalidSignature => StatusCode::UNAUTHORIZED,
             Self::Database(_) | Self::StateUnavailable => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -422,6 +514,9 @@ impl AdminServerError {
         match self {
             Self::MissingInstanceId => "missingInstanceId",
             Self::MissingAgentSecret => "missingAgentSecret",
+            Self::MissingEnrollmentToken => "missingEnrollmentToken",
+            Self::EnrollmentNotConfigured => "enrollmentNotConfigured",
+            Self::InvalidEnrollmentToken => "invalidEnrollmentToken",
             Self::AgentNotRegistered(_) => "agentNotRegistered",
             Self::InvalidEnvelopeKind => "invalidEnvelopeKind",
             Self::EnvelopeInstanceMismatch => "envelopeInstanceMismatch",
@@ -458,8 +553,9 @@ impl IntoResponse for AdminServerError {
 mod tests {
     use super::*;
     use autoflow_domain::{
-        AdminAgentMode, AdminHardwareProfile, AdminInstanceStatus, AdminJobRuntimeStatus,
-        AdminManagedJob, AdminManagementProfile, AdminNetworkProfile, JobMode,
+        AdminAgentMode, AdminEnrollmentTokenRequest, AdminHardwareProfile, AdminInstanceStatus,
+        AdminJobRuntimeStatus, AdminManagedJob, AdminManagementProfile, AdminNetworkProfile,
+        JobMode,
     };
     use axum::{body::Body, http::Request};
     use sqlx::sqlite::SqlitePoolOptions;
@@ -615,6 +711,62 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn enrolls_agent_with_valid_token() {
+        let state = AdminServerState::new();
+        state.register_enrollment_token("invite-token").unwrap();
+        let app = router(state.clone());
+        let request = enrollment_request("invite-token", "local-1", "shared-secret");
+
+        let response = app
+            .oneshot(json_post(
+                "/api/enrollments",
+                serde_json::to_vec(&request).unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let accepted = parse_body::<AdminEnrollmentResponse>(response).await;
+        assert!(accepted.accepted);
+        assert_eq!(accepted.instance_id, "local-1");
+
+        let snapshot = state.fleet_snapshot().await.unwrap();
+        assert_eq!(snapshot.summary.total_instances, 1);
+
+        state
+            .receive_heartbeat("local-1", signed_heartbeat("local-1", "shared-secret", 300))
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn rejects_enrollment_with_invalid_token() {
+        let state = AdminServerState::new();
+        state.register_enrollment_token("invite-token").unwrap();
+        let app = router(state.clone());
+        let request = enrollment_request("wrong-token", "local-1", "shared-secret");
+
+        let response = app
+            .oneshot(json_post(
+                "/api/enrollments",
+                serde_json::to_vec(&request).unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            state
+                .fleet_snapshot()
+                .await
+                .unwrap()
+                .summary
+                .total_instances,
+            0
+        );
+    }
+
+    #[tokio::test]
     async fn sqlite_state_persists_agent_snapshot() {
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
@@ -639,6 +791,19 @@ mod tests {
 
         assert_eq!(snapshot.summary.total_instances, 1);
         assert_eq!(snapshot.instances[0].instance_id, "local-1");
+    }
+
+    fn enrollment_request(
+        token: &str,
+        instance_id: &str,
+        agent_secret: &str,
+    ) -> AdminEnrollmentTokenRequest {
+        AdminEnrollmentTokenRequest {
+            token: token.into(),
+            instance: sample_instance(instance_id),
+            agent_secret: agent_secret.into(),
+            requested_at: Utc::now(),
+        }
     }
 
     fn signed_heartbeat(

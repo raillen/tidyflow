@@ -19,11 +19,12 @@ pub mod watch;
 pub use admin::{
     AdminCommandCapability, AdminCommandKind, AdminCommandQueueSummary, AdminCommandRequest,
     AdminCommandResult, AdminCommandSupport, AdminCommandTargetResult, AdminCommandTargetStatus,
-    AdminEnrollmentRequest, AdminEnrollmentResponse, AdminEnvelopeKind, AdminFleetSnapshot,
-    AdminFleetSummary, AdminHardwareProfile, AdminHeartbeatAccepted, AdminHeartbeatDelivery,
-    AdminHeartbeatPayload, AdminInstanceSnapshot, AdminInstanceStatus, AdminJobRuntimeStatus,
-    AdminManagedJob, AdminManagementProfile, AdminNetworkInterface, AdminNetworkProfile,
-    AdminQueuedCommand, AdminQueuedCommandStatus, AdminSignedEnvelope,
+    AdminEnrollmentRequest, AdminEnrollmentResponse, AdminEnrollmentTokenRequest,
+    AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary, AdminHardwareProfile,
+    AdminHeartbeatAccepted, AdminHeartbeatDelivery, AdminHeartbeatPayload, AdminInstanceSnapshot,
+    AdminInstanceStatus, AdminJobRuntimeStatus, AdminManagedJob, AdminManagementProfile,
+    AdminNetworkInterface, AdminNetworkProfile, AdminQueuedCommand, AdminQueuedCommandStatus,
+    AdminSignedEnvelope,
 };
 pub use audit::{
     AuditEntry, AuditExport, AuditExportFormat, AuditPage, AuditQuery, AuditStatus, AuditSummary,

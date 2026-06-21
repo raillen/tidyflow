@@ -17,6 +17,10 @@ async fn main() -> Result<(), AdminServerCliError> {
     let pool = open_pool(&config.database_path).await?;
     let state = AdminServerState::with_sqlite_pool(pool).await?;
 
+    if let Some(enrollment_token) = config.enrollment_token {
+        state.register_enrollment_token(enrollment_token)?;
+    }
+
     if let Some(bootstrap) = config.bootstrap_agent {
         state
             .register_agent_secret(bootstrap.instance_id, bootstrap.secret)
@@ -33,14 +37,13 @@ async fn main() -> Result<(), AdminServerCliError> {
     Ok(())
 }
 
-#[derive(Debug)]
 struct AdminServerConfig {
     bind_addr: SocketAddr,
     database_path: PathBuf,
+    enrollment_token: Option<String>,
     bootstrap_agent: Option<BootstrapAgent>,
 }
 
-#[derive(Debug)]
 struct BootstrapAgent {
     instance_id: String,
     secret: String,
@@ -55,11 +58,13 @@ impl AdminServerConfig {
         let database_path = env::var("AUTOFLOW_ADMIN_DB")
             .unwrap_or_else(|_| DEFAULT_DATABASE_PATH.into())
             .into();
+        let enrollment_token = optional_env("AUTOFLOW_ADMIN_ENROLLMENT_TOKEN");
         let bootstrap_agent = bootstrap_agent_from_env()?;
 
         Ok(Self {
             bind_addr,
             database_path,
+            enrollment_token,
             bootstrap_agent,
         })
     }

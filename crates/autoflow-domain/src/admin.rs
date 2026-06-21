@@ -172,6 +172,26 @@ pub struct AdminEnrollmentRequest {
     pub requested_at: DateTime<Utc>,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminEnrollmentTokenRequest {
+    pub token: String,
+    pub instance: AdminInstanceSnapshot,
+    pub agent_secret: String,
+    pub requested_at: DateTime<Utc>,
+}
+
+impl std::fmt::Debug for AdminEnrollmentTokenRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AdminEnrollmentTokenRequest")
+            .field("token", &"<redacted>")
+            .field("instance", &self.instance)
+            .field("agent_secret", &"<redacted>")
+            .field("requested_at", &self.requested_at)
+            .finish()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminEnrollmentResponse {
