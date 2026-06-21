@@ -85,7 +85,12 @@ O painel local ja consegue enfileirar comandos e processar o proximo pendente. N
 
 O crate `autoflow-admin-server` inicia a base HTTP do painel central.
 
-Nesta etapa ele roda com estado em memoria. Isso permite validar o contrato entre agent e servidor antes de fixar banco central, RBAC e deployment web.
+Nesta etapa ele pode rodar de duas formas:
+
+- estado em memoria para testes rapidos;
+- SQLite para persistir agents cadastrados e o ultimo snapshot recebido.
+
+Isso permite validar o contrato entre agent e servidor antes de fixar RBAC, deployment web e o painel central completo.
 
 Endpoints implementados:
 
@@ -107,6 +112,16 @@ O endpoint de heartbeat recebe `AdminSignedEnvelope<AdminHeartbeatPayload>` e va
 Quando o heartbeat e aceito, o servidor atualiza o ultimo snapshot da instancia e retorna `AdminHeartbeatAccepted`.
 
 O cadastro de segredo do agent existe como metodo interno do estado do servidor. Ele ainda nao foi exposto por HTTP porque matricula por token/convite precisa de autenticacao propria.
+
+No backend SQLite, a tabela `admin_agents` guarda:
+
+- `instance_id`;
+- segredo do agent;
+- ultimo snapshot recebido;
+- primeira data de cadastro;
+- ultima data vista pelo servidor.
+
+Antes de producao, o segredo central deve migrar para cofre, KMS ou criptografia em repouso.
 
 ## Dados por instância
 
@@ -190,7 +205,7 @@ Admin Web
 
 ## Próximos cortes
 
-1. Persistir o servidor admin em banco central e carregar segredos cadastrados.
+1. Criar binario/servico do servidor admin com configuracao de bind e banco.
 2. Implementar matricula por token/convite e rotacao de segredo do agent.
 3. Automatizar sincronizacao periodica do heartbeat assinado.
 4. Adicionar grupos de maquinas e acoes em lote multi-instancia.
