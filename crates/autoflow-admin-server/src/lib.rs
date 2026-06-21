@@ -4,9 +4,12 @@ use std::{
 };
 
 use autoflow_domain::{
-    AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminEnrollmentResponse,
-    AdminEnrollmentTokenRequest, AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary,
-    AdminHeartbeatAccepted, AdminHeartbeatPayload, AdminInstanceSnapshot, AdminSignedEnvelope,
+    AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminBatchCommandAccepted,
+    AdminBatchCommandRequest, AdminCommandResult, AdminCommandTargetResult,
+    AdminCommandTargetStatus, AdminEnrollmentResponse, AdminEnrollmentTokenRequest,
+    AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary, AdminHeartbeatAccepted,
+    AdminHeartbeatPayload, AdminInstanceSnapshot, AdminMachineGroup, AdminMachineGroupRequest,
+    AdminQueuedCommand, AdminQueuedCommandStatus, AdminSignedEnvelope,
 };
 use axum::{
     extract::{Path, State},
@@ -19,6 +22,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -48,6 +52,8 @@ pub struct AdminServerState {
 struct MemoryAdminServerStore {
     instances: RwLock<HashMap<String, AdminInstanceSnapshot>>,
     agent_secrets: RwLock<HashMap<String, String>>,
+    machine_groups: RwLock<HashMap<Uuid, AdminMachineGroup>>,
+    command_queue: RwLock<HashMap<Uuid, AdminQueuedCommand>>,
 }
 
 #[derive(Clone)]
@@ -149,6 +155,82 @@ impl AdminServerState {
             summary: AdminFleetSummary::from_instances(&instances),
             instances,
         })
+    }
+
+    pub async fn create_machine_group(
+        &self,
+        request: AdminMachineGroupRequest,
+    ) -> Result<AdminMachineGroup, AdminServerError> {
+        let now = Utc::now();
+        let group = AdminMachineGroup {
+            id: Uuid::new_v4(),
+            name: normalize_group_name(request.name)?,
+            description: request
+                .description
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty()),
+            instance_ids: normalize_instance_ids(request.instance_ids),
+            created_at: now,
+            updated_at: now,
+        };
+
+        self.save_machine_group(&group).await?;
+        Ok(group)
+    }
+
+    pub async fn list_machine_groups(&self) -> Result<Vec<AdminMachineGroup>, AdminServerError> {
+        let mut groups = match &self.storage {
+            AdminServerStorage::Memory(store) => store.list_machine_groups(),
+            AdminServerStorage::Sqlite(store) => store.list_machine_groups().await,
+        }?;
+        groups.sort_by(|left, right| left.name.cmp(&right.name));
+        Ok(groups)
+    }
+
+    pub async fn enqueue_batch_command(
+        &self,
+        request: AdminBatchCommandRequest,
+    ) -> Result<AdminBatchCommandAccepted, AdminServerError> {
+        let target_instance_ids = self.resolve_batch_targets(&request).await?;
+        if target_instance_ids.is_empty() {
+            return Err(AdminServerError::NoBatchTargets);
+        }
+
+        let now = Utc::now();
+        let mut command_request = request.request;
+        command_request.target_instance_ids = target_instance_ids.clone();
+        let result = queued_batch_result(&command_request, &target_instance_ids);
+        let command = AdminQueuedCommand {
+            id: Uuid::new_v4(),
+            source: request
+                .source
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "admin-server".into()),
+            request: command_request,
+            status: AdminQueuedCommandStatus::Pending,
+            result: None,
+            created_at: now,
+            updated_at: now,
+        };
+
+        self.save_queued_command(&command).await?;
+
+        Ok(AdminBatchCommandAccepted {
+            accepted: true,
+            resolved_target_instance_ids: target_instance_ids,
+            command,
+            result,
+        })
+    }
+
+    pub async fn list_queued_commands(&self) -> Result<Vec<AdminQueuedCommand>, AdminServerError> {
+        let mut commands = match &self.storage {
+            AdminServerStorage::Memory(store) => store.list_queued_commands(),
+            AdminServerStorage::Sqlite(store) => store.list_queued_commands().await,
+        }?;
+        commands.sort_by_key(|command| std::cmp::Reverse(command.created_at));
+        Ok(commands)
     }
 
     pub async fn receive_heartbeat(
@@ -261,6 +343,41 @@ impl AdminServerState {
         }
     }
 
+    async fn save_machine_group(&self, group: &AdminMachineGroup) -> Result<(), AdminServerError> {
+        match &self.storage {
+            AdminServerStorage::Memory(store) => store.save_machine_group(group),
+            AdminServerStorage::Sqlite(store) => store.save_machine_group(group).await,
+        }
+    }
+
+    async fn save_queued_command(
+        &self,
+        command: &AdminQueuedCommand,
+    ) -> Result<(), AdminServerError> {
+        match &self.storage {
+            AdminServerStorage::Memory(store) => store.save_queued_command(command),
+            AdminServerStorage::Sqlite(store) => store.save_queued_command(command).await,
+        }
+    }
+
+    async fn resolve_batch_targets(
+        &self,
+        request: &AdminBatchCommandRequest,
+    ) -> Result<Vec<String>, AdminServerError> {
+        let mut target_ids = normalize_instance_ids(request.request.target_instance_ids.clone());
+        let groups = self.list_machine_groups().await?;
+
+        for group_id in &request.group_ids {
+            let group = groups
+                .iter()
+                .find(|group| group.id == *group_id)
+                .ok_or(AdminServerError::MachineGroupNotFound(*group_id))?;
+            target_ids.extend(group.instance_ids.iter().cloned());
+        }
+
+        Ok(normalize_instance_ids(target_ids))
+    }
+
     fn ensure_enrollment_token(&self, token: &str) -> Result<(), AdminServerError> {
         let tokens = self
             .enrollment_tokens
@@ -320,6 +437,40 @@ impl MemoryAdminServerStore {
             .cloned()
             .ok_or_else(|| AdminServerError::AgentNotRegistered(instance_id.into()))
     }
+
+    fn save_machine_group(&self, group: &AdminMachineGroup) -> Result<(), AdminServerError> {
+        let mut groups = self
+            .machine_groups
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        groups.insert(group.id, group.clone());
+        Ok(())
+    }
+
+    fn list_machine_groups(&self) -> Result<Vec<AdminMachineGroup>, AdminServerError> {
+        let groups = self
+            .machine_groups
+            .read()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        Ok(groups.values().cloned().collect())
+    }
+
+    fn save_queued_command(&self, command: &AdminQueuedCommand) -> Result<(), AdminServerError> {
+        let mut commands = self
+            .command_queue
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        commands.insert(command.id, command.clone());
+        Ok(())
+    }
+
+    fn list_queued_commands(&self) -> Result<Vec<AdminQueuedCommand>, AdminServerError> {
+        let commands = self
+            .command_queue
+            .read()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        Ok(commands.values().cloned().collect())
+    }
 }
 
 impl SqliteAdminServerStore {
@@ -337,6 +488,29 @@ impl SqliteAdminServerStore {
                 snapshot_payload TEXT,
                 first_seen_at TEXT NOT NULL,
                 last_seen_at TEXT
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS admin_machine_groups (
+                id TEXT PRIMARY KEY NOT NULL,
+                payload TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS admin_server_commands (
+                id TEXT PRIMARY KEY NOT NULL,
+                source TEXT NOT NULL,
+                request_payload TEXT NOT NULL,
+                status TEXT NOT NULL,
+                result_payload TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             )",
         )
         .execute(&self.pool)
@@ -421,6 +595,120 @@ impl SqliteAdminServerStore {
             })
             .collect()
     }
+
+    async fn save_machine_group(&self, group: &AdminMachineGroup) -> Result<(), AdminServerError> {
+        let payload = serde_json::to_string(group)
+            .map_err(|error| AdminServerError::Database(error.to_string()))?;
+        sqlx::query(
+            "INSERT INTO admin_machine_groups
+                (id, payload, created_at, updated_at)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+                payload = excluded.payload,
+                updated_at = excluded.updated_at",
+        )
+        .bind(group.id.to_string())
+        .bind(payload)
+        .bind(group.created_at.to_rfc3339())
+        .bind(group.updated_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn list_machine_groups(&self) -> Result<Vec<AdminMachineGroup>, AdminServerError> {
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT payload
+             FROM admin_machine_groups
+             ORDER BY updated_at DESC",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|(payload,)| {
+                serde_json::from_str(&payload)
+                    .map_err(|error| AdminServerError::Database(error.to_string()))
+            })
+            .collect()
+    }
+
+    async fn save_queued_command(
+        &self,
+        command: &AdminQueuedCommand,
+    ) -> Result<(), AdminServerError> {
+        let request_payload = serde_json::to_string(&command.request)
+            .map_err(|error| AdminServerError::Database(error.to_string()))?;
+        let result_payload = command
+            .result
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()
+            .map_err(|error| AdminServerError::Database(error.to_string()))?;
+
+        sqlx::query(
+            "INSERT INTO admin_server_commands
+                (id, source, request_payload, status, result_payload, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(command.id.to_string())
+        .bind(&command.source)
+        .bind(request_payload)
+        .bind(command_status_to_wire(command.status))
+        .bind(result_payload)
+        .bind(command.created_at.to_rfc3339())
+        .bind(command.updated_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn list_queued_commands(&self) -> Result<Vec<AdminQueuedCommand>, AdminServerError> {
+        let rows: Vec<AdminQueuedCommandRow> = sqlx::query_as(
+            "SELECT id, source, request_payload, status, result_payload, created_at, updated_at
+             FROM admin_server_commands
+             ORDER BY created_at DESC
+             LIMIT 500",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter().map(AdminQueuedCommand::try_from).collect()
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct AdminQueuedCommandRow {
+    id: String,
+    source: String,
+    request_payload: String,
+    status: String,
+    result_payload: Option<String>,
+    created_at: String,
+    updated_at: String,
+}
+
+impl TryFrom<AdminQueuedCommandRow> for AdminQueuedCommand {
+    type Error = AdminServerError;
+
+    fn try_from(row: AdminQueuedCommandRow) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: Uuid::parse_str(&row.id)
+                .map_err(|error| AdminServerError::Database(error.to_string()))?,
+            source: row.source,
+            request: serde_json::from_str(&row.request_payload)
+                .map_err(|error| AdminServerError::Database(error.to_string()))?,
+            status: command_status_from_wire(&row.status)?,
+            result: row
+                .result_payload
+                .as_deref()
+                .map(serde_json::from_str)
+                .transpose()
+                .map_err(|error| AdminServerError::Database(error.to_string()))?,
+            created_at: parse_datetime(&row.created_at)?,
+            updated_at: parse_datetime(&row.updated_at)?,
+        })
+    }
 }
 
 fn normalize_agent_secret(
@@ -431,6 +719,14 @@ fn normalize_agent_secret(
     let secret = normalize_required_secret(secret, AdminServerError::MissingAgentSecret)?;
 
     Ok((instance_id, secret))
+}
+
+fn normalize_group_name(name: String) -> Result<String, AdminServerError> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err(AdminServerError::MissingMachineGroupName);
+    }
+    Ok(name)
 }
 
 fn normalize_instance_id(instance_id: &str) -> Result<String, AdminServerError> {
@@ -452,10 +748,75 @@ fn normalize_required_secret(
     Ok(secret)
 }
 
+fn normalize_instance_ids(instance_ids: Vec<String>) -> Vec<String> {
+    let mut normalized = Vec::new();
+    for instance_id in instance_ids {
+        let instance_id = instance_id.trim().to_string();
+        if instance_id.is_empty() || normalized.contains(&instance_id) {
+            continue;
+        }
+        normalized.push(instance_id);
+    }
+    normalized
+}
+
+fn queued_batch_result(
+    request: &autoflow_domain::AdminCommandRequest,
+    target_instance_ids: &[String],
+) -> AdminCommandResult {
+    AdminCommandResult {
+        accepted: true,
+        command: request.kind,
+        results: target_instance_ids
+            .iter()
+            .map(|target_instance_id| AdminCommandTargetResult {
+                target_instance_id: target_instance_id.clone(),
+                status: AdminCommandTargetStatus::Accepted,
+                message: "Comando enfileirado no servidor admin".into(),
+            })
+            .collect(),
+    }
+}
+
+fn command_status_to_wire(status: AdminQueuedCommandStatus) -> &'static str {
+    match status {
+        AdminQueuedCommandStatus::Pending => "pending",
+        AdminQueuedCommandStatus::Running => "running",
+        AdminQueuedCommandStatus::Completed => "completed",
+        AdminQueuedCommandStatus::Failed => "failed",
+        AdminQueuedCommandStatus::Skipped => "skipped",
+    }
+}
+
+fn command_status_from_wire(status: &str) -> Result<AdminQueuedCommandStatus, AdminServerError> {
+    match status {
+        "pending" => Ok(AdminQueuedCommandStatus::Pending),
+        "running" => Ok(AdminQueuedCommandStatus::Running),
+        "completed" => Ok(AdminQueuedCommandStatus::Completed),
+        "failed" => Ok(AdminQueuedCommandStatus::Failed),
+        "skipped" => Ok(AdminQueuedCommandStatus::Skipped),
+        other => Err(AdminServerError::Database(format!(
+            "unknown admin command status: {other}"
+        ))),
+    }
+}
+
+fn parse_datetime(raw: &str) -> Result<chrono::DateTime<Utc>, AdminServerError> {
+    chrono::DateTime::parse_from_rfc3339(raw)
+        .map(|value| value.with_timezone(&Utc))
+        .map_err(|error| AdminServerError::Database(error.to_string()))
+}
+
 pub fn router(state: AdminServerState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/api/fleet", get(fleet_snapshot))
+        .route(
+            "/api/machine-groups",
+            get(list_machine_groups).post(create_machine_group),
+        )
+        .route("/api/admin-commands", get(list_queued_commands))
+        .route("/api/admin-commands/batch", post(enqueue_batch_command))
         .route("/api/enrollments", post(enroll_agent))
         .route(
             "/api/agents/{instance_id}/heartbeat",
@@ -476,6 +837,34 @@ async fn fleet_snapshot(
     State(state): State<AdminServerState>,
 ) -> Result<Json<AdminFleetSnapshot>, AdminServerError> {
     Ok(Json(state.fleet_snapshot().await?))
+}
+
+async fn list_machine_groups(
+    State(state): State<AdminServerState>,
+) -> Result<Json<Vec<AdminMachineGroup>>, AdminServerError> {
+    Ok(Json(state.list_machine_groups().await?))
+}
+
+async fn create_machine_group(
+    State(state): State<AdminServerState>,
+    Json(request): Json<AdminMachineGroupRequest>,
+) -> Result<(StatusCode, Json<AdminMachineGroup>), AdminServerError> {
+    let group = state.create_machine_group(request).await?;
+    Ok((StatusCode::CREATED, Json(group)))
+}
+
+async fn enqueue_batch_command(
+    State(state): State<AdminServerState>,
+    Json(request): Json<AdminBatchCommandRequest>,
+) -> Result<(StatusCode, Json<AdminBatchCommandAccepted>), AdminServerError> {
+    let accepted = state.enqueue_batch_command(request).await?;
+    Ok((StatusCode::ACCEPTED, Json(accepted)))
+}
+
+async fn list_queued_commands(
+    State(state): State<AdminServerState>,
+) -> Result<Json<Vec<AdminQueuedCommand>>, AdminServerError> {
+    Ok(Json(state.list_queued_commands().await?))
 }
 
 async fn enroll_agent(
@@ -518,6 +907,12 @@ pub enum AdminServerError {
     InvalidEnrollmentToken,
     #[error("agent is not registered: {0}")]
     AgentNotRegistered(String),
+    #[error("machine group name is required")]
+    MissingMachineGroupName,
+    #[error("machine group not found: {0}")]
+    MachineGroupNotFound(Uuid),
+    #[error("batch command needs at least one target instance")]
+    NoBatchTargets,
     #[error("envelope kind is not valid for this endpoint")]
     InvalidEnvelopeKind,
     #[error("path instance id does not match envelope instance id")]
@@ -554,12 +949,14 @@ impl AdminServerError {
             Self::MissingInstanceId
             | Self::MissingAgentSecret
             | Self::MissingEnrollmentToken
+            | Self::MissingMachineGroupName
+            | Self::NoBatchTargets
             | Self::InvalidEnvelopeKind
             | Self::EnvelopeInstanceMismatch
             | Self::PayloadInstanceMismatch
             | Self::ExpiredEnvelope
             | Self::EnvelopeValidation(_) => StatusCode::BAD_REQUEST,
-            Self::AgentNotRegistered(_) => StatusCode::NOT_FOUND,
+            Self::AgentNotRegistered(_) | Self::MachineGroupNotFound(_) => StatusCode::NOT_FOUND,
             Self::EnrollmentNotConfigured
             | Self::InvalidEnrollmentToken
             | Self::InvalidSignature => StatusCode::UNAUTHORIZED,
@@ -575,6 +972,9 @@ impl AdminServerError {
             Self::EnrollmentNotConfigured => "enrollmentNotConfigured",
             Self::InvalidEnrollmentToken => "invalidEnrollmentToken",
             Self::AgentNotRegistered(_) => "agentNotRegistered",
+            Self::MissingMachineGroupName => "missingMachineGroupName",
+            Self::MachineGroupNotFound(_) => "machineGroupNotFound",
+            Self::NoBatchTargets => "noBatchTargets",
             Self::InvalidEnvelopeKind => "invalidEnvelopeKind",
             Self::EnvelopeInstanceMismatch => "envelopeInstanceMismatch",
             Self::PayloadInstanceMismatch => "payloadInstanceMismatch",
@@ -610,8 +1010,9 @@ impl IntoResponse for AdminServerError {
 mod tests {
     use super::*;
     use autoflow_domain::{
-        AdminAgentMode, AdminAgentSecretRotationRequest, AdminEnrollmentTokenRequest,
-        AdminHardwareProfile, AdminInstanceStatus, AdminJobRuntimeStatus, AdminManagedJob,
+        AdminAgentMode, AdminAgentSecretRotationRequest, AdminBatchCommandRequest,
+        AdminCommandKind, AdminCommandRequest, AdminEnrollmentTokenRequest, AdminHardwareProfile,
+        AdminInstanceStatus, AdminJobRuntimeStatus, AdminMachineGroupRequest, AdminManagedJob,
         AdminManagementProfile, AdminNetworkProfile, JobMode,
     };
     use axum::{body::Body, http::Request};
@@ -797,6 +1198,86 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn creates_group_and_enqueues_batch_command() {
+        let state = AdminServerState::new();
+        let app = router(state.clone());
+        let group_request =
+            machine_group_request("Financeiro", vec!["local-1", "local-2", "local-1"]);
+
+        let group_response = app
+            .clone()
+            .oneshot(json_post(
+                "/api/machine-groups",
+                serde_json::to_vec(&group_request).unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(group_response.status(), StatusCode::CREATED);
+        let group = parse_body::<AdminMachineGroup>(group_response).await;
+        assert_eq!(group.instance_ids, vec!["local-1", "local-2"]);
+
+        let batch_response = app
+            .clone()
+            .oneshot(json_post(
+                "/api/admin-commands/batch",
+                serde_json::to_vec(&batch_request(group.id, vec!["local-3"])).unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(batch_response.status(), StatusCode::ACCEPTED);
+        let accepted = parse_body::<AdminBatchCommandAccepted>(batch_response).await;
+        assert_eq!(
+            accepted.resolved_target_instance_ids,
+            vec!["local-3", "local-1", "local-2"]
+        );
+        assert_eq!(accepted.command.status, AdminQueuedCommandStatus::Pending);
+        assert!(accepted.result.accepted);
+
+        let commands_response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/admin-commands")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let commands = parse_body::<Vec<AdminQueuedCommand>>(commands_response).await;
+
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].request.target_instance_ids.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn rejects_batch_command_without_targets() {
+        let state = AdminServerState::new();
+        let app = router(state);
+        let request = AdminBatchCommandRequest {
+            request: AdminCommandRequest {
+                kind: AdminCommandKind::RequestLogs,
+                target_instance_ids: Vec::new(),
+                job_ids: Vec::new(),
+                execution_ids: Vec::new(),
+                reason: None,
+            },
+            group_ids: Vec::new(),
+            source: Some("test".into()),
+        };
+
+        let response = app
+            .oneshot(json_post(
+                "/api/admin-commands/batch",
+                serde_json::to_vec(&request).unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
     async fn rejects_enrollment_with_invalid_token() {
         let state = AdminServerState::new();
         state.register_enrollment_token("invite-token").unwrap();
@@ -851,6 +1332,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn sqlite_state_persists_groups_and_batch_commands() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let state = AdminServerState::with_sqlite_pool(pool.clone())
+            .await
+            .unwrap();
+        let group = state
+            .create_machine_group(machine_group_request("Operacao", vec!["local-1"]))
+            .await
+            .unwrap();
+        state
+            .enqueue_batch_command(batch_request(group.id, vec!["local-2"]))
+            .await
+            .unwrap();
+
+        let restored = AdminServerState::with_sqlite_pool(pool).await.unwrap();
+        let groups = restored.list_machine_groups().await.unwrap();
+        let commands = restored.list_queued_commands().await.unwrap();
+
+        assert_eq!(groups.len(), 1);
+        assert_eq!(commands.len(), 1);
+        assert_eq!(
+            commands[0].request.target_instance_ids,
+            vec!["local-2", "local-1"]
+        );
+    }
+
+    #[tokio::test]
     async fn rotates_agent_secret_with_signed_request() {
         let state = AdminServerState::new();
         state
@@ -895,6 +1407,31 @@ mod tests {
             instance: sample_instance(instance_id),
             agent_secret: agent_secret.into(),
             requested_at: Utc::now(),
+        }
+    }
+
+    fn machine_group_request(name: &str, instance_ids: Vec<&str>) -> AdminMachineGroupRequest {
+        AdminMachineGroupRequest {
+            name: name.into(),
+            description: None,
+            instance_ids: instance_ids.into_iter().map(str::to_string).collect(),
+        }
+    }
+
+    fn batch_request(group_id: Uuid, target_instance_ids: Vec<&str>) -> AdminBatchCommandRequest {
+        AdminBatchCommandRequest {
+            request: AdminCommandRequest {
+                kind: AdminCommandKind::RequestLogs,
+                target_instance_ids: target_instance_ids
+                    .into_iter()
+                    .map(str::to_string)
+                    .collect(),
+                job_ids: Vec::new(),
+                execution_ids: Vec::new(),
+                reason: Some("auditoria".into()),
+            },
+            group_ids: vec![group_id],
+            source: Some("test".into()),
         }
     }
 

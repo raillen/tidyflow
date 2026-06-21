@@ -98,6 +98,21 @@ export const adminFleetSnapshotSchema = z.object({
   instances: z.array(adminInstanceSnapshotSchema),
 });
 
+export const adminMachineGroupSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  instanceIds: z.array(z.string()),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const adminMachineGroupRequestSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().nullable().optional(),
+  instanceIds: z.array(z.string()).default([]),
+});
+
 export const adminEnrollmentRequestSchema = z.object({
   instance: adminInstanceSnapshotSchema,
   requestedAt: z.string().datetime(),
@@ -175,6 +190,12 @@ export const adminCommandRequestSchema = z.object({
   reason: z.string().nullable().optional(),
 });
 
+export const adminBatchCommandRequestSchema = z.object({
+  request: adminCommandRequestSchema,
+  groupIds: z.array(z.string().uuid()).default([]),
+  source: z.string().nullable().optional(),
+});
+
 export const adminCommandTargetStatusSchema = z.enum(["accepted", "skipped", "error"]);
 
 export const adminCommandTargetResultSchema = z.object({
@@ -207,6 +228,13 @@ export const adminQueuedCommandSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const adminBatchCommandAcceptedSchema = z.object({
+  accepted: z.boolean(),
+  resolvedTargetInstanceIds: z.array(z.string()),
+  command: adminQueuedCommandSchema,
+  result: adminCommandResultSchema,
+});
+
 export const adminCommandQueueSummarySchema = z.object({
   pending: z.number().int().nonnegative(),
   running: z.number().int().nonnegative(),
@@ -229,6 +257,8 @@ export type AdminManagedJob = z.infer<typeof adminManagedJobSchema>;
 export type AdminInstanceSnapshot = z.infer<typeof adminInstanceSnapshotSchema>;
 export type AdminFleetSummary = z.infer<typeof adminFleetSummarySchema>;
 export type AdminFleetSnapshot = z.infer<typeof adminFleetSnapshotSchema>;
+export type AdminMachineGroup = z.infer<typeof adminMachineGroupSchema>;
+export type AdminMachineGroupRequest = z.infer<typeof adminMachineGroupRequestSchema>;
 export type AdminEnrollmentRequest = z.infer<typeof adminEnrollmentRequestSchema>;
 export type AdminEnrollmentTokenRequest = z.infer<typeof adminEnrollmentTokenRequestSchema>;
 export type AdminEnrollmentResponse = z.infer<typeof adminEnrollmentResponseSchema>;
@@ -243,9 +273,11 @@ export type AdminSignedSecretRotationEnvelope = z.infer<
   typeof adminSignedSecretRotationEnvelopeSchema
 >;
 export type AdminCommandRequest = z.infer<typeof adminCommandRequestSchema>;
+export type AdminBatchCommandRequest = z.infer<typeof adminBatchCommandRequestSchema>;
 export type AdminCommandResult = z.infer<typeof adminCommandResultSchema>;
 export type AdminQueuedCommandStatus = z.infer<typeof adminQueuedCommandStatusSchema>;
 export type AdminQueuedCommand = z.infer<typeof adminQueuedCommandSchema>;
+export type AdminBatchCommandAccepted = z.infer<typeof adminBatchCommandAcceptedSchema>;
 export type AdminCommandQueueSummary = z.infer<typeof adminCommandQueueSummarySchema>;
 
 export function instanceStatusLabel(status: AdminInstanceStatus): string {

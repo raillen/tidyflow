@@ -17,15 +17,15 @@ pub mod transfer;
 pub mod watch;
 
 pub use admin::{
-    AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminCommandCapability,
-    AdminCommandKind, AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult,
-    AdminCommandSupport, AdminCommandTargetResult, AdminCommandTargetStatus,
-    AdminEnrollmentRequest, AdminEnrollmentResponse, AdminEnrollmentTokenRequest,
-    AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary, AdminHardwareProfile,
-    AdminHeartbeatAccepted, AdminHeartbeatDelivery, AdminHeartbeatPayload, AdminInstanceSnapshot,
-    AdminInstanceStatus, AdminJobRuntimeStatus, AdminManagedJob, AdminManagementProfile,
-    AdminNetworkInterface, AdminNetworkProfile, AdminQueuedCommand, AdminQueuedCommandStatus,
-    AdminSignedEnvelope,
+    AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminBatchCommandAccepted,
+    AdminBatchCommandRequest, AdminCommandCapability, AdminCommandKind, AdminCommandQueueSummary,
+    AdminCommandRequest, AdminCommandResult, AdminCommandSupport, AdminCommandTargetResult,
+    AdminCommandTargetStatus, AdminEnrollmentRequest, AdminEnrollmentResponse,
+    AdminEnrollmentTokenRequest, AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary,
+    AdminHardwareProfile, AdminHeartbeatAccepted, AdminHeartbeatDelivery, AdminHeartbeatPayload,
+    AdminInstanceSnapshot, AdminInstanceStatus, AdminJobRuntimeStatus, AdminMachineGroup,
+    AdminMachineGroupRequest, AdminManagedJob, AdminManagementProfile, AdminNetworkInterface,
+    AdminNetworkProfile, AdminQueuedCommand, AdminQueuedCommandStatus, AdminSignedEnvelope,
 };
 pub use audit::{
     AuditEntry, AuditExport, AuditExportFormat, AuditPage, AuditQuery, AuditStatus, AuditSummary,

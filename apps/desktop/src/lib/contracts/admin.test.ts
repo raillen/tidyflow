@@ -3,9 +3,13 @@ import {
   adminCommandRequestSchema,
   adminCommandResultSchema,
   adminAgentSecretRotationAcceptedSchema,
+  adminBatchCommandAcceptedSchema,
+  adminBatchCommandRequestSchema,
   adminEnrollmentTokenRequestSchema,
   adminHeartbeatDeliverySchema,
   adminHeartbeatPayloadSchema,
+  adminMachineGroupRequestSchema,
+  adminMachineGroupSchema,
   adminQueuedCommandSchema,
   adminSignedHeartbeatEnvelopeSchema,
   adminSignedSecretRotationEnvelopeSchema,
@@ -264,5 +268,65 @@ describe("admin contracts", () => {
         message: "ok",
       }).accepted,
     ).toBe(true);
+  });
+
+  it("accepts machine groups and batch command payloads", () => {
+    const group = adminMachineGroupSchema.parse({
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      name: "Financeiro",
+      description: null,
+      instanceIds: ["local-abc", "local-def"],
+      createdAt: "2026-06-21T10:00:00.000Z",
+      updatedAt: "2026-06-21T10:00:00.000Z",
+    });
+
+    expect(group.instanceIds).toHaveLength(2);
+    expect(
+      adminMachineGroupRequestSchema.parse({
+        name: "Operacao",
+        instanceIds: ["local-abc"],
+      }).name,
+    ).toBe("Operacao");
+
+    const batchRequest = adminBatchCommandRequestSchema.parse({
+      request: {
+        kind: "requestLogs",
+        targetInstanceIds: ["local-direct"],
+        jobIds: [],
+        executionIds: [],
+        reason: "auditoria",
+      },
+      groupIds: [group.id],
+      source: "admin-server",
+    });
+
+    expect(batchRequest.groupIds).toEqual([group.id]);
+
+    const accepted = adminBatchCommandAcceptedSchema.parse({
+      accepted: true,
+      resolvedTargetInstanceIds: ["local-direct", "local-abc", "local-def"],
+      command: {
+        id: "650e8400-e29b-41d4-a716-446655440000",
+        source: "admin-server",
+        request: batchRequest.request,
+        status: "pending",
+        result: null,
+        createdAt: "2026-06-21T10:00:00.000Z",
+        updatedAt: "2026-06-21T10:00:00.000Z",
+      },
+      result: {
+        accepted: true,
+        command: "requestLogs",
+        results: [
+          {
+            targetInstanceId: "local-direct",
+            status: "accepted",
+            message: "queued",
+          },
+        ],
+      },
+    });
+
+    expect(accepted.command.status).toBe("pending");
   });
 });

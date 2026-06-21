@@ -165,6 +165,46 @@ pub struct AdminFleetSnapshot {
     pub instances: Vec<AdminInstanceSnapshot>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminMachineGroup {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub instance_ids: Vec<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminMachineGroupRequest {
+    pub name: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub instance_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminBatchCommandRequest {
+    pub request: AdminCommandRequest,
+    #[serde(default)]
+    pub group_ids: Vec<Uuid>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminBatchCommandAccepted {
+    pub accepted: bool,
+    pub resolved_target_instance_ids: Vec<String>,
+    pub command: AdminQueuedCommand,
+    pub result: AdminCommandResult,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminEnrollmentRequest {

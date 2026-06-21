@@ -99,10 +99,18 @@ Endpoints implementados:
 ```text
 GET /health
 GET /api/fleet
+GET /api/machine-groups
+POST /api/machine-groups
+GET /api/admin-commands
+POST /api/admin-commands/batch
 POST /api/enrollments
 POST /api/agents/{instanceId}/heartbeat
 POST /api/agents/{instanceId}/secret-rotation
 ```
+
+Os endpoints de grupos permitem criar grupos de maquinas por `instanceId` e listar os grupos cadastrados.
+
+O endpoint de lote recebe `AdminBatchCommandRequest`, resolve alvos diretos e grupos, remove duplicados e grava um `AdminQueuedCommand` pendente no servidor central. A entrega do comando para cada agent fica para o proximo corte de fila remota.
 
 O endpoint de matricula recebe `AdminEnrollmentTokenRequest`, valida o token de convite e cadastra o segredo inicial enviado pelo agent.
 
@@ -231,6 +239,6 @@ Admin Web
 
 ## Próximos cortes
 
-1. Adicionar grupos de maquinas e acoes em lote multi-instancia.
+1. Entregar comandos enfileirados pelo servidor para cada agent.
 2. Adicionar RBAC e auditoria central.
 3. Implementar edicao remota de fluxos com validacao e previa.
