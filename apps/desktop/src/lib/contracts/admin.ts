@@ -113,6 +113,37 @@ export const adminMachineGroupRequestSchema = z.object({
   instanceIds: z.array(z.string()).default([]),
 });
 
+export const adminOperatorRoleSchema = z.enum(["viewer", "operator", "admin"]);
+export const adminCentralAuditStatusSchema = z.enum(["accepted", "rejected", "failed"]);
+
+export const adminCentralAuditEntrySchema = z.object({
+  id: z.string().uuid(),
+  actor: z.string(),
+  role: adminOperatorRoleSchema.nullable().optional(),
+  action: z.string(),
+  target: z.string(),
+  status: adminCentralAuditStatusSchema,
+  message: z.string(),
+  details: z.string().nullable().optional(),
+  createdAt: z.string().datetime(),
+});
+
+export const adminCentralAuditQuerySchema = z.object({
+  search: z.string().nullable().optional(),
+  actor: z.string().nullable().optional(),
+  action: z.string().nullable().optional(),
+  status: adminCentralAuditStatusSchema.nullable().optional(),
+  limit: z.number().int().positive().max(1_000).default(100),
+  offset: z.number().int().nonnegative().default(0),
+});
+
+export const adminCentralAuditPageSchema = z.object({
+  entries: z.array(adminCentralAuditEntrySchema),
+  total: z.number().int().nonnegative(),
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
+});
+
 export const adminEnrollmentRequestSchema = z.object({
   instance: adminInstanceSnapshotSchema,
   requestedAt: z.string().datetime(),
@@ -328,6 +359,11 @@ export type AdminFleetSummary = z.infer<typeof adminFleetSummarySchema>;
 export type AdminFleetSnapshot = z.infer<typeof adminFleetSnapshotSchema>;
 export type AdminMachineGroup = z.infer<typeof adminMachineGroupSchema>;
 export type AdminMachineGroupRequest = z.infer<typeof adminMachineGroupRequestSchema>;
+export type AdminOperatorRole = z.infer<typeof adminOperatorRoleSchema>;
+export type AdminCentralAuditStatus = z.infer<typeof adminCentralAuditStatusSchema>;
+export type AdminCentralAuditEntry = z.infer<typeof adminCentralAuditEntrySchema>;
+export type AdminCentralAuditQuery = z.infer<typeof adminCentralAuditQuerySchema>;
+export type AdminCentralAuditPage = z.infer<typeof adminCentralAuditPageSchema>;
 export type AdminEnrollmentRequest = z.infer<typeof adminEnrollmentRequestSchema>;
 export type AdminEnrollmentTokenRequest = z.infer<typeof adminEnrollmentTokenRequestSchema>;
 export type AdminEnrollmentResponse = z.infer<typeof adminEnrollmentResponseSchema>;

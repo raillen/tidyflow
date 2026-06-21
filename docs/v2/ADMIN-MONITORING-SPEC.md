@@ -99,6 +99,7 @@ Endpoints implementados:
 ```text
 GET /health
 GET /api/fleet
+GET /api/admin-audit
 GET /api/machine-groups
 POST /api/machine-groups
 GET /api/admin-commands
@@ -109,6 +110,22 @@ POST /api/agents/{instanceId}/commands/{commandId}/completion
 POST /api/agents/{instanceId}/heartbeat
 POST /api/agents/{instanceId}/secret-rotation
 ```
+
+As rotas do painel central usam RBAC por token de operador quando `AUTOFLOW_ADMIN_OPERATOR_TOKEN` esta configurado. O header e:
+
+```text
+x-autoflow-admin-token: <token>
+```
+
+Papeis aceitos:
+
+- `viewer`: leitura de frota, grupos e comandos.
+- `operator`: leitura e operacoes como criar grupos e enfileirar comandos.
+- `admin`: leitura, operacoes e consulta de auditoria central.
+
+Sem token configurado, o servidor fica em modo dev/test e permite as rotas do painel sem header.
+
+O endpoint `/api/admin-audit` retorna `AdminCentralAuditPage` com eventos centrais, incluindo ator, papel, acao, alvo, status, mensagem, detalhes e data. A consulta aceita `search`, `actor`, `action`, `status`, `limit` e `offset`.
 
 Os endpoints de grupos permitem criar grupos de maquinas por `instanceId` e listar os grupos cadastrados.
 
@@ -157,6 +174,8 @@ Variaveis de configuracao:
 AUTOFLOW_ADMIN_BIND=127.0.0.1:7840
 AUTOFLOW_ADMIN_DB=autoflow-admin.sqlite
 AUTOFLOW_ADMIN_ENROLLMENT_TOKEN=convite-temporario
+AUTOFLOW_ADMIN_OPERATOR_TOKEN=token-do-operador
+AUTOFLOW_ADMIN_OPERATOR_ROLE=admin
 AUTOFLOW_ADMIN_BOOTSTRAP_INSTANCE_ID=local-...
 AUTOFLOW_ADMIN_BOOTSTRAP_SECRET=af_...
 ```
@@ -245,6 +264,6 @@ Admin Web
 
 ## Próximos cortes
 
-1. Adicionar RBAC e auditoria central.
-2. Implementar edicao remota de fluxos com validacao e previa.
-3. Ligar o painel web aos endpoints de grupos, lote e execucao remota.
+1. Implementar edicao remota de fluxos com validacao e previa.
+2. Ligar o painel web aos endpoints de grupos, lote e execucao remota.
+3. Adicionar sessao web completa para multiplos operadores.

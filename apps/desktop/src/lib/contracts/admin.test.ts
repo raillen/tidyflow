@@ -5,6 +5,8 @@ import {
   adminAgentSecretRotationAcceptedSchema,
   adminBatchCommandAcceptedSchema,
   adminBatchCommandRequestSchema,
+  adminCentralAuditPageSchema,
+  adminCentralAuditQuerySchema,
   adminCommandCompletionAcceptedSchema,
   adminCommandPollResponseSchema,
   adminEnrollmentTokenRequestSchema,
@@ -417,5 +419,37 @@ describe("admin contracts", () => {
     });
 
     expect(completion.command.result?.results[0]?.message).toBe("logs uploaded");
+  });
+
+  it("accepts central admin audit pages", () => {
+    const query = adminCentralAuditQuerySchema.parse({
+      search: "logs",
+      status: "accepted",
+      limit: 50,
+      offset: 0,
+    });
+
+    expect(query.status).toBe("accepted");
+
+    const page = adminCentralAuditPageSchema.parse({
+      entries: [
+        {
+          id: "850e8400-e29b-41d4-a716-446655440000",
+          actor: "operator:abc123",
+          role: "admin",
+          action: "command.batch.enqueue",
+          target: "650e8400-e29b-41d4-a716-446655440000",
+          status: "accepted",
+          message: "Comando em lote enfileirado",
+          details: "{\"targets\":[\"local-1\"]}",
+          createdAt: "2026-06-21T10:00:00.000Z",
+        },
+      ],
+      total: 1,
+      limit: 50,
+      offset: 0,
+    });
+
+    expect(page.entries[0]?.action).toBe("command.batch.enqueue");
   });
 });

@@ -1,6 +1,7 @@
 use std::{env, net::SocketAddr, path::PathBuf};
 
 use autoflow_admin_server::{router, AdminServerError, AdminServerState};
+use autoflow_domain::AdminOperatorRole;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions},
     ConnectOptions,
@@ -19,6 +20,9 @@ async fn main() -> Result<(), AdminServerCliError> {
 
     if let Some(enrollment_token) = config.enrollment_token {
         state.register_enrollment_token(enrollment_token)?;
+    }
+    if let Some(operator_token) = config.operator_token {
+        state.register_operator_token(operator_token, config.operator_role)?;
     }
 
     if let Some(bootstrap) = config.bootstrap_agent {
@@ -41,6 +45,8 @@ struct AdminServerConfig {
     bind_addr: SocketAddr,
     database_path: PathBuf,
     enrollment_token: Option<String>,
+    operator_token: Option<String>,
+    operator_role: AdminOperatorRole,
     bootstrap_agent: Option<BootstrapAgent>,
 }
 
@@ -59,14 +65,31 @@ impl AdminServerConfig {
             .unwrap_or_else(|_| DEFAULT_DATABASE_PATH.into())
             .into();
         let enrollment_token = optional_env("AUTOFLOW_ADMIN_ENROLLMENT_TOKEN");
+        let operator_token = optional_env("AUTOFLOW_ADMIN_OPERATOR_TOKEN");
+        let operator_role = optional_env("AUTOFLOW_ADMIN_OPERATOR_ROLE")
+            .as_deref()
+            .map(parse_operator_role)
+            .transpose()?
+            .unwrap_or(AdminOperatorRole::Admin);
         let bootstrap_agent = bootstrap_agent_from_env()?;
 
         Ok(Self {
             bind_addr,
             database_path,
             enrollment_token,
+            operator_token,
+            operator_role,
             bootstrap_agent,
         })
+    }
+}
+
+fn parse_operator_role(raw: &str) -> Result<AdminOperatorRole, AdminServerCliError> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "viewer" => Ok(AdminOperatorRole::Viewer),
+        "operator" => Ok(AdminOperatorRole::Operator),
+        "admin" => Ok(AdminOperatorRole::Admin),
+        other => Err(AdminServerCliError::InvalidOperatorRole(other.into())),
     }
 }
 
@@ -118,6 +141,8 @@ enum AdminServerCliError {
     InvalidBind(String),
     #[error("set both AUTOFLOW_ADMIN_BOOTSTRAP_INSTANCE_ID and AUTOFLOW_ADMIN_BOOTSTRAP_SECRET")]
     IncompleteBootstrap,
+    #[error("AUTOFLOW_ADMIN_OPERATOR_ROLE must be viewer, operator, or admin: {0}")]
+    InvalidOperatorRole(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]

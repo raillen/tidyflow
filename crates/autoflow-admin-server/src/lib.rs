@@ -5,17 +5,19 @@ use std::{
 
 use autoflow_domain::{
     AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminBatchCommandAccepted,
-    AdminBatchCommandRequest, AdminCommandAssignment, AdminCommandCompletionAccepted,
-    AdminCommandCompletionRequest, AdminCommandCompletionStatus, AdminCommandPollRequest,
-    AdminCommandPollResponse, AdminCommandResult, AdminCommandTargetResult,
-    AdminCommandTargetStatus, AdminEnrollmentResponse, AdminEnrollmentTokenRequest,
-    AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary, AdminHeartbeatAccepted,
-    AdminHeartbeatPayload, AdminInstanceSnapshot, AdminMachineGroup, AdminMachineGroupRequest,
-    AdminQueuedCommand, AdminQueuedCommandStatus, AdminSignedEnvelope,
+    AdminBatchCommandRequest, AdminCentralAuditEntry, AdminCentralAuditPage,
+    AdminCentralAuditQuery, AdminCentralAuditStatus, AdminCommandAssignment,
+    AdminCommandCompletionAccepted, AdminCommandCompletionRequest, AdminCommandCompletionStatus,
+    AdminCommandPollRequest, AdminCommandPollResponse, AdminCommandResult,
+    AdminCommandTargetResult, AdminCommandTargetStatus, AdminEnrollmentResponse,
+    AdminEnrollmentTokenRequest, AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary,
+    AdminHeartbeatAccepted, AdminHeartbeatPayload, AdminInstanceSnapshot, AdminMachineGroup,
+    AdminMachineGroupRequest, AdminOperatorRole, AdminQueuedCommand, AdminQueuedCommandStatus,
+    AdminSignedEnvelope,
 };
 use axum::{
-    extract::{Path, State},
-    http::StatusCode,
+    extract::{Path, Query, State},
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -25,6 +27,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use thiserror::Error;
 use uuid::Uuid;
+
+const ADMIN_OPERATOR_TOKEN_HEADER: &str = "x-autoflow-admin-token";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -48,6 +52,7 @@ impl AdminServerHealth {
 pub struct AdminServerState {
     storage: AdminServerStorage,
     enrollment_tokens: Arc<RwLock<HashSet<String>>>,
+    operator_tokens: Arc<RwLock<HashMap<String, AdminOperatorRole>>>,
 }
 
 #[derive(Default)]
@@ -57,6 +62,7 @@ struct MemoryAdminServerStore {
     machine_groups: RwLock<HashMap<Uuid, AdminMachineGroup>>,
     command_queue: RwLock<HashMap<Uuid, AdminQueuedCommand>>,
     command_deliveries: RwLock<Vec<AdminCommandDelivery>>,
+    central_audit: RwLock<Vec<AdminCentralAuditEntry>>,
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +82,19 @@ struct AdminCommandDeliveryState {
     message: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+struct AdminOperatorContext {
+    actor: String,
+    role: Option<AdminOperatorRole>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum AdminPermission {
+    View,
+    Operate,
+    Administer,
+}
+
 #[derive(Clone)]
 enum AdminServerStorage {
     Memory(Arc<MemoryAdminServerStore>),
@@ -92,6 +111,7 @@ impl Default for AdminServerState {
         Self {
             storage: AdminServerStorage::Memory(Arc::new(MemoryAdminServerStore::default())),
             enrollment_tokens: Arc::new(RwLock::new(HashSet::new())),
+            operator_tokens: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
@@ -106,6 +126,7 @@ impl AdminServerState {
         Ok(Self {
             storage: AdminServerStorage::Sqlite(store),
             enrollment_tokens: Arc::new(RwLock::new(HashSet::new())),
+            operator_tokens: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 
@@ -119,6 +140,20 @@ impl AdminServerState {
             .write()
             .map_err(|_| AdminServerError::StateUnavailable)?;
         tokens.insert(token);
+        Ok(())
+    }
+
+    pub fn register_operator_token(
+        &self,
+        token: impl Into<String>,
+        role: AdminOperatorRole,
+    ) -> Result<(), AdminServerError> {
+        let token = normalize_required_secret(token, AdminServerError::MissingOperatorToken)?;
+        let mut tokens = self
+            .operator_tokens
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        tokens.insert(token, role);
         Ok(())
     }
 
@@ -431,6 +466,43 @@ impl AdminServerState {
         Ok(secret)
     }
 
+    fn authorize_operator(
+        &self,
+        headers: &HeaderMap,
+        permission: AdminPermission,
+    ) -> Result<AdminOperatorContext, AdminServerError> {
+        let tokens = self
+            .operator_tokens
+            .read()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        if tokens.is_empty() {
+            return Ok(AdminOperatorContext {
+                actor: "dev-admin".into(),
+                role: Some(AdminOperatorRole::Admin),
+            });
+        }
+
+        let token = headers
+            .get(ADMIN_OPERATOR_TOKEN_HEADER)
+            .and_then(|value| value.to_str().ok())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or(AdminServerError::OperatorAuthRequired)?;
+        let role = tokens
+            .get(token)
+            .copied()
+            .ok_or(AdminServerError::OperatorAuthRequired)?;
+
+        if !operator_role_allows(role, permission) {
+            return Err(AdminServerError::OperatorForbidden);
+        }
+
+        Ok(AdminOperatorContext {
+            actor: operator_actor(token),
+            role: Some(role),
+        })
+    }
+
     async fn agent_secret(&self, instance_id: &str) -> Result<String, AdminServerError> {
         match &self.storage {
             AdminServerStorage::Memory(store) => store.agent_secret(instance_id),
@@ -515,6 +587,26 @@ impl AdminServerState {
                     .record_command_completion(instance_id, command_id, completion, recorded_at)
                     .await
             }
+        }
+    }
+
+    async fn append_central_audit(
+        &self,
+        entry: AdminCentralAuditEntry,
+    ) -> Result<(), AdminServerError> {
+        match &self.storage {
+            AdminServerStorage::Memory(store) => store.append_central_audit(entry),
+            AdminServerStorage::Sqlite(store) => store.append_central_audit(entry).await,
+        }
+    }
+
+    pub async fn query_central_audit(
+        &self,
+        query: AdminCentralAuditQuery,
+    ) -> Result<AdminCentralAuditPage, AdminServerError> {
+        match &self.storage {
+            AdminServerStorage::Memory(store) => store.query_central_audit(query),
+            AdminServerStorage::Sqlite(store) => store.query_central_audit(query).await,
         }
     }
 
@@ -739,6 +831,29 @@ impl MemoryAdminServerStore {
 
         Ok(command.clone())
     }
+
+    fn append_central_audit(&self, entry: AdminCentralAuditEntry) -> Result<(), AdminServerError> {
+        let mut entries = self
+            .central_audit
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        entries.push(entry);
+        Ok(())
+    }
+
+    fn query_central_audit(
+        &self,
+        query: AdminCentralAuditQuery,
+    ) -> Result<AdminCentralAuditPage, AdminServerError> {
+        let query = query.normalized();
+        let entries = self
+            .central_audit
+            .read()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        let mut filtered = filter_central_audit_entries(entries.iter().cloned(), &query);
+        filtered.sort_by_key(|entry| std::cmp::Reverse(entry.created_at));
+        Ok(page_central_audit_entries(filtered, query))
+    }
 }
 
 impl SqliteAdminServerStore {
@@ -779,6 +894,21 @@ impl SqliteAdminServerStore {
                 result_payload TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS admin_central_audit (
+                id TEXT PRIMARY KEY NOT NULL,
+                actor TEXT NOT NULL,
+                role TEXT,
+                action TEXT NOT NULL,
+                target TEXT NOT NULL,
+                status TEXT NOT NULL,
+                message TEXT NOT NULL,
+                details TEXT,
+                created_at TEXT NOT NULL
             )",
         )
         .execute(&self.pool)
@@ -1172,6 +1302,48 @@ impl SqliteAdminServerStore {
 
         rows.into_iter().map(TryInto::try_into).collect()
     }
+
+    async fn append_central_audit(
+        &self,
+        entry: AdminCentralAuditEntry,
+    ) -> Result<(), AdminServerError> {
+        sqlx::query(
+            "INSERT INTO admin_central_audit
+                (id, actor, role, action, target, status, message, details, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(entry.id.to_string())
+        .bind(entry.actor)
+        .bind(entry.role.map(operator_role_to_wire))
+        .bind(entry.action)
+        .bind(entry.target)
+        .bind(central_audit_status_to_wire(entry.status))
+        .bind(entry.message)
+        .bind(entry.details)
+        .bind(entry.created_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn query_central_audit(
+        &self,
+        query: AdminCentralAuditQuery,
+    ) -> Result<AdminCentralAuditPage, AdminServerError> {
+        let query = query.normalized();
+        let rows: Vec<AdminCentralAuditRow> = sqlx::query_as(
+            "SELECT id, actor, role, action, target, status, message, details, created_at
+             FROM admin_central_audit
+             ORDER BY created_at DESC
+             LIMIT 5000",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        let entries: Result<Vec<AdminCentralAuditEntry>, AdminServerError> =
+            rows.into_iter().map(TryInto::try_into).collect();
+        let filtered = filter_central_audit_entries(entries?, &query);
+        Ok(page_central_audit_entries(filtered, query))
+    }
 }
 
 #[derive(sqlx::FromRow)]
@@ -1190,6 +1362,19 @@ struct AdminCommandDeliveryRow {
     target_instance_id: String,
     status: String,
     message: Option<String>,
+}
+
+#[derive(sqlx::FromRow)]
+struct AdminCentralAuditRow {
+    id: String,
+    actor: String,
+    role: Option<String>,
+    action: String,
+    target: String,
+    status: String,
+    message: String,
+    details: Option<String>,
+    created_at: String,
 }
 
 impl TryFrom<AdminQueuedCommandRow> for AdminQueuedCommand {
@@ -1223,6 +1408,29 @@ impl TryFrom<AdminCommandDeliveryRow> for AdminCommandDeliveryState {
             target_instance_id: row.target_instance_id,
             status: command_status_from_wire(&row.status)?,
             message: row.message,
+        })
+    }
+}
+
+impl TryFrom<AdminCentralAuditRow> for AdminCentralAuditEntry {
+    type Error = AdminServerError;
+
+    fn try_from(row: AdminCentralAuditRow) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: Uuid::parse_str(&row.id)
+                .map_err(|error| AdminServerError::Database(error.to_string()))?,
+            actor: row.actor,
+            role: row
+                .role
+                .as_deref()
+                .map(operator_role_from_wire)
+                .transpose()?,
+            action: row.action,
+            target: row.target,
+            status: central_audit_status_from_wire(&row.status)?,
+            message: row.message,
+            details: row.details,
+            created_at: parse_datetime(&row.created_at)?,
         })
     }
 }
@@ -1274,6 +1482,161 @@ fn normalize_instance_ids(instance_ids: Vec<String>) -> Vec<String> {
         normalized.push(instance_id);
     }
     normalized
+}
+
+fn operator_role_allows(role: AdminOperatorRole, permission: AdminPermission) -> bool {
+    matches!(
+        (role, permission),
+        (AdminOperatorRole::Admin, _)
+            | (
+                AdminOperatorRole::Operator,
+                AdminPermission::View | AdminPermission::Operate
+            )
+            | (AdminOperatorRole::Viewer, AdminPermission::View)
+    )
+}
+
+fn operator_actor(token: &str) -> String {
+    let visible_suffix: String = token
+        .chars()
+        .rev()
+        .take(6)
+        .collect::<Vec<char>>()
+        .into_iter()
+        .rev()
+        .collect();
+    format!("operator:{}", visible_suffix)
+}
+
+fn operator_role_to_wire(role: AdminOperatorRole) -> &'static str {
+    match role {
+        AdminOperatorRole::Viewer => "viewer",
+        AdminOperatorRole::Operator => "operator",
+        AdminOperatorRole::Admin => "admin",
+    }
+}
+
+fn operator_role_from_wire(role: &str) -> Result<AdminOperatorRole, AdminServerError> {
+    match role {
+        "viewer" => Ok(AdminOperatorRole::Viewer),
+        "operator" => Ok(AdminOperatorRole::Operator),
+        "admin" => Ok(AdminOperatorRole::Admin),
+        other => Err(AdminServerError::Database(format!(
+            "unknown admin operator role: {other}"
+        ))),
+    }
+}
+
+fn central_audit_status_to_wire(status: AdminCentralAuditStatus) -> &'static str {
+    match status {
+        AdminCentralAuditStatus::Accepted => "accepted",
+        AdminCentralAuditStatus::Rejected => "rejected",
+        AdminCentralAuditStatus::Failed => "failed",
+    }
+}
+
+fn central_audit_status_from_wire(
+    status: &str,
+) -> Result<AdminCentralAuditStatus, AdminServerError> {
+    match status {
+        "accepted" => Ok(AdminCentralAuditStatus::Accepted),
+        "rejected" => Ok(AdminCentralAuditStatus::Rejected),
+        "failed" => Ok(AdminCentralAuditStatus::Failed),
+        other => Err(AdminServerError::Database(format!(
+            "unknown admin central audit status: {other}"
+        ))),
+    }
+}
+
+fn central_audit_entry(
+    operator: &AdminOperatorContext,
+    action: &str,
+    target: &str,
+    status: AdminCentralAuditStatus,
+    message: &str,
+    details: Option<serde_json::Value>,
+) -> AdminCentralAuditEntry {
+    AdminCentralAuditEntry {
+        id: Uuid::new_v4(),
+        actor: operator.actor.clone(),
+        role: operator.role,
+        action: action.into(),
+        target: target.into(),
+        status,
+        message: message.into(),
+        details: details.map(|value| value.to_string()),
+        created_at: Utc::now(),
+    }
+}
+
+fn agent_audit_context(instance_id: &str) -> AdminOperatorContext {
+    AdminOperatorContext {
+        actor: format!("agent:{instance_id}"),
+        role: None,
+    }
+}
+
+fn filter_central_audit_entries(
+    entries: impl IntoIterator<Item = AdminCentralAuditEntry>,
+    query: &AdminCentralAuditQuery,
+) -> Vec<AdminCentralAuditEntry> {
+    entries
+        .into_iter()
+        .filter(|entry| central_audit_entry_matches(entry, query))
+        .collect()
+}
+
+fn central_audit_entry_matches(
+    entry: &AdminCentralAuditEntry,
+    query: &AdminCentralAuditQuery,
+) -> bool {
+    if let Some(actor) = &query.actor {
+        if !entry.actor.eq_ignore_ascii_case(actor) {
+            return false;
+        }
+    }
+    if let Some(action) = &query.action {
+        if !entry.action.eq_ignore_ascii_case(action) {
+            return false;
+        }
+    }
+    if let Some(status) = query.status {
+        if entry.status != status {
+            return false;
+        }
+    }
+    if let Some(search) = &query.search {
+        let search = search.to_ascii_lowercase();
+        let haystack = [
+            entry.actor.as_str(),
+            entry.action.as_str(),
+            entry.target.as_str(),
+            entry.message.as_str(),
+            entry.details.as_deref().unwrap_or_default(),
+        ]
+        .join(" ")
+        .to_ascii_lowercase();
+        if !haystack.contains(&search) {
+            return false;
+        }
+    }
+    true
+}
+
+fn page_central_audit_entries(
+    entries: Vec<AdminCentralAuditEntry>,
+    query: AdminCentralAuditQuery,
+) -> AdminCentralAuditPage {
+    let total = entries.len() as i64;
+    let offset = query.offset as usize;
+    let limit = query.limit as usize;
+    let entries = entries.into_iter().skip(offset).take(limit).collect();
+    AdminCentralAuditPage {
+        entries,
+        total,
+        limit: query.limit,
+        offset: query.offset,
+    }
 }
 
 fn command_delivery_states(
@@ -1450,6 +1813,7 @@ pub fn router(state: AdminServerState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/api/fleet", get(fleet_snapshot))
+        .route("/api/admin-audit", get(query_central_audit))
         .route(
             "/api/machine-groups",
             get(list_machine_groups).post(create_machine_group),
@@ -1482,36 +1846,82 @@ async fn health() -> Json<AdminServerHealth> {
 
 async fn fleet_snapshot(
     State(state): State<AdminServerState>,
+    headers: HeaderMap,
 ) -> Result<Json<AdminFleetSnapshot>, AdminServerError> {
+    state.authorize_operator(&headers, AdminPermission::View)?;
     Ok(Json(state.fleet_snapshot().await?))
 }
 
 async fn list_machine_groups(
     State(state): State<AdminServerState>,
+    headers: HeaderMap,
 ) -> Result<Json<Vec<AdminMachineGroup>>, AdminServerError> {
+    state.authorize_operator(&headers, AdminPermission::View)?;
     Ok(Json(state.list_machine_groups().await?))
 }
 
 async fn create_machine_group(
     State(state): State<AdminServerState>,
+    headers: HeaderMap,
     Json(request): Json<AdminMachineGroupRequest>,
 ) -> Result<(StatusCode, Json<AdminMachineGroup>), AdminServerError> {
+    let operator = state.authorize_operator(&headers, AdminPermission::Operate)?;
     let group = state.create_machine_group(request).await?;
+    state
+        .append_central_audit(central_audit_entry(
+            &operator,
+            "machineGroup.create",
+            &group.id.to_string(),
+            AdminCentralAuditStatus::Accepted,
+            "Grupo de maquinas criado",
+            Some(serde_json::json!({
+                "name": &group.name,
+                "instanceIds": &group.instance_ids,
+            })),
+        ))
+        .await?;
     Ok((StatusCode::CREATED, Json(group)))
 }
 
 async fn enqueue_batch_command(
     State(state): State<AdminServerState>,
+    headers: HeaderMap,
     Json(request): Json<AdminBatchCommandRequest>,
 ) -> Result<(StatusCode, Json<AdminBatchCommandAccepted>), AdminServerError> {
+    let operator = state.authorize_operator(&headers, AdminPermission::Operate)?;
     let accepted = state.enqueue_batch_command(request).await?;
+    state
+        .append_central_audit(central_audit_entry(
+            &operator,
+            "command.batch.enqueue",
+            &accepted.command.id.to_string(),
+            AdminCentralAuditStatus::Accepted,
+            "Comando em lote enfileirado",
+            Some(serde_json::json!({
+                "source": &accepted.command.source,
+                "kind": accepted.command.request.kind,
+                "targets": &accepted.resolved_target_instance_ids,
+            })),
+        ))
+        .await?;
     Ok((StatusCode::ACCEPTED, Json(accepted)))
 }
 
 async fn list_queued_commands(
     State(state): State<AdminServerState>,
+    headers: HeaderMap,
 ) -> Result<Json<Vec<AdminQueuedCommand>>, AdminServerError> {
+    state.authorize_operator(&headers, AdminPermission::View)?;
     Ok(Json(state.list_queued_commands().await?))
+}
+
+async fn query_central_audit(
+    State(state): State<AdminServerState>,
+    headers: HeaderMap,
+    Query(query): Query<AdminCentralAuditQuery>,
+) -> Result<Json<AdminCentralAuditPage>, AdminServerError> {
+    state.authorize_operator(&headers, AdminPermission::Administer)?;
+    Ok(Json(state.query_central_audit(query).await?))
 }
 
 async fn poll_next_command(
@@ -1530,6 +1940,20 @@ async fn complete_command(
     let accepted = state
         .complete_command(&instance_id, command_id, envelope)
         .await?;
+    state
+        .append_central_audit(central_audit_entry(
+            &agent_audit_context(&instance_id),
+            "command.complete",
+            &command_id.to_string(),
+            AdminCentralAuditStatus::Accepted,
+            "Agent registrou resultado de comando",
+            Some(serde_json::json!({
+                "instanceId": instance_id,
+                "status": accepted.command.status,
+                "result": &accepted.command.result,
+            })),
+        ))
+        .await?;
     Ok((StatusCode::ACCEPTED, Json(accepted)))
 }
 
@@ -1538,6 +1962,16 @@ async fn enroll_agent(
     Json(request): Json<AdminEnrollmentTokenRequest>,
 ) -> Result<(StatusCode, Json<AdminEnrollmentResponse>), AdminServerError> {
     let response = state.enroll_agent(request).await?;
+    state
+        .append_central_audit(central_audit_entry(
+            &agent_audit_context(&response.instance_id),
+            "agent.enroll",
+            &response.instance_id,
+            AdminCentralAuditStatus::Accepted,
+            "Agent matriculado por token",
+            None,
+        ))
+        .await?;
     Ok((StatusCode::CREATED, Json(response)))
 }
 
@@ -1556,6 +1990,16 @@ async fn rotate_agent_secret(
     Json(envelope): Json<AdminSignedEnvelope<AdminAgentSecretRotationRequest>>,
 ) -> Result<(StatusCode, Json<AdminAgentSecretRotationAccepted>), AdminServerError> {
     let accepted = state.rotate_agent_secret(&instance_id, envelope).await?;
+    state
+        .append_central_audit(central_audit_entry(
+            &agent_audit_context(&instance_id),
+            "agent.secret.rotate",
+            &instance_id,
+            AdminCentralAuditStatus::Accepted,
+            "Segredo do agent rotacionado",
+            None,
+        ))
+        .await?;
     Ok((StatusCode::OK, Json(accepted)))
 }
 
@@ -1567,10 +2011,16 @@ pub enum AdminServerError {
     MissingAgentSecret,
     #[error("enrollment token is required")]
     MissingEnrollmentToken,
+    #[error("operator token is required")]
+    MissingOperatorToken,
     #[error("enrollment token is not configured")]
     EnrollmentNotConfigured,
     #[error("enrollment token is invalid")]
     InvalidEnrollmentToken,
+    #[error("operator authentication is required")]
+    OperatorAuthRequired,
+    #[error("operator role is not allowed for this action")]
+    OperatorForbidden,
     #[error("agent is not registered: {0}")]
     AgentNotRegistered(String),
     #[error("machine group name is required")]
@@ -1625,6 +2075,7 @@ impl AdminServerError {
             Self::MissingInstanceId
             | Self::MissingAgentSecret
             | Self::MissingEnrollmentToken
+            | Self::MissingOperatorToken
             | Self::MissingMachineGroupName
             | Self::NoBatchTargets
             | Self::CommandPayloadMismatch
@@ -1641,7 +2092,9 @@ impl AdminServerError {
             Self::CommandNotRunning(_, _) => StatusCode::CONFLICT,
             Self::EnrollmentNotConfigured
             | Self::InvalidEnrollmentToken
+            | Self::OperatorAuthRequired
             | Self::InvalidSignature => StatusCode::UNAUTHORIZED,
+            Self::OperatorForbidden => StatusCode::FORBIDDEN,
             Self::Database(_) | Self::StateUnavailable => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -1651,8 +2104,11 @@ impl AdminServerError {
             Self::MissingInstanceId => "missingInstanceId",
             Self::MissingAgentSecret => "missingAgentSecret",
             Self::MissingEnrollmentToken => "missingEnrollmentToken",
+            Self::MissingOperatorToken => "missingOperatorToken",
             Self::EnrollmentNotConfigured => "enrollmentNotConfigured",
             Self::InvalidEnrollmentToken => "invalidEnrollmentToken",
+            Self::OperatorAuthRequired => "operatorAuthRequired",
+            Self::OperatorForbidden => "operatorForbidden",
             Self::AgentNotRegistered(_) => "agentNotRegistered",
             Self::MissingMachineGroupName => "missingMachineGroupName",
             Self::MachineGroupNotFound(_) => "machineGroupNotFound",
@@ -1935,6 +2391,85 @@ mod tests {
 
         assert_eq!(commands.len(), 1);
         assert_eq!(commands[0].request.target_instance_ids.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn enforces_operator_rbac_and_records_central_audit() {
+        let state = AdminServerState::new();
+        state
+            .register_operator_token("viewer-token", AdminOperatorRole::Viewer)
+            .unwrap();
+        state
+            .register_operator_token("operator-token", AdminOperatorRole::Operator)
+            .unwrap();
+        state
+            .register_operator_token("admin-token", AdminOperatorRole::Admin)
+            .unwrap();
+        let app = router(state.clone());
+        let group_request = machine_group_request("Financeiro", vec!["local-1"]);
+
+        let unauthorized = app
+            .clone()
+            .oneshot(json_post(
+                "/api/machine-groups",
+                serde_json::to_vec(&group_request).unwrap(),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
+
+        let forbidden = app
+            .clone()
+            .oneshot(json_post_with_operator(
+                "/api/admin-commands/batch",
+                serde_json::to_vec(&batch_request(Uuid::new_v4(), vec!["local-1"])).unwrap(),
+                "viewer-token",
+            ))
+            .await
+            .unwrap();
+        assert_eq!(forbidden.status(), StatusCode::FORBIDDEN);
+
+        let group_response = app
+            .clone()
+            .oneshot(json_post_with_operator(
+                "/api/machine-groups",
+                serde_json::to_vec(&group_request).unwrap(),
+                "operator-token",
+            ))
+            .await
+            .unwrap();
+        assert_eq!(group_response.status(), StatusCode::CREATED);
+        let group = parse_body::<AdminMachineGroup>(group_response).await;
+
+        let batch_response = app
+            .clone()
+            .oneshot(json_post_with_operator(
+                "/api/admin-commands/batch",
+                serde_json::to_vec(&batch_request(group.id, Vec::new())).unwrap(),
+                "operator-token",
+            ))
+            .await
+            .unwrap();
+        assert_eq!(batch_response.status(), StatusCode::ACCEPTED);
+
+        let operator_audit = app
+            .clone()
+            .oneshot(get_with_operator("/api/admin-audit", "operator-token"))
+            .await
+            .unwrap();
+        assert_eq!(operator_audit.status(), StatusCode::FORBIDDEN);
+
+        let audit = app
+            .oneshot(get_with_operator("/api/admin-audit", "admin-token"))
+            .await
+            .unwrap();
+        assert_eq!(audit.status(), StatusCode::OK);
+        let audit = parse_body::<AdminCentralAuditPage>(audit).await;
+        assert_eq!(audit.total, 2);
+        assert!(audit
+            .entries
+            .iter()
+            .any(|entry| entry.action == "command.batch.enqueue"));
     }
 
     #[tokio::test]
@@ -2480,6 +3015,25 @@ mod tests {
             .uri(uri)
             .header("content-type", "application/json")
             .body(Body::from(body))
+            .unwrap()
+    }
+
+    fn json_post_with_operator(uri: &str, body: Vec<u8>, token: &str) -> Request<Body> {
+        Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header("content-type", "application/json")
+            .header(ADMIN_OPERATOR_TOKEN_HEADER, token)
+            .body(Body::from(body))
+            .unwrap()
+    }
+
+    fn get_with_operator(uri: &str, token: &str) -> Request<Body> {
+        Request::builder()
+            .method("GET")
+            .uri(uri)
+            .header(ADMIN_OPERATOR_TOKEN_HEADER, token)
+            .body(Body::empty())
             .unwrap()
     }
 

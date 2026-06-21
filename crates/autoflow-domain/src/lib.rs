@@ -18,16 +18,18 @@ pub mod watch;
 
 pub use admin::{
     AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminBatchCommandAccepted,
-    AdminBatchCommandRequest, AdminCommandAssignment, AdminCommandCapability,
-    AdminCommandCompletionAccepted, AdminCommandCompletionRequest, AdminCommandCompletionStatus,
-    AdminCommandKind, AdminCommandPollRequest, AdminCommandPollResponse, AdminCommandQueueSummary,
-    AdminCommandRequest, AdminCommandResult, AdminCommandSupport, AdminCommandTargetResult,
-    AdminCommandTargetStatus, AdminEnrollmentRequest, AdminEnrollmentResponse,
-    AdminEnrollmentTokenRequest, AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary,
-    AdminHardwareProfile, AdminHeartbeatAccepted, AdminHeartbeatDelivery, AdminHeartbeatPayload,
-    AdminInstanceSnapshot, AdminInstanceStatus, AdminJobRuntimeStatus, AdminMachineGroup,
-    AdminMachineGroupRequest, AdminManagedJob, AdminManagementProfile, AdminNetworkInterface,
-    AdminNetworkProfile, AdminQueuedCommand, AdminQueuedCommandStatus, AdminSignedEnvelope,
+    AdminBatchCommandRequest, AdminCentralAuditEntry, AdminCentralAuditPage,
+    AdminCentralAuditQuery, AdminCentralAuditStatus, AdminCommandAssignment,
+    AdminCommandCapability, AdminCommandCompletionAccepted, AdminCommandCompletionRequest,
+    AdminCommandCompletionStatus, AdminCommandKind, AdminCommandPollRequest,
+    AdminCommandPollResponse, AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult,
+    AdminCommandSupport, AdminCommandTargetResult, AdminCommandTargetStatus,
+    AdminEnrollmentRequest, AdminEnrollmentResponse, AdminEnrollmentTokenRequest,
+    AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary, AdminHardwareProfile,
+    AdminHeartbeatAccepted, AdminHeartbeatDelivery, AdminHeartbeatPayload, AdminInstanceSnapshot,
+    AdminInstanceStatus, AdminJobRuntimeStatus, AdminMachineGroup, AdminMachineGroupRequest,
+    AdminManagedJob, AdminManagementProfile, AdminNetworkInterface, AdminNetworkProfile,
+    AdminOperatorRole, AdminQueuedCommand, AdminQueuedCommandStatus, AdminSignedEnvelope,
 };
 pub use audit::{
     AuditEntry, AuditExport, AuditExportFormat, AuditPage, AuditQuery, AuditStatus, AuditSummary,

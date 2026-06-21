@@ -186,6 +186,80 @@ pub struct AdminMachineGroupRequest {
     pub instance_ids: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AdminOperatorRole {
+    Viewer,
+    Operator,
+    Admin,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AdminCentralAuditStatus {
+    Accepted,
+    Rejected,
+    Failed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminCentralAuditEntry {
+    pub id: Uuid,
+    pub actor: String,
+    #[serde(default)]
+    pub role: Option<AdminOperatorRole>,
+    pub action: String,
+    pub target: String,
+    pub status: AdminCentralAuditStatus,
+    pub message: String,
+    #[serde(default)]
+    pub details: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminCentralAuditQuery {
+    #[serde(default)]
+    pub search: Option<String>,
+    #[serde(default)]
+    pub actor: Option<String>,
+    #[serde(default)]
+    pub action: Option<String>,
+    #[serde(default)]
+    pub status: Option<AdminCentralAuditStatus>,
+    #[serde(default = "default_admin_central_audit_limit")]
+    pub limit: i64,
+    #[serde(default)]
+    pub offset: i64,
+}
+
+fn default_admin_central_audit_limit() -> i64 {
+    100
+}
+
+impl AdminCentralAuditQuery {
+    pub fn normalized(&self) -> Self {
+        let mut query = self.clone();
+        query.search = normalize_optional_text(query.search);
+        query.actor = normalize_optional_text(query.actor);
+        query.action = normalize_optional_text(query.action);
+        query.limit = query.limit.clamp(1, 1_000);
+        query.offset = query.offset.max(0);
+        query
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminCentralAuditPage {
+    pub entries: Vec<AdminCentralAuditEntry>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminBatchCommandRequest {
@@ -571,6 +645,12 @@ impl AdminCommandQueueSummary {
         }
         summary
     }
+}
+
+fn normalize_optional_text(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 #[cfg(test)]
