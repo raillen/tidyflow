@@ -5,7 +5,8 @@ use std::{
 
 use autoflow_domain::{
     AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminBatchCommandAccepted,
-    AdminBatchCommandRequest, AdminCommandResult, AdminCommandTargetResult,
+    AdminBatchCommandRequest, AdminCommandAssignment, AdminCommandPollRequest,
+    AdminCommandPollResponse, AdminCommandResult, AdminCommandTargetResult,
     AdminCommandTargetStatus, AdminEnrollmentResponse, AdminEnrollmentTokenRequest,
     AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary, AdminHeartbeatAccepted,
     AdminHeartbeatPayload, AdminInstanceSnapshot, AdminMachineGroup, AdminMachineGroupRequest,
@@ -54,6 +55,15 @@ struct MemoryAdminServerStore {
     agent_secrets: RwLock<HashMap<String, String>>,
     machine_groups: RwLock<HashMap<Uuid, AdminMachineGroup>>,
     command_queue: RwLock<HashMap<Uuid, AdminQueuedCommand>>,
+    command_deliveries: RwLock<Vec<AdminCommandDelivery>>,
+}
+
+#[derive(Debug, Clone)]
+struct AdminCommandDelivery {
+    command_id: Uuid,
+    target_instance_id: String,
+    status: AdminQueuedCommandStatus,
+    assigned_at: Option<chrono::DateTime<Utc>>,
 }
 
 #[derive(Clone)]
@@ -214,7 +224,8 @@ impl AdminServerState {
             updated_at: now,
         };
 
-        self.save_queued_command(&command).await?;
+        self.save_batch_command(&command, &target_instance_ids)
+            .await?;
 
         Ok(AdminBatchCommandAccepted {
             accepted: true,
@@ -231,6 +242,53 @@ impl AdminServerState {
         }?;
         commands.sort_by_key(|command| std::cmp::Reverse(command.created_at));
         Ok(commands)
+    }
+
+    pub async fn poll_next_command(
+        &self,
+        path_instance_id: &str,
+        envelope: AdminSignedEnvelope<AdminCommandPollRequest>,
+    ) -> Result<AdminCommandPollResponse, AdminServerError> {
+        let path_instance_id = path_instance_id.trim();
+        if path_instance_id.is_empty() {
+            return Err(AdminServerError::MissingInstanceId);
+        }
+        if envelope.kind != AdminEnvelopeKind::Command {
+            return Err(AdminServerError::InvalidEnvelopeKind);
+        }
+        if envelope.instance_id != path_instance_id {
+            return Err(AdminServerError::EnvelopeInstanceMismatch);
+        }
+
+        let now = Utc::now();
+        if envelope.expires_at < now {
+            return Err(AdminServerError::ExpiredEnvelope);
+        }
+
+        let secret = self.agent_secret(path_instance_id).await?;
+        if !envelope.verify(&secret).map_err(AdminServerError::from)? {
+            return Err(AdminServerError::InvalidSignature);
+        }
+
+        let assignment = self.assign_next_command(path_instance_id, now).await?;
+        let signed_assignment = assignment
+            .map(|assignment| {
+                AdminSignedEnvelope::sign(
+                    AdminEnvelopeKind::Command,
+                    path_instance_id.to_string(),
+                    assignment,
+                    &secret,
+                    300,
+                )
+            })
+            .transpose()
+            .map_err(AdminServerError::from)?;
+
+        Ok(AdminCommandPollResponse {
+            assignment: signed_assignment,
+            pending_count: self.pending_command_count(path_instance_id).await?,
+            polled_at: now,
+        })
     }
 
     pub async fn receive_heartbeat(
@@ -350,13 +408,40 @@ impl AdminServerState {
         }
     }
 
-    async fn save_queued_command(
+    async fn save_batch_command(
         &self,
         command: &AdminQueuedCommand,
+        target_instance_ids: &[String],
     ) -> Result<(), AdminServerError> {
         match &self.storage {
-            AdminServerStorage::Memory(store) => store.save_queued_command(command),
-            AdminServerStorage::Sqlite(store) => store.save_queued_command(command).await,
+            AdminServerStorage::Memory(store) => {
+                store.save_batch_command(command, target_instance_ids)
+            }
+            AdminServerStorage::Sqlite(store) => {
+                store.save_batch_command(command, target_instance_ids).await
+            }
+        }
+    }
+
+    async fn assign_next_command(
+        &self,
+        instance_id: &str,
+        assigned_at: chrono::DateTime<Utc>,
+    ) -> Result<Option<AdminCommandAssignment>, AdminServerError> {
+        match &self.storage {
+            AdminServerStorage::Memory(store) => {
+                store.assign_next_command(instance_id, assigned_at)
+            }
+            AdminServerStorage::Sqlite(store) => {
+                store.assign_next_command(instance_id, assigned_at).await
+            }
+        }
+    }
+
+    async fn pending_command_count(&self, instance_id: &str) -> Result<u32, AdminServerError> {
+        match &self.storage {
+            AdminServerStorage::Memory(store) => store.pending_command_count(instance_id),
+            AdminServerStorage::Sqlite(store) => store.pending_command_count(instance_id).await,
         }
     }
 
@@ -455,12 +540,28 @@ impl MemoryAdminServerStore {
         Ok(groups.values().cloned().collect())
     }
 
-    fn save_queued_command(&self, command: &AdminQueuedCommand) -> Result<(), AdminServerError> {
+    fn save_batch_command(
+        &self,
+        command: &AdminQueuedCommand,
+        target_instance_ids: &[String],
+    ) -> Result<(), AdminServerError> {
         let mut commands = self
             .command_queue
             .write()
             .map_err(|_| AdminServerError::StateUnavailable)?;
         commands.insert(command.id, command.clone());
+        let mut deliveries = self
+            .command_deliveries
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        for target_instance_id in target_instance_ids {
+            deliveries.push(AdminCommandDelivery {
+                command_id: command.id,
+                target_instance_id: target_instance_id.clone(),
+                status: AdminQueuedCommandStatus::Pending,
+                assigned_at: None,
+            });
+        }
         Ok(())
     }
 
@@ -470,6 +571,52 @@ impl MemoryAdminServerStore {
             .read()
             .map_err(|_| AdminServerError::StateUnavailable)?;
         Ok(commands.values().cloned().collect())
+    }
+
+    fn assign_next_command(
+        &self,
+        instance_id: &str,
+        assigned_at: chrono::DateTime<Utc>,
+    ) -> Result<Option<AdminCommandAssignment>, AdminServerError> {
+        let mut deliveries = self
+            .command_deliveries
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        let Some(delivery) = deliveries.iter_mut().find(|delivery| {
+            delivery.target_instance_id == instance_id
+                && delivery.status == AdminQueuedCommandStatus::Pending
+        }) else {
+            return Ok(None);
+        };
+
+        delivery.status = AdminQueuedCommandStatus::Running;
+        delivery.assigned_at = Some(assigned_at);
+
+        let mut commands = self
+            .command_queue
+            .write()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        let command = commands
+            .get_mut(&delivery.command_id)
+            .ok_or(AdminServerError::CommandNotFound(delivery.command_id))?;
+        command.status = AdminQueuedCommandStatus::Running;
+        command.updated_at = assigned_at;
+
+        Ok(Some(command_assignment(command, instance_id, assigned_at)))
+    }
+
+    fn pending_command_count(&self, instance_id: &str) -> Result<u32, AdminServerError> {
+        let deliveries = self
+            .command_deliveries
+            .read()
+            .map_err(|_| AdminServerError::StateUnavailable)?;
+        Ok(deliveries
+            .iter()
+            .filter(|delivery| {
+                delivery.target_instance_id == instance_id
+                    && delivery.status == AdminQueuedCommandStatus::Pending
+            })
+            .count() as u32)
     }
 }
 
@@ -511,6 +658,18 @@ impl SqliteAdminServerStore {
                 result_payload TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS admin_command_deliveries (
+                command_id TEXT NOT NULL,
+                target_instance_id TEXT NOT NULL,
+                status TEXT NOT NULL,
+                assigned_at TEXT,
+                completed_at TEXT,
+                PRIMARY KEY (command_id, target_instance_id)
             )",
         )
         .execute(&self.pool)
@@ -633,9 +792,10 @@ impl SqliteAdminServerStore {
             .collect()
     }
 
-    async fn save_queued_command(
+    async fn save_batch_command(
         &self,
         command: &AdminQueuedCommand,
+        target_instance_ids: &[String],
     ) -> Result<(), AdminServerError> {
         let request_payload = serde_json::to_string(&command.request)
             .map_err(|error| AdminServerError::Database(error.to_string()))?;
@@ -660,6 +820,20 @@ impl SqliteAdminServerStore {
         .bind(command.updated_at.to_rfc3339())
         .execute(&self.pool)
         .await?;
+
+        for target_instance_id in target_instance_ids {
+            sqlx::query(
+                "INSERT INTO admin_command_deliveries
+                    (command_id, target_instance_id, status, assigned_at, completed_at)
+                 VALUES (?, ?, 'pending', NULL, NULL)
+                 ON CONFLICT(command_id, target_instance_id) DO NOTHING",
+            )
+            .bind(command.id.to_string())
+            .bind(target_instance_id)
+            .execute(&self.pool)
+            .await?;
+        }
+
         Ok(())
     }
 
@@ -674,6 +848,67 @@ impl SqliteAdminServerStore {
         .await?;
 
         rows.into_iter().map(AdminQueuedCommand::try_from).collect()
+    }
+
+    async fn assign_next_command(
+        &self,
+        instance_id: &str,
+        assigned_at: chrono::DateTime<Utc>,
+    ) -> Result<Option<AdminCommandAssignment>, AdminServerError> {
+        let row: Option<AdminQueuedCommandRow> = sqlx::query_as(
+            "SELECT c.id, c.source, c.request_payload, c.status, c.result_payload, c.created_at, c.updated_at
+             FROM admin_server_commands c
+             INNER JOIN admin_command_deliveries d ON d.command_id = c.id
+             WHERE d.target_instance_id = ? AND d.status = 'pending'
+             ORDER BY c.created_at ASC
+             LIMIT 1",
+        )
+        .bind(instance_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let mut command = AdminQueuedCommand::try_from(row)?;
+        command.status = AdminQueuedCommandStatus::Running;
+        command.updated_at = assigned_at;
+
+        sqlx::query(
+            "UPDATE admin_command_deliveries
+             SET status = 'running', assigned_at = ?
+             WHERE command_id = ? AND target_instance_id = ?",
+        )
+        .bind(assigned_at.to_rfc3339())
+        .bind(command.id.to_string())
+        .bind(instance_id)
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            "UPDATE admin_server_commands
+             SET status = 'running', updated_at = ?
+             WHERE id = ?",
+        )
+        .bind(assigned_at.to_rfc3339())
+        .bind(command.id.to_string())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(Some(command_assignment(&command, instance_id, assigned_at)))
+    }
+
+    async fn pending_command_count(&self, instance_id: &str) -> Result<u32, AdminServerError> {
+        let row: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*)
+             FROM admin_command_deliveries
+             WHERE target_instance_id = ? AND status = 'pending'",
+        )
+        .bind(instance_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.0.max(0) as u32)
     }
 }
 
@@ -778,6 +1013,22 @@ fn queued_batch_result(
     }
 }
 
+fn command_assignment(
+    command: &AdminQueuedCommand,
+    target_instance_id: &str,
+    assigned_at: chrono::DateTime<Utc>,
+) -> AdminCommandAssignment {
+    let mut request = command.request.clone();
+    request.target_instance_ids = vec![target_instance_id.to_string()];
+
+    AdminCommandAssignment {
+        command_id: command.id,
+        target_instance_id: target_instance_id.to_string(),
+        request,
+        assigned_at,
+    }
+}
+
 fn command_status_to_wire(status: AdminQueuedCommandStatus) -> &'static str {
     match status {
         AdminQueuedCommandStatus::Pending => "pending",
@@ -818,6 +1069,10 @@ pub fn router(state: AdminServerState) -> Router {
         .route("/api/admin-commands", get(list_queued_commands))
         .route("/api/admin-commands/batch", post(enqueue_batch_command))
         .route("/api/enrollments", post(enroll_agent))
+        .route(
+            "/api/agents/{instance_id}/commands/next",
+            post(poll_next_command),
+        )
         .route(
             "/api/agents/{instance_id}/heartbeat",
             post(receive_heartbeat),
@@ -867,6 +1122,14 @@ async fn list_queued_commands(
     Ok(Json(state.list_queued_commands().await?))
 }
 
+async fn poll_next_command(
+    State(state): State<AdminServerState>,
+    Path(instance_id): Path<String>,
+    Json(envelope): Json<AdminSignedEnvelope<AdminCommandPollRequest>>,
+) -> Result<Json<AdminCommandPollResponse>, AdminServerError> {
+    Ok(Json(state.poll_next_command(&instance_id, envelope).await?))
+}
+
 async fn enroll_agent(
     State(state): State<AdminServerState>,
     Json(request): Json<AdminEnrollmentTokenRequest>,
@@ -913,6 +1176,8 @@ pub enum AdminServerError {
     MachineGroupNotFound(Uuid),
     #[error("batch command needs at least one target instance")]
     NoBatchTargets,
+    #[error("admin command not found: {0}")]
+    CommandNotFound(Uuid),
     #[error("envelope kind is not valid for this endpoint")]
     InvalidEnvelopeKind,
     #[error("path instance id does not match envelope instance id")]
@@ -956,7 +1221,9 @@ impl AdminServerError {
             | Self::PayloadInstanceMismatch
             | Self::ExpiredEnvelope
             | Self::EnvelopeValidation(_) => StatusCode::BAD_REQUEST,
-            Self::AgentNotRegistered(_) | Self::MachineGroupNotFound(_) => StatusCode::NOT_FOUND,
+            Self::AgentNotRegistered(_)
+            | Self::CommandNotFound(_)
+            | Self::MachineGroupNotFound(_) => StatusCode::NOT_FOUND,
             Self::EnrollmentNotConfigured
             | Self::InvalidEnrollmentToken
             | Self::InvalidSignature => StatusCode::UNAUTHORIZED,
@@ -975,6 +1242,7 @@ impl AdminServerError {
             Self::MissingMachineGroupName => "missingMachineGroupName",
             Self::MachineGroupNotFound(_) => "machineGroupNotFound",
             Self::NoBatchTargets => "noBatchTargets",
+            Self::CommandNotFound(_) => "commandNotFound",
             Self::InvalidEnvelopeKind => "invalidEnvelopeKind",
             Self::EnvelopeInstanceMismatch => "envelopeInstanceMismatch",
             Self::PayloadInstanceMismatch => "payloadInstanceMismatch",
@@ -1251,6 +1519,71 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn agent_polls_signed_pending_command_assignment() {
+        let state = AdminServerState::new();
+        state
+            .register_agent_secret("local-1", "agent-secret-1")
+            .await
+            .unwrap();
+        state
+            .register_agent_secret("local-2", "agent-secret-2")
+            .await
+            .unwrap();
+        let app = router(state.clone());
+        let group = state
+            .create_machine_group(machine_group_request(
+                "Operacao",
+                vec!["local-1", "local-2"],
+            ))
+            .await
+            .unwrap();
+        state
+            .enqueue_batch_command(batch_request(group.id, Vec::new()))
+            .await
+            .unwrap();
+
+        let response = app
+            .oneshot(json_post(
+                "/api/agents/local-1/commands/next",
+                serde_json::to_vec(&signed_command_poll("local-1", "agent-secret-1")).unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let poll = parse_body::<AdminCommandPollResponse>(response).await;
+        let assignment = poll.assignment.expect("agent should receive one command");
+        assert!(assignment.verify("agent-secret-1").unwrap());
+        assert_eq!(assignment.kind, AdminEnvelopeKind::Command);
+        assert_eq!(assignment.payload.target_instance_id, "local-1");
+        assert_eq!(
+            assignment.payload.request.target_instance_ids,
+            vec!["local-1"]
+        );
+        assert_eq!(poll.pending_count, 0);
+    }
+
+    #[tokio::test]
+    async fn rejects_command_poll_with_wrong_signature() {
+        let state = AdminServerState::new();
+        state
+            .register_agent_secret("local-1", "agent-secret")
+            .await
+            .unwrap();
+        let app = router(state);
+
+        let response = app
+            .oneshot(json_post(
+                "/api/agents/local-1/commands/next",
+                serde_json::to_vec(&signed_command_poll("local-1", "wrong-secret")).unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
     async fn rejects_batch_command_without_targets() {
         let state = AdminServerState::new();
         let app = router(state);
@@ -1433,6 +1766,22 @@ mod tests {
             group_ids: vec![group_id],
             source: Some("test".into()),
         }
+    }
+
+    fn signed_command_poll(
+        instance_id: &str,
+        secret: &str,
+    ) -> AdminSignedEnvelope<AdminCommandPollRequest> {
+        AdminSignedEnvelope::sign(
+            AdminEnvelopeKind::Command,
+            instance_id.into(),
+            AdminCommandPollRequest {
+                requested_at: Utc::now(),
+            },
+            secret,
+            300,
+        )
+        .unwrap()
     }
 
     fn signed_secret_rotation(

@@ -5,6 +5,7 @@ import {
   adminAgentSecretRotationAcceptedSchema,
   adminBatchCommandAcceptedSchema,
   adminBatchCommandRequestSchema,
+  adminCommandPollResponseSchema,
   adminEnrollmentTokenRequestSchema,
   adminHeartbeatDeliverySchema,
   adminHeartbeatPayloadSchema,
@@ -328,5 +329,31 @@ describe("admin contracts", () => {
     });
 
     expect(accepted.command.status).toBe("pending");
+
+    const poll = adminCommandPollResponseSchema.parse({
+      assignment: {
+        schemaVersion: "admin.transport.v1",
+        kind: "command",
+        instanceId: "local-direct",
+        issuedAt: "2026-06-21T10:00:00.000Z",
+        expiresAt: "2026-06-21T10:05:00.000Z",
+        nonce: "750e8400-e29b-41d4-a716-446655440000",
+        payloadHash: "abc123",
+        signature: "blake3:abc123",
+        payload: {
+          commandId: accepted.command.id,
+          targetInstanceId: "local-direct",
+          request: {
+            ...batchRequest.request,
+            targetInstanceIds: ["local-direct"],
+          },
+          assignedAt: "2026-06-21T10:00:00.000Z",
+        },
+      },
+      pendingCount: 0,
+      polledAt: "2026-06-21T10:00:00.000Z",
+    });
+
+    expect(poll.assignment?.payload.targetInstanceId).toBe("local-direct");
   });
 });

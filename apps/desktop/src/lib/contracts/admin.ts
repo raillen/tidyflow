@@ -196,6 +196,10 @@ export const adminBatchCommandRequestSchema = z.object({
   source: z.string().nullable().optional(),
 });
 
+export const adminCommandPollRequestSchema = z.object({
+  requestedAt: z.string().datetime(),
+});
+
 export const adminCommandTargetStatusSchema = z.enum(["accepted", "skipped", "error"]);
 
 export const adminCommandTargetResultSchema = z.object({
@@ -226,6 +230,31 @@ export const adminQueuedCommandSchema = z.object({
   result: adminCommandResultSchema.nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+});
+
+export const adminCommandAssignmentSchema = z.object({
+  commandId: z.string().uuid(),
+  targetInstanceId: z.string(),
+  request: adminCommandRequestSchema,
+  assignedAt: z.string().datetime(),
+});
+
+export const adminSignedCommandAssignmentEnvelopeSchema = z.object({
+  schemaVersion: z.literal("admin.transport.v1"),
+  kind: z.literal("command"),
+  instanceId: z.string(),
+  issuedAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  nonce: z.string().uuid(),
+  payloadHash: z.string().min(1),
+  signature: z.string().startsWith("blake3:"),
+  payload: adminCommandAssignmentSchema,
+});
+
+export const adminCommandPollResponseSchema = z.object({
+  assignment: adminSignedCommandAssignmentEnvelopeSchema.nullable(),
+  pendingCount: z.number().int().nonnegative(),
+  polledAt: z.string().datetime(),
 });
 
 export const adminBatchCommandAcceptedSchema = z.object({
@@ -274,9 +303,15 @@ export type AdminSignedSecretRotationEnvelope = z.infer<
 >;
 export type AdminCommandRequest = z.infer<typeof adminCommandRequestSchema>;
 export type AdminBatchCommandRequest = z.infer<typeof adminBatchCommandRequestSchema>;
+export type AdminCommandPollRequest = z.infer<typeof adminCommandPollRequestSchema>;
 export type AdminCommandResult = z.infer<typeof adminCommandResultSchema>;
 export type AdminQueuedCommandStatus = z.infer<typeof adminQueuedCommandStatusSchema>;
 export type AdminQueuedCommand = z.infer<typeof adminQueuedCommandSchema>;
+export type AdminCommandAssignment = z.infer<typeof adminCommandAssignmentSchema>;
+export type AdminSignedCommandAssignmentEnvelope = z.infer<
+  typeof adminSignedCommandAssignmentEnvelopeSchema
+>;
+export type AdminCommandPollResponse = z.infer<typeof adminCommandPollResponseSchema>;
 export type AdminBatchCommandAccepted = z.infer<typeof adminBatchCommandAcceptedSchema>;
 export type AdminCommandQueueSummary = z.infer<typeof adminCommandQueueSummarySchema>;
 

@@ -205,6 +205,29 @@ pub struct AdminBatchCommandAccepted {
     pub result: AdminCommandResult,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminCommandPollRequest {
+    pub requested_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminCommandAssignment {
+    pub command_id: Uuid,
+    pub target_instance_id: String,
+    pub request: AdminCommandRequest,
+    pub assigned_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminCommandPollResponse {
+    pub assignment: Option<AdminSignedEnvelope<AdminCommandAssignment>>,
+    pub pending_count: u32,
+    pub polled_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminEnrollmentRequest {
