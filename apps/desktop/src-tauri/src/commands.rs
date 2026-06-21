@@ -7,9 +7,17 @@ use autoflow_domain::{
     JobSummary, SimulationReport, TemplatePipeline, TemplatePreview,
 };
 use autoflow_infrastructure::ui_state::MissedScheduleEntry;
+use serde::Serialize;
 use serde_json::Value;
 use tauri::State;
 use uuid::Uuid;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GeneratedAdminAgentSecret {
+    pub secret: String,
+    pub settings: AppSettings,
+}
 
 #[tauri::command]
 pub fn health(state: State<'_, AppState>) -> HealthStatus {
@@ -55,10 +63,39 @@ pub async fn admin_heartbeat_payload(
 #[tauri::command]
 pub async fn admin_signed_heartbeat_payload(
     state: State<'_, AppState>,
-    signing_secret: String,
 ) -> Result<AdminSignedEnvelope<AdminHeartbeatPayload>, String> {
     state
-        .admin_signed_heartbeat_payload(signing_secret)
+        .admin_signed_heartbeat_payload()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_agent_secret_generate(
+    state: State<'_, AppState>,
+) -> Result<GeneratedAdminAgentSecret, String> {
+    let (secret, settings) = state
+        .admin_generate_agent_secret()
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(GeneratedAdminAgentSecret { secret, settings })
+}
+
+#[tauri::command]
+pub async fn admin_agent_secret_set(
+    state: State<'_, AppState>,
+    secret: String,
+) -> Result<AppSettings, String> {
+    state
+        .admin_set_agent_secret(secret)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn admin_agent_secret_clear(state: State<'_, AppState>) -> Result<AppSettings, String> {
+    state
+        .admin_clear_agent_secret()
         .await
         .map_err(|e| e.to_string())
 }

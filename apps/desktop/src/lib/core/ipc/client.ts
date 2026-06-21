@@ -17,8 +17,10 @@ import {
 } from "$lib/contracts/admin";
 import {
   appSettingsSchema,
+  generatedAdminAgentSecretSchema,
   healthStatusSchema,
   type AppSettings,
+  type GeneratedAdminAgentSecret,
   type HealthStatus,
 } from "$lib/contracts/settings";
 import {
@@ -86,13 +88,24 @@ export async function fetchAdminHeartbeatPayload(): Promise<AdminHeartbeatPayloa
   return adminHeartbeatPayloadSchema.parse(raw);
 }
 
-export async function fetchAdminSignedHeartbeatPayload(
-  signingSecret: string,
-): Promise<AdminSignedHeartbeatEnvelope> {
-  const raw: unknown = await invoke("admin_signed_heartbeat_payload", {
-    signingSecret,
-  });
+export async function fetchAdminSignedHeartbeatPayload(): Promise<AdminSignedHeartbeatEnvelope> {
+  const raw: unknown = await invoke("admin_signed_heartbeat_payload");
   return adminSignedHeartbeatEnvelopeSchema.parse(raw);
+}
+
+export async function generateAdminAgentSecret(): Promise<GeneratedAdminAgentSecret> {
+  const raw: unknown = await invoke("admin_agent_secret_generate");
+  return generatedAdminAgentSecretSchema.parse(raw);
+}
+
+export async function setAdminAgentSecret(secret: string): Promise<AppSettings> {
+  const raw: unknown = await invoke("admin_agent_secret_set", { secret });
+  return appSettingsSchema.parse(raw);
+}
+
+export async function clearAdminAgentSecret(): Promise<AppSettings> {
+  const raw: unknown = await invoke("admin_agent_secret_clear");
+  return appSettingsSchema.parse(raw);
 }
 
 export async function dispatchAdminCommand(

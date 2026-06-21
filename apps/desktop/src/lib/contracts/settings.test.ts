@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appSettingsSchema, hashPin } from "./settings";
+import { appSettingsSchema, generatedAdminAgentSecretSchema, hashPin } from "./settings";
 
 describe("appSettingsSchema", () => {
   it("accepts default-shaped payload from Rust", () => {
@@ -138,5 +138,25 @@ describe("appSettingsSchema", () => {
 
     expect(hashed).toHaveLength(64);
     expect(hashed).not.toBe("1234");
+  });
+
+  it("accepts generated admin agent secret payload", () => {
+    const parsed = generatedAdminAgentSecretSchema.parse({
+      secret: "af_550e8400e29b41d4a716446655440000_550e8400e29b41d4a716446655440001",
+      settings: {
+        theme: "system",
+        accentColor: "#0064ff",
+        language: "pt-BR",
+        autostart: false,
+        bandwidthLimitMbps: 0,
+        maxParallelFiles: 1,
+        logRetentionDays: 30,
+        admin: {
+          enrollmentTokenConfigured: true,
+        },
+      },
+    });
+
+    expect(parsed.settings.admin.enrollmentTokenConfigured).toBe(true);
   });
 });

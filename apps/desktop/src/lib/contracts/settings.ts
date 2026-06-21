@@ -120,6 +120,11 @@ export const appSettingsSchema = z.object({
   admin: adminSettingsSchema.default({}),
 });
 
+export const generatedAdminAgentSecretSchema = z.object({
+  secret: z.string().min(32),
+  settings: appSettingsSchema,
+});
+
 export type ThemeMode = z.infer<typeof themeModeSchema>;
 export type ProcessPriority = z.infer<typeof processPrioritySchema>;
 export type AdminAgentMode = z.infer<typeof adminAgentModeSchema>;
@@ -134,6 +139,7 @@ export type SupportSettings = z.infer<typeof supportSettingsSchema>;
 export type AboutSettings = z.infer<typeof aboutSettingsSchema>;
 export type AdminSettings = z.infer<typeof adminSettingsSchema>;
 export type AppSettings = z.infer<typeof appSettingsSchema>;
+export type GeneratedAdminAgentSecret = z.infer<typeof generatedAdminAgentSecretSchema>;
 
 export const healthStatusSchema = z.object({
   status: z.string(),

@@ -35,7 +35,14 @@
   import NumberField from "$lib/components/settings/NumberField.svelte";
   import SectionTitle from "$lib/components/settings/SectionTitle.svelte";
   import ToggleField from "$lib/components/settings/ToggleField.svelte";
-  import { fetchHealth, fetchSettings, saveSettings } from "$lib/core/ipc/client";
+  import {
+    clearAdminAgentSecret,
+    fetchHealth,
+    fetchSettings,
+    generateAdminAgentSecret,
+    saveSettings,
+    setAdminAgentSecret,
+  } from "$lib/core/ipc/client";
   import { applyAppearance } from "$lib/core/stores/theme";
   import type { HealthStatus } from "$lib/contracts/settings";
   import type { Component } from "svelte";
@@ -70,6 +77,8 @@
   let saving = $state(false);
   let newPin = $state("");
   let confirmPin = $state("");
+  let adminSecretInput = $state("");
+  let generatedAdminSecret = $state<string | null>(null);
   let changelogSearch = $state("");
   let changelogFilter = $state<ChangelogFilter>("all");
   let expandedVersions = $state<string[]>([CHANGELOG_ENTRIES[0]?.version ?? ""]);
@@ -162,6 +171,72 @@
   function removeWebhook(index: number) {
     if (!settings) return;
     settings.notifications.webhooks = settings.notifications.webhooks.filter((_, i) => i !== index);
+  }
+
+  async function saveAdminSecret() {
+    if (!settings) return;
+    if (adminSecretInput.trim().length < 32) {
+      message = "O segredo do agent precisa ter pelo menos 32 caracteres.";
+      return;
+    }
+
+    saving = true;
+    message = null;
+    try {
+      settings = await setAdminAgentSecret(adminSecretInput);
+      adminSecretInput = "";
+      generatedAdminSecret = null;
+      message = "Segredo do agent salvo no cofre do sistema.";
+    } catch (e) {
+      message = e instanceof Error ? e.message : "Erro ao salvar segredo do agent";
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function generateAdminSecret() {
+    saving = true;
+    message = null;
+    try {
+      const generated = await generateAdminAgentSecret();
+      settings = generated.settings;
+      generatedAdminSecret = generated.secret;
+      adminSecretInput = "";
+      message = "Segredo gerado e salvo. Copie agora se precisar cadastrar no servidor.";
+    } catch (e) {
+      message = e instanceof Error ? e.message : "Erro ao gerar segredo do agent";
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function clearAdminSecret() {
+    if (!window.confirm("Remover o segredo do agent salvo neste computador?")) {
+      return;
+    }
+
+    saving = true;
+    message = null;
+    try {
+      settings = await clearAdminAgentSecret();
+      adminSecretInput = "";
+      generatedAdminSecret = null;
+      message = "Segredo do agent removido do cofre.";
+    } catch (e) {
+      message = e instanceof Error ? e.message : "Erro ao remover segredo do agent";
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function copyGeneratedAdminSecret() {
+    if (!generatedAdminSecret) return;
+    try {
+      await navigator.clipboard.writeText(generatedAdminSecret);
+      message = "Segredo copiado para a area de transferencia.";
+    } catch {
+      message = "Nao foi possivel copiar o segredo neste ambiente.";
+    }
   }
 
   function toggleVersion(version: string) {
@@ -456,6 +531,45 @@
                 />
               </label>
             </div>
+
+            <section class="subsection nested-card" aria-label="Segredo do agent admin">
+              <div class="section-line">
+                <h3>Segredo do agent</h3>
+                <span class="status-pill" class:enabled={settings.admin.enrollmentTokenConfigured}>
+                  {settings.admin.enrollmentTokenConfigured ? "No cofre" : "Nao configurado"}
+                </span>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Inserir segredo recebido do servidor</span>
+                <input
+                  class="field-input"
+                  type="password"
+                  bind:value={adminSecretInput}
+                  autocomplete="new-password"
+                  placeholder="Cole aqui o segredo de matricula ou assinatura"
+                />
+              </label>
+
+              <div class="secret-actions">
+                <button class="btn primary" type="button" onclick={saveAdminSecret} disabled={saving || adminSecretInput.trim().length < 32}>
+                  Salvar no cofre
+                </button>
+                <button class="btn" type="button" onclick={generateAdminSecret} disabled={saving}>
+                  Gerar local
+                </button>
+                <button class="btn danger" type="button" onclick={clearAdminSecret} disabled={saving || !settings.admin.enrollmentTokenConfigured}>
+                  Limpar
+                </button>
+              </div>
+
+              {#if generatedAdminSecret}
+                <div class="generated-secret" aria-label="Segredo gerado">
+                  <code>{generatedAdminSecret}</code>
+                  <button class="btn" type="button" onclick={copyGeneratedAdminSecret}>Copiar</button>
+                </div>
+              {/if}
+            </section>
 
             <p class="hint">
               O modo web usa conexão de saída do agent para o servidor. Comandos destrutivos devem continuar auditados e confirmados.
@@ -765,6 +879,42 @@
     justify-content: space-between;
     margin-top: var(--space-3);
     gap: var(--space-3);
+  }
+
+  .secret-actions,
+  .generated-secret {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .generated-secret {
+    justify-content: space-between;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+
+  .generated-secret code {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    color: var(--text-primary);
+    font-size: var(--text-xs);
+  }
+
+  .status-pill {
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    font-weight: 650;
+  }
+
+  .status-pill.enabled {
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    color: var(--success);
   }
 
   .about-card {

@@ -24,6 +24,7 @@ A primeira fundação já existe no app desktop:
 - comando IPC `admin_fleet_snapshot`;
 - comando IPC `admin_heartbeat_payload`;
 - comando IPC `admin_signed_heartbeat_payload`;
+- comandos IPC `admin_agent_secret_generate`, `admin_agent_secret_set` e `admin_agent_secret_clear`;
 - comando IPC `admin_dispatch_command`;
 - comandos IPC para enfileirar, listar, resumir e processar a fila local;
 - leitura local de máquina, jobs, execuções ativas e capacidades;
@@ -31,6 +32,7 @@ A primeira fundação já existe no app desktop:
 - cancelamento local de `cancelExecution`;
 - execução local de `pauseJob`, `resumeJob`, `stopJob` e `deleteJob`;
 - configurações persistidas do modo Admin/Agent;
+- segredo do agent salvo no keyring/cofre do sistema operacional;
 - auditoria local para comandos admin diretos, enfileirados e processados;
 - comandos que dependem de servidor web ainda modelados como planejados.
 
@@ -57,7 +59,7 @@ O envelope assinado (`AdminSignedEnvelope`) registra:
 - hash do payload;
 - assinatura `blake3`.
 
-O segredo de assinatura deve vir do cofre do sistema operacional ou de uma sessao segura. Ele nao deve ser salvo em texto claro no SQLite.
+O segredo de assinatura vem do cofre do sistema operacional. Ele nao e salvo em texto claro no SQLite. O SQLite guarda apenas o indicador `enrollmentTokenConfigured` para a UI.
 
 A fila local usa SQLite e registra:
 
@@ -152,10 +154,9 @@ Admin Web
 
 ## Próximos cortes
 
-1. Criar servidor admin mínimo com cadastro de instâncias.
-2. Salvar segredo do agent no cofre do sistema operacional.
-3. Implementar matrícula por token/convite e rotação de segredo do agent.
-4. Sincronizar heartbeat assinado com o servidor.
-5. Adicionar grupos de máquinas e ações em lote multi-instância.
-6. Adicionar RBAC e auditoria central.
-7. Implementar edição remota de fluxos com validação e prévia.
+1. Criar servidor admin minimo com cadastro de instancias.
+2. Implementar matricula por token/convite e rotacao de segredo do agent.
+3. Sincronizar heartbeat assinado com o servidor.
+4. Adicionar grupos de maquinas e acoes em lote multi-instancia.
+5. Adicionar RBAC e auditoria central.
+6. Implementar edicao remota de fluxos com validacao e previa.

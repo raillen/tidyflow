@@ -33,6 +33,7 @@
     fetchAdminCommandQueueSummary,
     fetchAdminFleetSnapshot,
     fetchAdminHeartbeatPayload,
+    fetchAdminSignedHeartbeatPayload,
     listAdminCommands,
     processNextAdminCommand,
   } from "$lib/core/ipc/client";
@@ -232,6 +233,20 @@
       message = "Heartbeat copiado para a area de transferencia.";
     } catch {
       message = "Nao foi possivel copiar o heartbeat neste ambiente.";
+    }
+  }
+
+  async function copySignedHeartbeatPayload() {
+    message = null;
+    try {
+      const signedHeartbeat = await fetchAdminSignedHeartbeatPayload();
+      await navigator.clipboard.writeText(JSON.stringify(signedHeartbeat, null, 2));
+      message = "Heartbeat assinado copiado para a area de transferencia.";
+    } catch (error) {
+      message =
+        error instanceof Error
+          ? error.message
+          : "Configure o segredo do agent antes de copiar o heartbeat assinado.";
     }
   }
 </script>
@@ -516,9 +531,14 @@
         <section class="heartbeat-panel" aria-label="Heartbeat local">
           <div class="section-head">
             <h3>Heartbeat</h3>
-            <button class="btn" type="button" onclick={copyHeartbeatPayload} disabled={!heartbeat}>
-              Copiar JSON
-            </button>
+            <div class="heartbeat-actions">
+              <button class="btn" type="button" onclick={copyHeartbeatPayload} disabled={!heartbeat}>
+                Copiar JSON
+              </button>
+              <button class="btn" type="button" onclick={copySignedHeartbeatPayload} disabled={!heartbeat}>
+                Copiar assinado
+              </button>
+            </div>
           </div>
           {#if heartbeat}
             <dl>
@@ -776,6 +796,13 @@
     display: grid;
     gap: var(--space-2);
     margin: 0;
+  }
+
+  .heartbeat-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    justify-content: flex-end;
   }
 
   .heartbeat-panel dl div,

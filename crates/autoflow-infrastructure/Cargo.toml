@@ -8,6 +8,7 @@ async-trait = "0.1"
 autoflow-application = { path = "../autoflow-application" }
 autoflow-domain = { path = "../autoflow-domain" }
 chrono = { workspace = true }
+keyring = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }

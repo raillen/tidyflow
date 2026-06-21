@@ -24,6 +24,7 @@ use autoflow_infrastructure::{
     blueprints::SqliteBlueprintStore,
     database,
     jobs::SqliteJobStore,
+    secrets::AdminSecretStore,
     settings::SqliteSettingsStore,
     ui_state::{MissedScheduleEntry, SqliteMissedScheduleStore, SqliteUiStateStore},
 };
@@ -45,6 +46,7 @@ struct AppStateInner {
     ui_state: Arc<SqliteUiStateStore>,
     missed: Arc<SqliteMissedScheduleStore>,
     admin_commands: Arc<SqliteAdminCommandStore>,
+    admin_secrets: AdminSecretStore,
     queue: JobQueue,
     watch: WatchService,
     instance_id: String,
@@ -79,6 +81,7 @@ impl AppState {
         let ui_state = Arc::new(SqliteUiStateStore::new(pool.clone()));
         let missed = Arc::new(SqliteMissedScheduleStore::new(pool.clone()));
         let admin_commands = Arc::new(SqliteAdminCommandStore::new(pool.clone()));
+        let admin_secrets = AdminSecretStore::new();
         let queue = JobQueue::start(data_dir.clone(), jobs.clone(), audit.clone(), events);
         Scheduler::start(jobs.clone(), missed.clone(), queue.clone());
         let watch = WatchService::start(
@@ -97,6 +100,7 @@ impl AppState {
                 ui_state,
                 missed,
                 admin_commands,
+                admin_secrets,
                 queue,
                 watch,
                 instance_id,
@@ -132,8 +136,16 @@ impl AppState {
 
     pub async fn admin_signed_heartbeat_payload(
         &self,
-        signing_secret: String,
     ) -> Result<AdminSignedEnvelope<AdminHeartbeatPayload>, DomainError> {
+        let signing_secret = self
+            .inner
+            .admin_secrets
+            .get_agent_secret()?
+            .ok_or_else(|| {
+                DomainError::Validation(
+                    "admin agent secret is not configured in the OS keyring".into(),
+                )
+            })?;
         let payload = self.admin_heartbeat_payload().await?;
         let ttl_secs = (payload.instance.management.heartbeat_interval_secs * 3).clamp(30, 3600);
 
@@ -144,6 +156,23 @@ impl AppState {
             &signing_secret,
             ttl_secs,
         )
+    }
+
+    pub async fn admin_generate_agent_secret(&self) -> Result<(String, AppSettings), DomainError> {
+        let secret = generate_admin_agent_secret();
+        self.admin_set_agent_secret(secret.clone()).await?;
+        let settings = self.get_settings().await?;
+        Ok((secret, settings))
+    }
+
+    pub async fn admin_set_agent_secret(&self, secret: String) -> Result<AppSettings, DomainError> {
+        self.inner.admin_secrets.set_agent_secret(&secret)?;
+        self.set_admin_secret_configured(true).await
+    }
+
+    pub async fn admin_clear_agent_secret(&self) -> Result<AppSettings, DomainError> {
+        self.inner.admin_secrets.clear_agent_secret()?;
+        self.set_admin_secret_configured(false).await
     }
 
     pub async fn admin_dispatch_command(&self, request: AdminCommandRequest) -> AdminCommandResult {
@@ -257,6 +286,15 @@ impl AppState {
     pub async fn update_settings(&self, settings: AppSettings) -> Result<AppSettings, DomainError> {
         self.inner.settings.update_async(settings).await?;
         self.inner.settings.get_async().await
+    }
+
+    async fn set_admin_secret_configured(
+        &self,
+        configured: bool,
+    ) -> Result<AppSettings, DomainError> {
+        let mut settings = self.get_settings().await?;
+        settings.admin.enrollment_token_configured = configured;
+        self.update_settings(settings).await
     }
 
     pub async fn list_jobs(&self) -> Result<Vec<JobSummary>, DomainError> {
@@ -481,4 +519,8 @@ fn admin_command_name(kind: autoflow_domain::AdminCommandKind) -> &'static str {
         autoflow_domain::AdminCommandKind::ApplySettingsPolicy => "applySettingsPolicy",
         autoflow_domain::AdminCommandKind::RequestLogs => "requestLogs",
     }
+}
+
+fn generate_admin_agent_secret() -> String {
+    format!("af_{}_{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
 }
