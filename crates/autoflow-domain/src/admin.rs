@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{ActiveExecution, AdminAgentMode, DomainError, JobMode};
+use crate::{ActiveExecution, AdminAgentMode, DomainError, Job, JobMode};
 
 const ADMIN_TRANSPORT_SCHEMA_VERSION: &str = "admin.transport.v1";
 const ADMIN_TRANSPORT_SIGNATURE_CONTEXT: &str = "autoflow-admin-transport-v1";
@@ -328,6 +328,14 @@ pub struct AdminCommandCompletionAccepted {
     pub recorded_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminJobPayload {
+    pub job: Job,
+    #[serde(default)]
+    pub preview_only: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminEnrollmentRequest {
@@ -573,6 +581,8 @@ pub struct AdminCommandRequest {
     pub execution_ids: Vec<Uuid>,
     #[serde(default)]
     pub reason: Option<String>,
+    #[serde(default)]
+    pub job_payloads: Vec<AdminJobPayload>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

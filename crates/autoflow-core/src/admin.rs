@@ -8,8 +8,9 @@ use autoflow_domain::{
     ActiveExecution, AdminCommandCapability, AdminCommandKind, AdminCommandRequest,
     AdminCommandResult, AdminCommandSupport, AdminCommandTargetResult, AdminCommandTargetStatus,
     AdminFleetSnapshot, AdminFleetSummary, AdminHardwareProfile, AdminInstanceSnapshot,
-    AdminInstanceStatus, AdminJobRuntimeStatus, AdminManagedJob, AdminManagementProfile,
-    AdminNetworkInterface, AdminNetworkProfile, AdminSettings, DomainError, JobSummary,
+    AdminInstanceStatus, AdminJobPayload, AdminJobRuntimeStatus, AdminManagedJob,
+    AdminManagementProfile, AdminNetworkInterface, AdminNetworkProfile, AdminSettings, DomainError,
+    Job, JobSummary,
 };
 use chrono::Utc;
 
@@ -124,6 +125,12 @@ pub async fn dispatch_command(
             AdminCommandKind::StopJob => {
                 stop_jobs(state, &target, &request, &mut results);
             }
+            AdminCommandKind::CreateJob => {
+                create_jobs(state, &target, &request.job_payloads, &mut results).await;
+            }
+            AdminCommandKind::UpdateJob => {
+                update_jobs(state, &target, &request.job_payloads, &mut results).await;
+            }
             AdminCommandKind::DeleteJob => {
                 delete_jobs(state, &target, &request.job_ids, &mut results).await;
             }
@@ -143,6 +150,90 @@ pub async fn dispatch_command(
         accepted,
         command: request.kind,
         results,
+    }
+}
+
+async fn create_jobs(
+    state: &AppState,
+    target: &str,
+    payloads: &[AdminJobPayload],
+    results: &mut Vec<AdminCommandTargetResult>,
+) {
+    if payloads.is_empty() {
+        results.push(skipped(
+            target.to_string(),
+            "Nenhum fluxo enviado para criar",
+        ));
+        return;
+    }
+
+    for payload in payloads {
+        if payload.preview_only {
+            results.push(preview_job_result(state, target, &payload.job, "criar"));
+            continue;
+        }
+
+        match state.create_job(payload.job.clone()).await {
+            Ok(saved) => results.push(AdminCommandTargetResult {
+                target_instance_id: target.to_string(),
+                status: AdminCommandTargetStatus::Accepted,
+                message: format!("Fluxo remoto criado: {}", saved.name),
+            }),
+            Err(error) => results.push(error_result(target, error.to_string())),
+        }
+    }
+}
+
+async fn update_jobs(
+    state: &AppState,
+    target: &str,
+    payloads: &[AdminJobPayload],
+    results: &mut Vec<AdminCommandTargetResult>,
+) {
+    if payloads.is_empty() {
+        results.push(skipped(
+            target.to_string(),
+            "Nenhum fluxo enviado para editar",
+        ));
+        return;
+    }
+
+    for payload in payloads {
+        if payload.preview_only {
+            results.push(preview_job_result(state, target, &payload.job, "editar"));
+            continue;
+        }
+
+        match state.get_job(payload.job.id).await {
+            Ok(_) => match state.update_job(payload.job.clone()).await {
+                Ok(saved) => results.push(AdminCommandTargetResult {
+                    target_instance_id: target.to_string(),
+                    status: AdminCommandTargetStatus::Accepted,
+                    message: format!("Fluxo remoto editado: {}", saved.name),
+                }),
+                Err(error) => results.push(error_result(target, error.to_string())),
+            },
+            Err(error) => results.push(error_result(target, error.to_string())),
+        }
+    }
+}
+
+fn preview_job_result(
+    state: &AppState,
+    target: &str,
+    job: &Job,
+    action: &str,
+) -> AdminCommandTargetResult {
+    match state.simulate_job_draft(job.clone()) {
+        Ok(report) => AdminCommandTargetResult {
+            target_instance_id: target.to_string(),
+            status: AdminCommandTargetStatus::Accepted,
+            message: format!(
+                "Previa para {action} '{}': {} arquivos, {} ignorados",
+                job.name, report.files_matched, report.files_skipped
+            ),
+        },
+        Err(error) => error_result(target, error.to_string()),
     }
 }
 
@@ -398,14 +489,14 @@ fn command_capabilities() -> Vec<AdminCommandCapability> {
         capability(
             AdminCommandKind::CreateJob,
             "Criar fluxo remoto",
-            AdminCommandSupport::Planned,
+            AdminCommandSupport::Available,
             "maquina/lote",
             true,
         ),
         capability(
             AdminCommandKind::UpdateJob,
             "Editar fluxo remoto",
-            AdminCommandSupport::Planned,
+            AdminCommandSupport::Available,
             "maquina/lote",
             true,
         ),

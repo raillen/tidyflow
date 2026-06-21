@@ -377,6 +377,29 @@ describe("admin contracts", () => {
 
     expect(poll.assignment?.payload.targetInstanceId).toBe("local-direct");
 
+    const remoteJobPreview = adminCommandRequestSchema.parse({
+      kind: "createJob",
+      targetInstanceIds: ["local-direct"],
+      jobPayloads: [
+        {
+          previewOnly: true,
+          job: {
+            id: "860e8400-e29b-41d4-a716-446655440000",
+            name: "Coleta remota",
+            sourcePath: "C:/Entrada",
+            targetPath: "D:/Saida",
+            mode: "copy",
+            conflict: "skip",
+            enabled: true,
+            lastRun: null,
+            nextRun: null,
+          },
+        },
+      ],
+    });
+
+    expect(remoteJobPreview.jobPayloads[0]?.previewOnly).toBe(true);
+
     const completionEnvelope = adminSignedCommandCompletionEnvelopeSchema.parse({
       schemaVersion: "admin.transport.v1",
       kind: "command",

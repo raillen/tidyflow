@@ -135,6 +135,13 @@ O endpoint de polling de comandos recebe `AdminSignedEnvelope<AdminCommandPollRe
 
 O endpoint de conclusao de comandos recebe `AdminSignedEnvelope<AdminCommandCompletionRequest>`, valida a assinatura do agent e registra o resultado terminal daquele alvo. O servidor atualiza a entrega individual e recalcula o status agregado do `AdminQueuedCommand`.
 
+Comandos `createJob` e `updateJob` aceitam `jobPayloads`. Cada payload contem:
+
+- `job`: contrato completo de `Job`;
+- `previewOnly`: quando `true`, o agent valida e simula o fluxo, mas nao salva.
+
+Quando `previewOnly` e `false`, o agent valida o fluxo antes de criar ou editar. Para `updateJob`, o agent tambem verifica se o fluxo existe antes de salvar.
+
 O endpoint de matricula recebe `AdminEnrollmentTokenRequest`, valida o token de convite e cadastra o segredo inicial enviado pelo agent.
 
 O endpoint de heartbeat recebe `AdminSignedEnvelope<AdminHeartbeatPayload>` e valida:
@@ -264,6 +271,6 @@ Admin Web
 
 ## Próximos cortes
 
-1. Implementar edicao remota de fluxos com validacao e previa.
-2. Ligar o painel web aos endpoints de grupos, lote e execucao remota.
-3. Adicionar sessao web completa para multiplos operadores.
+1. Ligar o painel web aos endpoints de grupos, lote e execucao remota.
+2. Adicionar sessao web completa para multiplos operadores.
+3. Criar UX dedicada para previsualizar e aplicar edicoes remotas de fluxo.

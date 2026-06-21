@@ -112,6 +112,7 @@
       targetInstanceIds: [instance.instanceId],
       jobIds: [],
       executionIds: [executionId],
+      jobPayloads: [],
       reason: null,
     });
     message = result.results.map((entry) => entry.message).join(" | ");
@@ -174,6 +175,7 @@
       targetInstanceIds: [instance.instanceId],
       jobIds: instance.jobs.map((job) => job.id),
       executionIds: [],
+      jobPayloads: [],
       reason: null,
     });
     message = result.results.map((entry) => entry.message).join(" | ");

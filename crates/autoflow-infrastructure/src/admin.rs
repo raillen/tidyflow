@@ -249,6 +249,7 @@ mod tests {
                     job_ids: Vec::new(),
                     execution_ids: Vec::new(),
                     reason: None,
+                    job_payloads: Vec::new(),
                 },
             )
             .await

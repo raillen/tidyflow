@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { activeExecutionSchema, jobModeSchema } from "./job";
+import { activeExecutionSchema, jobModeSchema, jobSchema } from "./job";
 import { adminAgentModeSchema } from "./settings";
 
 export const adminInstanceStatusSchema = z.enum(["online", "warning", "offline"]);
@@ -213,12 +213,18 @@ export const adminSignedSecretRotationEnvelopeSchema = z.object({
   payload: adminAgentSecretRotationRequestSchema,
 });
 
+export const adminJobPayloadSchema = z.object({
+  job: jobSchema,
+  previewOnly: z.boolean().default(false),
+});
+
 export const adminCommandRequestSchema = z.object({
   kind: adminCommandKindSchema,
   targetInstanceIds: z.array(z.string()).default([]),
   jobIds: z.array(z.string().uuid()).default([]),
   executionIds: z.array(z.string().uuid()).default([]),
   reason: z.string().nullable().optional(),
+  jobPayloads: z.array(adminJobPayloadSchema).default([]),
 });
 
 export const adminBatchCommandRequestSchema = z.object({
@@ -377,6 +383,7 @@ export type AdminSignedHeartbeatEnvelope = z.infer<typeof adminSignedHeartbeatEn
 export type AdminSignedSecretRotationEnvelope = z.infer<
   typeof adminSignedSecretRotationEnvelopeSchema
 >;
+export type AdminJobPayload = z.infer<typeof adminJobPayloadSchema>;
 export type AdminCommandRequest = z.infer<typeof adminCommandRequestSchema>;
 export type AdminBatchCommandRequest = z.infer<typeof adminBatchCommandRequestSchema>;
 export type AdminCommandPollRequest = z.infer<typeof adminCommandPollRequestSchema>;
