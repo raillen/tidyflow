@@ -17,8 +17,9 @@ pub mod transfer;
 pub mod watch;
 
 pub use admin::{
-    AdminCommandCapability, AdminCommandKind, AdminCommandQueueSummary, AdminCommandRequest,
-    AdminCommandResult, AdminCommandSupport, AdminCommandTargetResult, AdminCommandTargetStatus,
+    AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminCommandCapability,
+    AdminCommandKind, AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult,
+    AdminCommandSupport, AdminCommandTargetResult, AdminCommandTargetStatus,
     AdminEnrollmentRequest, AdminEnrollmentResponse, AdminEnrollmentTokenRequest,
     AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary, AdminHardwareProfile,
     AdminHeartbeatAccepted, AdminHeartbeatDelivery, AdminHeartbeatPayload, AdminInstanceSnapshot,

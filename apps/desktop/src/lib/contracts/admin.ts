@@ -16,7 +16,7 @@ export const adminCommandKindSchema = z.enum([
   "requestLogs",
 ]);
 export const adminCommandSupportSchema = z.enum(["available", "planned"]);
-export const adminEnvelopeKindSchema = z.enum(["enrollment", "heartbeat", "command"]);
+export const adminEnvelopeKindSchema = z.enum(["enrollment", "heartbeat", "command", "secretRotation"]);
 
 export const adminCommandCapabilitySchema = z.object({
   kind: adminCommandKindSchema,
@@ -103,6 +103,13 @@ export const adminEnrollmentRequestSchema = z.object({
   requestedAt: z.string().datetime(),
 });
 
+export const adminEnrollmentTokenRequestSchema = z.object({
+  token: z.string().min(1),
+  instance: adminInstanceSnapshotSchema,
+  agentSecret: z.string().min(1),
+  requestedAt: z.string().datetime(),
+});
+
 export const adminEnrollmentResponseSchema = z.object({
   accepted: z.boolean(),
   instanceId: z.string(),
@@ -124,6 +131,18 @@ export const adminHeartbeatDeliverySchema = z.object({
   sentAt: z.string().datetime(),
 });
 
+export const adminAgentSecretRotationRequestSchema = z.object({
+  newAgentSecret: z.string().min(1),
+  requestedAt: z.string().datetime(),
+});
+
+export const adminAgentSecretRotationAcceptedSchema = z.object({
+  accepted: z.boolean(),
+  instanceId: z.string(),
+  rotatedAt: z.string().datetime(),
+  message: z.string(),
+});
+
 export const adminSignedHeartbeatEnvelopeSchema = z.object({
   schemaVersion: z.literal("admin.transport.v1"),
   kind: z.literal("heartbeat"),
@@ -134,6 +153,18 @@ export const adminSignedHeartbeatEnvelopeSchema = z.object({
   payloadHash: z.string().min(1),
   signature: z.string().startsWith("blake3:"),
   payload: adminHeartbeatPayloadSchema,
+});
+
+export const adminSignedSecretRotationEnvelopeSchema = z.object({
+  schemaVersion: z.literal("admin.transport.v1"),
+  kind: z.literal("secretRotation"),
+  instanceId: z.string(),
+  issuedAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  nonce: z.string().uuid(),
+  payloadHash: z.string().min(1),
+  signature: z.string().startsWith("blake3:"),
+  payload: adminAgentSecretRotationRequestSchema,
 });
 
 export const adminCommandRequestSchema = z.object({
@@ -199,10 +230,18 @@ export type AdminInstanceSnapshot = z.infer<typeof adminInstanceSnapshotSchema>;
 export type AdminFleetSummary = z.infer<typeof adminFleetSummarySchema>;
 export type AdminFleetSnapshot = z.infer<typeof adminFleetSnapshotSchema>;
 export type AdminEnrollmentRequest = z.infer<typeof adminEnrollmentRequestSchema>;
+export type AdminEnrollmentTokenRequest = z.infer<typeof adminEnrollmentTokenRequestSchema>;
 export type AdminEnrollmentResponse = z.infer<typeof adminEnrollmentResponseSchema>;
 export type AdminHeartbeatPayload = z.infer<typeof adminHeartbeatPayloadSchema>;
 export type AdminHeartbeatDelivery = z.infer<typeof adminHeartbeatDeliverySchema>;
+export type AdminAgentSecretRotationRequest = z.infer<typeof adminAgentSecretRotationRequestSchema>;
+export type AdminAgentSecretRotationAccepted = z.infer<
+  typeof adminAgentSecretRotationAcceptedSchema
+>;
 export type AdminSignedHeartbeatEnvelope = z.infer<typeof adminSignedHeartbeatEnvelopeSchema>;
+export type AdminSignedSecretRotationEnvelope = z.infer<
+  typeof adminSignedSecretRotationEnvelopeSchema
+>;
 export type AdminCommandRequest = z.infer<typeof adminCommandRequestSchema>;
 export type AdminCommandResult = z.infer<typeof adminCommandResultSchema>;
 export type AdminQueuedCommandStatus = z.infer<typeof adminQueuedCommandStatusSchema>;

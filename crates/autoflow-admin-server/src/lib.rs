@@ -4,9 +4,9 @@ use std::{
 };
 
 use autoflow_domain::{
-    AdminEnrollmentResponse, AdminEnrollmentTokenRequest, AdminEnvelopeKind, AdminFleetSnapshot,
-    AdminFleetSummary, AdminHeartbeatAccepted, AdminHeartbeatPayload, AdminInstanceSnapshot,
-    AdminSignedEnvelope,
+    AdminAgentSecretRotationAccepted, AdminAgentSecretRotationRequest, AdminEnrollmentResponse,
+    AdminEnrollmentTokenRequest, AdminEnvelopeKind, AdminFleetSnapshot, AdminFleetSummary,
+    AdminHeartbeatAccepted, AdminHeartbeatPayload, AdminInstanceSnapshot, AdminSignedEnvelope,
 };
 use axum::{
     extract::{Path, State},
@@ -190,6 +190,50 @@ impl AdminServerState {
             instance_id: path_instance_id.to_string(),
             received_at: now,
             message: "Heartbeat aceito".into(),
+        })
+    }
+
+    pub async fn rotate_agent_secret(
+        &self,
+        path_instance_id: &str,
+        envelope: AdminSignedEnvelope<AdminAgentSecretRotationRequest>,
+    ) -> Result<AdminAgentSecretRotationAccepted, AdminServerError> {
+        let path_instance_id = path_instance_id.trim();
+        if path_instance_id.is_empty() {
+            return Err(AdminServerError::MissingInstanceId);
+        }
+        if envelope.kind != AdminEnvelopeKind::SecretRotation {
+            return Err(AdminServerError::InvalidEnvelopeKind);
+        }
+        if envelope.instance_id != path_instance_id {
+            return Err(AdminServerError::EnvelopeInstanceMismatch);
+        }
+
+        let now = Utc::now();
+        if envelope.expires_at < now {
+            return Err(AdminServerError::ExpiredEnvelope);
+        }
+
+        let current_secret = self.agent_secret(path_instance_id).await?;
+        if !envelope
+            .verify(&current_secret)
+            .map_err(AdminServerError::from)?
+        {
+            return Err(AdminServerError::InvalidSignature);
+        }
+
+        let new_secret = normalize_required_secret(
+            envelope.payload.new_agent_secret,
+            AdminServerError::MissingAgentSecret,
+        )?;
+        self.register_agent_secret(path_instance_id.to_string(), new_secret)
+            .await?;
+
+        Ok(AdminAgentSecretRotationAccepted {
+            accepted: true,
+            instance_id: path_instance_id.to_string(),
+            rotated_at: now,
+            message: "Segredo do agent rotacionado".into(),
         })
     }
 
@@ -417,6 +461,10 @@ pub fn router(state: AdminServerState) -> Router {
             "/api/agents/{instance_id}/heartbeat",
             post(receive_heartbeat),
         )
+        .route(
+            "/api/agents/{instance_id}/secret-rotation",
+            post(rotate_agent_secret),
+        )
         .with_state(state)
 }
 
@@ -447,6 +495,15 @@ async fn receive_heartbeat(
     Ok((StatusCode::ACCEPTED, Json(accepted)))
 }
 
+async fn rotate_agent_secret(
+    State(state): State<AdminServerState>,
+    Path(instance_id): Path<String>,
+    Json(envelope): Json<AdminSignedEnvelope<AdminAgentSecretRotationRequest>>,
+) -> Result<(StatusCode, Json<AdminAgentSecretRotationAccepted>), AdminServerError> {
+    let accepted = state.rotate_agent_secret(&instance_id, envelope).await?;
+    Ok((StatusCode::OK, Json(accepted)))
+}
+
 #[derive(Debug, Error)]
 pub enum AdminServerError {
     #[error("instance id is required")]
@@ -461,7 +518,7 @@ pub enum AdminServerError {
     InvalidEnrollmentToken,
     #[error("agent is not registered: {0}")]
     AgentNotRegistered(String),
-    #[error("envelope kind must be heartbeat")]
+    #[error("envelope kind is not valid for this endpoint")]
     InvalidEnvelopeKind,
     #[error("path instance id does not match envelope instance id")]
     EnvelopeInstanceMismatch,
@@ -553,9 +610,9 @@ impl IntoResponse for AdminServerError {
 mod tests {
     use super::*;
     use autoflow_domain::{
-        AdminAgentMode, AdminEnrollmentTokenRequest, AdminHardwareProfile, AdminInstanceStatus,
-        AdminJobRuntimeStatus, AdminManagedJob, AdminManagementProfile, AdminNetworkProfile,
-        JobMode,
+        AdminAgentMode, AdminAgentSecretRotationRequest, AdminEnrollmentTokenRequest,
+        AdminHardwareProfile, AdminInstanceStatus, AdminJobRuntimeStatus, AdminManagedJob,
+        AdminManagementProfile, AdminNetworkProfile, JobMode,
     };
     use axum::{body::Body, http::Request};
     use sqlx::sqlite::SqlitePoolOptions;
@@ -793,6 +850,41 @@ mod tests {
         assert_eq!(snapshot.instances[0].instance_id, "local-1");
     }
 
+    #[tokio::test]
+    async fn rotates_agent_secret_with_signed_request() {
+        let state = AdminServerState::new();
+        state
+            .register_agent_secret("local-1", "old-secret")
+            .await
+            .unwrap();
+        let app = router(state.clone());
+        let envelope = signed_secret_rotation("local-1", "old-secret", "new-secret");
+
+        let response = app
+            .oneshot(json_post(
+                "/api/agents/local-1/secret-rotation",
+                serde_json::to_vec(&envelope).unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let accepted = parse_body::<AdminAgentSecretRotationAccepted>(response).await;
+        assert!(accepted.accepted);
+        assert_eq!(accepted.instance_id, "local-1");
+
+        assert!(matches!(
+            state
+                .receive_heartbeat("local-1", signed_heartbeat("local-1", "old-secret", 300))
+                .await,
+            Err(AdminServerError::InvalidSignature)
+        ));
+        state
+            .receive_heartbeat("local-1", signed_heartbeat("local-1", "new-secret", 300))
+            .await
+            .unwrap();
+    }
+
     fn enrollment_request(
         token: &str,
         instance_id: &str,
@@ -804,6 +896,26 @@ mod tests {
             agent_secret: agent_secret.into(),
             requested_at: Utc::now(),
         }
+    }
+
+    fn signed_secret_rotation(
+        instance_id: &str,
+        current_secret: &str,
+        new_secret: &str,
+    ) -> AdminSignedEnvelope<AdminAgentSecretRotationRequest> {
+        let payload = AdminAgentSecretRotationRequest {
+            new_agent_secret: new_secret.into(),
+            requested_at: Utc::now(),
+        };
+
+        AdminSignedEnvelope::sign(
+            AdminEnvelopeKind::SecretRotation,
+            instance_id.into(),
+            payload,
+            current_secret,
+            300,
+        )
+        .unwrap()
     }
 
     fn signed_heartbeat(

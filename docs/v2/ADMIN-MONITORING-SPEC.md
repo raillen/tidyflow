@@ -99,6 +99,7 @@ GET /health
 GET /api/fleet
 POST /api/enrollments
 POST /api/agents/{instanceId}/heartbeat
+POST /api/agents/{instanceId}/secret-rotation
 ```
 
 O endpoint de matricula recebe `AdminEnrollmentTokenRequest`, valida o token de convite e cadastra o segredo inicial enviado pelo agent.
@@ -113,6 +114,8 @@ O endpoint de heartbeat recebe `AdminSignedEnvelope<AdminHeartbeatPayload>` e va
 - `instanceId` do payload igual ao da rota.
 
 Quando o heartbeat e aceito, o servidor atualiza o ultimo snapshot da instancia e retorna `AdminHeartbeatAccepted`.
+
+O endpoint de rotacao de segredo recebe `AdminSignedEnvelope<AdminAgentSecretRotationRequest>`, assinado com o segredo atual do agent. Se a assinatura for valida, o servidor troca o segredo pelo novo valor.
 
 O cadastro de segredo do agent existe como metodo interno do estado do servidor. Ele ainda nao foi exposto por HTTP porque matricula por token/convite precisa de autenticacao propria.
 
@@ -226,8 +229,7 @@ Admin Web
 
 ## Próximos cortes
 
-1. Implementar rotacao de segredo do agent.
-2. Automatizar sincronizacao periodica do heartbeat assinado.
-3. Adicionar grupos de maquinas e acoes em lote multi-instancia.
-4. Adicionar RBAC e auditoria central.
-5. Implementar edicao remota de fluxos com validacao e previa.
+1. Automatizar sincronizacao periodica do heartbeat assinado.
+2. Adicionar grupos de maquinas e acoes em lote multi-instancia.
+3. Adicionar RBAC e auditoria central.
+4. Implementar edicao remota de fluxos com validacao e previa.

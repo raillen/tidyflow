@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   adminCommandRequestSchema,
   adminCommandResultSchema,
+  adminAgentSecretRotationAcceptedSchema,
+  adminEnrollmentTokenRequestSchema,
   adminHeartbeatDeliverySchema,
   adminHeartbeatPayloadSchema,
   adminQueuedCommandSchema,
   adminSignedHeartbeatEnvelopeSchema,
+  adminSignedSecretRotationEnvelopeSchema,
   adminFleetSnapshotSchema,
   commandKindLabel,
   createAdminCommandRequest,
@@ -194,5 +197,72 @@ describe("admin contracts", () => {
         pendingCommandCount: 0,
       }),
     ).toThrow();
+  });
+
+  it("accepts enrollment and secret rotation payloads", () => {
+    const instance = {
+      instanceId: "local-abc",
+      displayName: "WORKSTATION-01",
+      status: "online",
+      lastSeenAt: "2026-06-21T10:00:00.000Z",
+      hardware: {
+        hostName: "WORKSTATION-01",
+        operatingSystem: "windows",
+        architecture: "x86_64",
+        cpuThreads: 8,
+        totalMemoryMb: null,
+        appVersion: "0.2.0",
+      },
+      network: {
+        domain: null,
+        interfaces: [{ name: "hostname", address: "WORKSTATION-01", kind: "host" }],
+      },
+      management: {
+        enabled: true,
+        mode: "managedAgent",
+        serverUrl: "https://admin.autoflow.local",
+        allowRemoteCommands: true,
+        allowBatchCommands: false,
+        heartbeatIntervalSecs: 30,
+        inventoryIntervalSecs: 300,
+      },
+      jobs: [],
+      activeExecutions: [],
+      capabilities: [],
+    };
+
+    const enrollment = adminEnrollmentTokenRequestSchema.parse({
+      token: "invite-token",
+      instance,
+      agentSecret: "af_secret",
+      requestedAt: "2026-06-21T10:00:00.000Z",
+    });
+
+    expect(enrollment.instance.instanceId).toBe("local-abc");
+
+    const rotationEnvelope = adminSignedSecretRotationEnvelopeSchema.parse({
+      schemaVersion: "admin.transport.v1",
+      kind: "secretRotation",
+      instanceId: "local-abc",
+      issuedAt: "2026-06-21T10:00:00.000Z",
+      expiresAt: "2026-06-21T10:05:00.000Z",
+      nonce: "550e8400-e29b-41d4-a716-446655440000",
+      payloadHash: "abc123",
+      signature: "blake3:abc123",
+      payload: {
+        newAgentSecret: "af_new_secret",
+        requestedAt: "2026-06-21T10:00:00.000Z",
+      },
+    });
+
+    expect(rotationEnvelope.kind).toBe("secretRotation");
+    expect(
+      adminAgentSecretRotationAcceptedSchema.parse({
+        accepted: true,
+        instanceId: "local-abc",
+        rotatedAt: "2026-06-21T10:00:00.000Z",
+        message: "ok",
+      }).accepted,
+    ).toBe(true);
   });
 });

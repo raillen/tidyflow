@@ -219,6 +219,31 @@ pub struct AdminHeartbeatDelivery {
     pub sent_at: DateTime<Utc>,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminAgentSecretRotationRequest {
+    pub new_agent_secret: String,
+    pub requested_at: DateTime<Utc>,
+}
+
+impl std::fmt::Debug for AdminAgentSecretRotationRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AdminAgentSecretRotationRequest")
+            .field("new_agent_secret", &"<redacted>")
+            .field("requested_at", &self.requested_at)
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminAgentSecretRotationAccepted {
+    pub accepted: bool,
+    pub instance_id: String,
+    pub rotated_at: DateTime<Utc>,
+    pub message: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminHeartbeatAccepted {
@@ -234,6 +259,7 @@ pub enum AdminEnvelopeKind {
     Enrollment,
     Heartbeat,
     Command,
+    SecretRotation,
 }
 
 impl AdminEnvelopeKind {
@@ -242,6 +268,7 @@ impl AdminEnvelopeKind {
             AdminEnvelopeKind::Enrollment => "enrollment",
             AdminEnvelopeKind::Heartbeat => "heartbeat",
             AdminEnvelopeKind::Command => "command",
+            AdminEnvelopeKind::SecretRotation => "secretRotation",
         }
     }
 }
