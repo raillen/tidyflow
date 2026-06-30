@@ -31,7 +31,7 @@
       <FlowArrow size={16} weight="bold" />
     </span>
     <div>
-      <strong>AutoFlow</strong>
+      <strong>TidyFlow</strong>
       <small>v2 preview</small>
     </div>
   </div>

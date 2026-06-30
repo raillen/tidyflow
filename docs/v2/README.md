@@ -1,8 +1,8 @@
-# AutoFlow v2 — Documentação técnica
+# TidyFlow v2 — Documentação técnica
 
 **Status:** `Planejado` (spec para reimplementação; código legado continua em Avalonia/.NET)
 
-Esta pasta descreve como reconstruir o AutoFlow com **Tauri 2 + Svelte 5 + Rust**, de forma organizada e testável.
+Esta pasta descreve como reconstruir o TidyFlow com **Tauri 2 + Svelte 5 + Rust**, de forma organizada e testável.
 
 ---
 
@@ -44,7 +44,7 @@ pnpm test:rust        # cargo test --workspace
 pnpm test             # Vitest (apps/desktop)
 
 # Só UI
-pnpm --filter @autoflow/desktop check
+pnpm --filter @tidyflow/desktop check
 ```
 
 **Nota:** o `pnpm-workspace.yaml` inclui `allowBuilds.esbuild: true` (pnpm 10+).

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { openUrl } from "@tauri-apps/plugin-opener";
+  import QRCode from "qrcode";
   import {
     Bell,
     CheckCircle,
@@ -100,6 +102,7 @@
       settings = await fetchSettings();
       health = await fetchHealth();
       applyAppearance(settings);
+      updatePixQrCode();
     } catch (e) {
       message = e instanceof Error ? e.message : "Erro ao carregar configuracoes";
     }
@@ -236,6 +239,73 @@
       message = "Segredo copiado para a area de transferencia.";
     } catch {
       message = "Nao foi possivel copiar o segredo neste ambiente.";
+    }
+  }
+
+  let pixQrCodeUrl = $state<string | null>(null);
+  let pixPayload = $state<string>("");
+
+  function generatePixPayload(key: string, name: string, city: string): string {
+    const f = (id: string, value: string) => id + String(value.length).padStart(2, '0') + value;
+    const gui = f('00', 'br.gov.bcb.pix');
+    const keyInfo = f('01', key);
+    const merchantAccountInfo = f('26', gui + keyInfo);
+    
+    const payloadFormat = '000201';
+    const mcc = '52040000';
+    const currency = '5303986';
+    const country = '5802BR';
+    const merchantName = f('59', name);
+    const merchantCity = f('60', city);
+    const additionalData = f('62', f('05', '***'));
+    
+    const partialPayload = payloadFormat + merchantAccountInfo + mcc + currency + country + merchantName + merchantCity + additionalData + '6304';
+    
+    // Calculate CRC16
+    let crc = 0xFFFF;
+    for (let i = 0; i < partialPayload.length; i++) {
+      const charCode = partialPayload.charCodeAt(i);
+      crc ^= (charCode << 8);
+      for (let j = 0; j < 8; j++) {
+        if ((crc & 0x8000) !== 0) {
+          crc = (crc << 1) ^ 0x1021;
+        } else {
+          crc <<= 1;
+        }
+      }
+    }
+    const crcStr = (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+    return partialPayload + crcStr;
+  }
+
+  function updatePixQrCode() {
+    const key = "contato@raillen.site";
+    const name = "RAILLEN SANTOS";
+    const city = "SAO PAULO";
+    try {
+      const payload = generatePixPayload(key, name, city);
+      pixPayload = payload;
+      QRCode.toDataURL(payload, { margin: 1, width: 180 }, (err, url) => {
+        if (!err) {
+          pixQrCodeUrl = url;
+        }
+      });
+    } catch (err) {
+      console.error("Erro ao gerar QR Code Pix", err);
+    }
+  }
+
+  async function copyText(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      message = "Copiado para a área de transferência.";
+      setTimeout(() => {
+        if (message === "Copiado para a área de transferência.") {
+          message = null;
+        }
+      }, 3000);
+    } catch {
+      message = "Não foi possível copiar neste ambiente.";
     }
   }
 
@@ -471,7 +541,7 @@
                 <NumberField bind:value={settings.notifications.smtp.port} label="Porta" min={1} max={65535} />
                 <label class="field">
                   <span class="field-label">Remetente</span>
-                  <input class="field-input" bind:value={settings.notifications.smtp.fromAddress} placeholder="autoflow@exemplo.com" />
+                  <input class="field-input" bind:value={settings.notifications.smtp.fromAddress} placeholder="tidyflow@exemplo.com" />
                 </label>
               </div>
               <div class="field-row">
@@ -515,7 +585,7 @@
               </label>
               <label class="field">
                 <span class="field-label">Servidor Admin Web</span>
-                <input class="field-input" bind:value={settings.admin.serverUrl} placeholder="https://admin.autoflow.local" />
+                <input class="field-input" bind:value={settings.admin.serverUrl} placeholder="https://admin.tidyflow.local" />
               </label>
             </div>
 
@@ -593,7 +663,7 @@
 
             <label class="field">
               <span class="field-label">Diretório de backup</span>
-              <input class="field-input" bind:value={settings.maintenance.backupDirectory} placeholder="D:\Backups\AutoFlow" />
+              <input class="field-input" bind:value={settings.maintenance.backupDirectory} placeholder="D:\Backups\TidyFlow" />
             </label>
           </section>
         {:else if activeTab === "support"}
@@ -601,66 +671,101 @@
             <SectionTitle icon={Coffee} title="Suporte e doações" text="Canais para projeto open source, Pix, depósito e Buy Me a Coffee." />
 
             <ToggleField bind:checked={settings.support.donationsEnabled} label="Mostrar seção de doações" />
-            <div class="field-row">
-              <label class="field">
-                <span class="field-label">E-mail de suporte</span>
-                <input class="field-input" bind:value={settings.support.supportEmail} />
-              </label>
-              <label class="field">
-                <span class="field-label">Chave Pix</span>
-                <input class="field-input" bind:value={settings.support.pixKey} />
-              </label>
+            
+            <div class="support-cards-grid">
+              <div class="support-card">
+                <h4>Contato de Suporte</h4>
+                <div class="copy-field">
+                  <span class="value-text">contato@raillen.site</span>
+                  <button type="button" class="btn small" onclick={() => copyText("contato@raillen.site")}>
+                    Copiar
+                  </button>
+                </div>
+              </div>
+
+              <div class="support-card">
+                <h4>Apoiar no Buy Me a Coffee</h4>
+                <button type="button" class="btn primary" onclick={() => openUrl("https://www.buymeacoffee.com/raillen")}>
+                  Apoiar no Buy Me a Coffee
+                </button>
+              </div>
             </div>
-            <label class="field">
-              <span class="field-label">Dados para depósito</span>
-              <textarea class="field-input textarea" rows="4" bind:value={settings.support.bankDepositInfo}></textarea>
-            </label>
-            <label class="field">
-              <span class="field-label">Buy Me a Coffee</span>
-              <input class="field-input" bind:value={settings.support.buyMeCoffeeUrl} placeholder="https://www.buymeacoffee.com/..." />
-            </label>
+
+            <div class="pix-donation-container">
+              <div class="pix-info">
+                <h4>Doação via Pix</h4>
+                <p class="muted text-xs">Escaneie o código ao lado ou copie a chave Pix para apoiar o desenvolvimento do projeto.</p>
+                <div class="copy-field">
+                  <span class="label-tiny">Chave Pix:</span>
+                  <span class="value-text">contato@raillen.site</span>
+                  <button type="button" class="btn small" onclick={() => copyText("contato@raillen.site")}>
+                    Copiar
+                  </button>
+                </div>
+                {#if pixPayload}
+                  <div class="copy-field margin-top-sm">
+                    <span class="label-tiny">Pix Copia e Cola:</span>
+                    <input class="field-input text-xs" readonly value={pixPayload} />
+                    <button type="button" class="btn small" onclick={() => copyText(pixPayload)}>
+                      Copiar
+                    </button>
+                  </div>
+                {/if}
+              </div>
+              {#if pixQrCodeUrl}
+                <div class="pix-qrcode">
+                  <img src={pixQrCodeUrl} alt="QR Code Pix para Doação" />
+                </div>
+              {/if}
+            </div>
+
+            <div class="deposit-info-container">
+              <h4>Dados para depósito</h4>
+              <pre class="deposit-details">
+- BRAZIL
+RAILLEN DOS SANTOS DE OLIVEIRA
+Conta: 2228476-1 Agência: 0007 Banco 077 - Inter
+
+- GLOBAL
+RAILLEN DOS SANTOS DE OLIVEIRA
+Acc Number: 8896373745
+ACH Routing Number: 026073150
+Wire Transfer Routing Number: 026073008
+Bank Name: Community Federal Savings Bank
+Bank Address: 5 Penn Plaza, New York, NY 10001
+              </pre>
+            </div>
           </section>
         {:else if activeTab === "about"}
           <section class="panel section">
             <SectionTitle icon={Info} title="Sobre" text="Descrição do projeto, versão e links do criador." />
 
-            <div class="about-card">
-              <strong>{settings.about.projectName}</strong>
-              <span>Versão {health?.version ?? "0.2.0"}</span>
-              <p>{settings.about.projectDescription}</p>
-            </div>
+            <div class="about-container">
+              <div class="about-app-card">
+                <h3>TidyFlow</h3>
+                <span class="version-badge">Versão {health?.version ?? "0.2.0"}</span>
+                <p class="description">Automação local para organizar, copiar e mover arquivos com auditoria clara.</p>
+              </div>
 
-            <div class="field-row">
-              <label class="field">
-                <span class="field-label">Nome do projeto</span>
-                <input class="field-input" bind:value={settings.about.projectName} />
-              </label>
-              <label class="field">
-                <span class="field-label">Criador</span>
-                <input class="field-input" bind:value={settings.about.creatorName} />
-              </label>
-            </div>
-            <label class="field">
-              <span class="field-label">Descrição</span>
-              <textarea class="field-input textarea" rows="3" bind:value={settings.about.projectDescription}></textarea>
-            </label>
-            <label class="field">
-              <span class="field-label">Bio curta</span>
-              <textarea class="field-input textarea" rows="3" bind:value={settings.about.creatorBio}></textarea>
-            </label>
-            <div class="field-row three">
-              <label class="field">
-                <span class="field-label">Site</span>
-                <input class="field-input" bind:value={settings.about.websiteUrl} />
-              </label>
-              <label class="field">
-                <span class="field-label">GitHub</span>
-                <input class="field-input" bind:value={settings.about.githubUrl} />
-              </label>
-              <label class="field">
-                <span class="field-label">LinkedIn</span>
-                <input class="field-input" bind:value={settings.about.linkedinUrl} />
-              </label>
+              <div class="about-creator-card">
+                <h4>Criador</h4>
+                <strong class="creator-name">Raillen Santos</strong>
+                <p class="bio">
+                  Atuando profissionalmente na intersecção entre Marketing e Design, sou um entusiasta da tecnologia movido pela curiosidade técnica. Com uma base sólida em desenvolvimento web e automação, busco unir estética e funcionalidade para criar soluções que simplificam o cotidiano e potencializam resultados.
+                </p>
+                
+                <div class="creator-links">
+                  <button type="button" class="btn" onclick={() => openUrl("https://raillen.site")}>
+                    Site Oficial
+                  </button>
+                  <button type="button" class="btn" onclick={() => openUrl("https://github.com/raillen")}>
+                    GitHub
+                  </button>
+                  <button type="button" class="btn" onclick={() => openUrl("https://br.linkedin.com/in/raillen")}>
+                    LinkedIn
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
         {:else}
@@ -854,9 +959,7 @@
     flex-shrink: 0;
   }
 
-  .textarea {
-    resize: vertical;
-  }
+
 
   .hint {
     margin: 0;
@@ -865,7 +968,6 @@
   }
 
   .nested-card,
-  .about-card,
   .changelog-entry {
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -917,21 +1019,7 @@
     color: var(--success);
   }
 
-  .about-card {
-    display: grid;
-    gap: var(--space-1);
-  }
 
-  .about-card strong {
-    font-size: var(--text-lg);
-  }
-
-  .about-card span,
-  .about-card p {
-    color: var(--text-muted);
-    margin: 0;
-    font-size: var(--text-sm);
-  }
 
   .changelog-list {
     display: grid;
@@ -1001,5 +1089,179 @@
     .settings-nav {
       position: static;
     }
+  }
+
+  /* Custom Premium Layout styles for read-only Support & About sections */
+  .support-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .support-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-muted);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .support-card h4,
+  .pix-info h4,
+  .deposit-info-container h4,
+  .about-creator-card h4 {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 650;
+    color: var(--text-primary);
+  }
+
+  .copy-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .value-text {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    word-break: break-all;
+  }
+
+  .label-tiny {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .margin-top-sm {
+    margin-top: var(--space-2);
+  }
+
+  .pix-donation-container {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-muted);
+    padding: var(--space-4);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-4);
+    align-items: center;
+  }
+
+  .pix-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .pix-qrcode {
+    background: var(--surface);
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 196px;
+    height: 196px;
+  }
+
+  .pix-qrcode img {
+    width: 180px;
+    height: 180px;
+    display: block;
+  }
+
+  .deposit-info-container {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-muted);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .deposit-details {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    background: var(--surface);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* About section styles */
+  .about-container {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .about-app-card,
+  .about-creator-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-muted);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .about-app-card h3 {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: 700;
+  }
+
+  .version-badge {
+    align-self: flex-start;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: var(--text-xs);
+  }
+
+  .about-app-card .description {
+    margin: var(--space-2) 0 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  .about-creator-card .creator-name {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .about-creator-card .bio {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+
+  .creator-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
   }
 </style>

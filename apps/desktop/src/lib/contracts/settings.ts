@@ -67,7 +67,7 @@ export const maintenanceSettingsSchema = z.object({
 });
 
 export const supportSettingsSchema = z.object({
-  supportEmail: z.string().default("suporte@autoflow.local"),
+  supportEmail: z.string().default("suporte@tidyflow.local"),
   pixKey: z.string().default(""),
   bankDepositInfo: z.string().default(""),
   buyMeCoffeeUrl: z.string().default(""),
@@ -75,12 +75,12 @@ export const supportSettingsSchema = z.object({
 });
 
 export const aboutSettingsSchema = z.object({
-  projectName: z.string().default("AutoFlow"),
+  projectName: z.string().default("TidyFlow"),
   projectDescription: z
     .string()
     .default("Automação local para organizar, copiar e mover arquivos com auditoria clara."),
   creatorName: z.string().default("Raillen Santos"),
-  creatorBio: z.string().default("Criador do AutoFlow e projetos Zenith."),
+  creatorBio: z.string().default("Criador do TidyFlow e projetos Zenith."),
   websiteUrl: z.string().default(""),
   githubUrl: z.string().default("https://github.com/raillen"),
   linkedinUrl: z.string().default(""),

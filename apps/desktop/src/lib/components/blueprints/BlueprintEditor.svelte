@@ -286,7 +286,7 @@
 
   function updateFolderNode(path: number[], name: string) {
     ensureFolderPlan();
-    const nodes = structuredClone(blueprint.folderPlan!.nodes);
+    const nodes = $state.snapshot(blueprint.folderPlan!.nodes);
     let current = nodes;
     for (let i = 0; i < path.length - 1; i++) {
       current = current[path[i]!]!.children;
@@ -297,7 +297,7 @@
 
   function addChildFolderNode(path: number[]) {
     ensureFolderPlan();
-    const nodes = structuredClone(blueprint.folderPlan!.nodes);
+    const nodes = $state.snapshot(blueprint.folderPlan!.nodes);
     let current = nodes;
     for (const index of path) {
       current = current[index]!.children;
@@ -308,7 +308,7 @@
 
   function removeFolderNode(path: number[]) {
     ensureFolderPlan();
-    const nodes = structuredClone(blueprint.folderPlan!.nodes);
+    const nodes = $state.snapshot(blueprint.folderPlan!.nodes);
     if (path.length === 1) {
       nodes.splice(path[0]!, 1);
     } else {

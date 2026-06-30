@@ -38,7 +38,7 @@
   <header class="page-header">
     <div>
       <h1 class="page-title">Dashboard</h1>
-      <p class="page-desc">Visão geral do AutoFlow v2.</p>
+      <p class="page-desc">Visão geral do TidyFlow v2.</p>
     </div>
   </header>
 

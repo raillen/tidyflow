@@ -1,6 +1,6 @@
-# AutoFlow Desktop (v2)
+# TidyFlow Desktop (v2)
 
-Shell **Tauri 2 + SvelteKit (SPA)** do AutoFlow v2.
+Shell **Tauri 2 + SvelteKit (SPA)** do TidyFlow v2.
 
 ## Desenvolvimento
 

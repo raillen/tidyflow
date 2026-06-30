@@ -1,4 +1,4 @@
-﻿# Project Intake: AutoFlow
+# Project Intake: TidyFlow
 
 Preencha este documento antes de escrever o PRD tecnico.
 
@@ -6,8 +6,8 @@ Preencha este documento antes de escrever o PRD tecnico.
 
 ## 1. Identificacao
 
-- Nome do projeto: AutoFlow
-- Nome curto ou slug: autoflow
+- Nome do projeto: TidyFlow
+- Nome curto ou slug: tidyflow
 - Tipo de produto: `desktop` (Windows/Linux)
 - Status atual: `ideia` / `roadmap`
 
