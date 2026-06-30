@@ -2980,7 +2980,7 @@ mod tests {
                 architecture: "x86_64".into(),
                 cpu_threads: 8,
                 total_memory_mb: Some(16_384),
-                app_version: "0.2.0".into(),
+                app_version: "0.2.1-alpha".into(),
             },
             network: AdminNetworkProfile {
                 domain: Some("AUTO".into()),
@@ -2989,7 +2989,7 @@ mod tests {
             management: AdminManagementProfile {
                 enabled: true,
                 mode: AdminAgentMode::ManagedAgent,
-                server_url: Some("https://admin.autoflow.local".into()),
+                server_url: Some("https://admin.tidyflow.local".into()),
                 allow_remote_commands: true,
                 allow_batch_commands: false,
                 heartbeat_interval_secs: 30,

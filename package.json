@@ -1,7 +1,7 @@
 {
   "name": "tidyflow",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1-alpha",
   "description": "TidyFlow v2 — Tauri + Svelte + Rust",
   "scripts": {
     "dev": "pnpm --filter @tidyflow/desktop tauri dev",

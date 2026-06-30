@@ -118,7 +118,7 @@ describe("appSettingsSchema", () => {
         mode: "managedAgent",
         instanceId: "local-123",
         displayName: "Estacao 01",
-        serverUrl: "https://admin.autoflow.local",
+        serverUrl: "https://admin.tidyflow.local",
         enrollmentTokenConfigured: true,
         allowRemoteCommands: true,
         allowBatchCommands: true,

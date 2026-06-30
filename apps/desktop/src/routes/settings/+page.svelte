@@ -743,7 +743,7 @@ Bank Address: 5 Penn Plaza, New York, NY 10001
             <div class="about-container">
               <div class="about-app-card">
                 <h3>TidyFlow</h3>
-                <span class="version-badge">Versão {health?.version ?? "0.2.0"}</span>
+                <span class="version-badge">Versão {health?.version ?? "0.2.1-alpha"}</span>
                 <p class="description">Automação local para organizar, copiar e mover arquivos com auditoria clara.</p>
               </div>
 

@@ -716,7 +716,7 @@ mod tests {
                 architecture: "x86_64".into(),
                 cpu_threads: 8,
                 total_memory_mb: None,
-                app_version: "0.2.0".into(),
+                app_version: "0.2.1-alpha".into(),
             },
             network: AdminNetworkProfile {
                 domain: None,

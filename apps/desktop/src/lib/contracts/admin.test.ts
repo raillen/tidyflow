@@ -49,7 +49,7 @@ describe("admin contracts", () => {
             architecture: "x86_64",
             cpuThreads: 8,
             totalMemoryMb: null,
-            appVersion: "0.2.0",
+            appVersion: "0.2.1-alpha",
           },
           network: {
             domain: "REDE",
@@ -154,7 +154,7 @@ describe("admin contracts", () => {
         architecture: "x86_64",
         cpuThreads: 8,
         totalMemoryMb: null,
-        appVersion: "0.2.0",
+        appVersion: "0.2.1-alpha",
       },
       network: {
         domain: null,
@@ -192,7 +192,7 @@ describe("admin contracts", () => {
 
     expect(envelope.kind).toBe("heartbeat");
     const delivery = adminHeartbeatDeliverySchema.parse({
-      endpoint: "https://admin.autoflow.local/api/agents/local-abc/heartbeat",
+      endpoint: "https://admin.tidyflow.local/api/agents/local-abc/heartbeat",
       statusCode: 202,
       accepted: true,
       message: "accepted",
@@ -221,7 +221,7 @@ describe("admin contracts", () => {
         architecture: "x86_64",
         cpuThreads: 8,
         totalMemoryMb: null,
-        appVersion: "0.2.0",
+        appVersion: "0.2.1-alpha",
       },
       network: {
         domain: null,
@@ -230,7 +230,7 @@ describe("admin contracts", () => {
       management: {
         enabled: true,
         mode: "managedAgent",
-        serverUrl: "https://admin.autoflow.local",
+        serverUrl: "https://admin.tidyflow.local",
         allowRemoteCommands: true,
         allowBatchCommands: false,
         heartbeatIntervalSecs: 30,
