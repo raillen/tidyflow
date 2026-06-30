@@ -10,14 +10,14 @@ Abaixo estão os recursos centrais do TidyFlow v2, unindo a segurança e perform
 
 | Recurso | Descrição | Tecnologia Base |
 | :--- | :--- | :--- |
-| 🔄 **Watch Folders** | Monitoramento reativo em tempo real de alterações de disco com debounce automático para evitar execuções parciais. | Crate `notify` em Rust + canais assíncronos. |
-| 🏷️ **Blueprints & Tokenizer** | Regras flexíveis para renomear e estruturar diretórios in-place usando metadados e contadores dinâmicos (data, stem, UUID). | Engine customizada Rust (`autoflow-domain/src/tokenizer`). |
-| 🔍 **Filtros Avançados** | Regras rígidas de correspondência por extensão, glob patterns, expressões regulares, tamanho de arquivo, datas ou EXIF. | Engine de filtros e busca em Rust. |
-| ⏱️ **Agendador Integrado** | Execução programada de tarefas periódicas ou em horários específicos. | Engine core de agendamento em Rust. |
-| 🛡️ **Segurança de Caminhos** | Validação automática de diretórios autorizados, detecção de loops de recursão e bloqueio de caminhos restritos. | Módulo `PathPolicy` no core Rust. |
-| 🧪 **Simulação (Dry-Run)** | Exibe o plano exato das ações, colisões de nomes e alertas operacionais antes de qualquer gravação física no disco. | Rust dry-run engine + Tauri IPC. |
-| 📊 **Fila de Execução** | Controle refinado de concorrência, cancelamento com tokens assíncronos e prioridades de execução de jobs. | Tokio channels e workers assíncronos. |
-| 📝 **Histórico & Auditoria** | Logs operacionais completos com persistência local e interface interativa para rollback de movimentações de arquivos. | SQLite (via sqlx) + UI de auditoria Svelte. |
+| **Watch Folders** | Monitoramento reativo em tempo real de alterações de disco com debounce automático para evitar execuções parciais. | Crate `notify` em Rust + canais assíncronos. |
+| **Blueprints & Tokenizer** | Regras flexíveis para renomear e estruturar diretórios in-place usando metadados e contadores dinâmicos (data, stem, UUID). | Engine customizada Rust (`autoflow-domain/src/tokenizer`). |
+| **Filtros Avançados** | Regras rígidas de correspondência por extensão, glob patterns, expressões regulares, tamanho de arquivo, datas ou EXIF. | Engine de filtros e busca em Rust. |
+| **Agendador Integrado** | Execução programada de tarefas periódicas ou em horários específicos. | Engine core de agendamento em Rust. |
+| **Segurança de Caminhos** | Validação automática de diretórios autorizados, detecção de loops de recursão e bloqueio de caminhos restritos. | Módulo `PathPolicy` no core Rust. |
+| **Simulação (Dry-Run)** | Exibe o plano exato das ações, colisões de nomes e alertas operacionais antes de qualquer gravação física no disco. | Rust dry-run engine + Tauri IPC. |
+| **Fila de Execução** | Controle refinado de concorrência, cancelamento com tokens assíncronos e prioridades de execução de jobs. | Tokio channels e workers assíncronos. |
+| **Histórico & Auditoria** | Logs operacionais completos com persistência local e interface interativa para rollback de movimentações de arquivos. | SQLite (via sqlx) + UI de auditoria Svelte. |
 
 ---
 
