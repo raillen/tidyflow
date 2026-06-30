@@ -93,19 +93,8 @@ tidyflow/
 
 ## ☕ Apoie o Projeto (Donate)
 
-Se o TidyFlow te ajudou a otimizar sua rotina e economizar tempo, você pode apoiar o desenvolvimento do projeto através das seguintes formas:
+Se o TidyFlow te ajudou a otimizar sua rotina e economizar tempo, você pode apoiar o desenvolvimento do projeto através do **Buy Me a Coffee**:
 
-### ⚡ Pix (Brasil)
-*   **Chave Pix (E-mail):** `contato@raillen.site`
-*   **Identificação:** RAILLEN DOS SANTOS DE OLIVEIRA
-
-### 🏦 Depósito / Transferência Bancária (Banco Inter)
-*   **Banco:** 077 - Banco Inter
-*   **Agência:** 0007
-*   **Conta Corrente:** 2228476-1
-*   **Titular:** RAILLEN DOS SANTOS DE OLIVEIRA
-
-### 🌍 Global / Internacional
 *   **Buy Me a Coffee:** [buymeacoffee.com/raillen](https://www.buymeacoffee.com/raillen)
 
 ---
