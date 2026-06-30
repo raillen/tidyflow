@@ -1,87 +1,88 @@
-# 🔄 TidyFlow
+# 🔄 TidyFlow v2
 
-**TidyFlow** é uma solução desktop moderna e poderosa para automação de gestão de arquivos e pastas. Projetado para ser leve, rápido e intuitivo, ele permite que você crie fluxos de trabalho inteligentes que organizam, movem, copiam e fazem backup dos seus dados automaticamente.
+**TidyFlow** é uma solução desktop moderna, leve e de alta performance para automação de gestão de arquivos e pastas. Desenvolvido com **Tauri 2, Rust e Svelte 5**, ele permite criar pipelines inteligentes de arquivos (Jobs), organizar diretórios in-place através de Blueprints e monitorar pastas em tempo real com baixíssimo uso de recursos do sistema.
 
-![TidyFlow Logo](src/AutoFlow.App/Assets/app-icon.png)
+---
 
 ## 🚀 Principais Recursos
 
-- **Monitoramento em Tempo Real (Watch Folder):** Detecta instantaneamente novos arquivos em pastas monitoradas e dispara ações automáticas.
-- **Agendamento Inteligente:** Configure tarefas para rodar em horários específicos ou intervalos regulares (diário, semanal, etc.).
-- **Blueprints de Organização:** Crie regras de renomeação dinâmica e estruturação de pastas usando tokens mágicos (Data, Contador, Nome Original, etc.).
-- **Filtros Avançados:** Filtre arquivos por extensão, tamanho, regex, conteúdo (TXT/MD) ou até metadados EXIF (fotos).
-- **Simulação (Dry-Run):** Veja exatamente o que o TidyFlow faria antes de aplicar qualquer alteração real nos seus arquivos.
-- **Auditoria e Rollback:** Histórico completo de todas as operações com a capacidade de desfazer (rollback) movimentações indesejadas.
-- **Segurança:** Suporte a criptografia de dados (AES-256) e verificação de integridade via Hash (SHA-256).
-- **Interface Premium:** UI moderna com suporte a temas (Light/Dark), efeitos de transparência (Mica/Acrylic) e tipografia personalizável.
-
-## 🛠️ Stack Técnica
-
-- **Linguagem:** C# 12+
-- **Framework:** .NET 10 (Core)
-- **Interface:** Avalonia UI (Cross-platform)
-- **Arquitetura:** Clean Architecture (Domain-Driven Design)
-- **Persistência:** JSON (Configurações) e SQLite (Auditoria)
-- **Padrão:** MVVM (CommunityToolkit.Mvvm)
-
-## 📦 Instalação
-
-### Usuário (Executáveis Prontos)
-1. Acesse a pasta `release/` e baixe o arquivo ZIP para o seu sistema:
-   - **Windows:** `TidyFlow_Portable_win-x64.zip`
-   - **Linux:** `TidyFlow_Portable_linux-x64.zip`
-2. Extraia o conteúdo e execute o arquivo `TidyFlow.App`.
-
-### Scripts de Instalação (Automático)
-Você também pode usar os scripts na pasta `installer/`:
-- **Windows:** Clique com o botão direito em `install.ps1` -> Executar com o PowerShell. Isso instalará o app em `AppData/Local` e criará um atalho na Área de Trabalho.
-- **Linux:** Execute `chmod +x install.sh && ./install.sh`. Isso adicionará o `tidyflow` ao seu `/usr/local/bin`.
-
-### Desenvolvedor (Compilar do Zero)
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-
-```bash
-git clone https://gitlab.com/raillendossantos/tidyflow.git
-cd tidyflow
-dotnet run --project src/AutoFlow.App/AutoFlow.App.csproj
-```
-
-## 📖 Como Usar
-
-1. **Crie um Blueprint:** Defina como seus arquivos devem ser renomeados e organizados (ex: `Fotos/{year}/{month}/Viagem_{n}.jpg`).
-2. **Configure um Job:** Escolha uma pasta de origem e uma de destino.
-3. **Escolha o Gatilho:** Ative o "Modo Monitor" para automação instantânea ou defina um agendamento.
-4. **Simule:** Clique em "Simular" para garantir que as regras de filtro e renomeação estão corretas.
-5. **Ative:** Salve e deixe o TidyFlow trabalhar por você em background.
-
-## 🤝 Contribuição
-
-Contribuições são bem-vindas! Sinta-se à vontade para abrir Issues ou enviar Pull Requests.
-
-1. Faça um Fork do projeto
-2. Crie uma Branch para sua Feature (`git checkout -b feature/NovaFeature`)
-3. Faça o Commit das suas alterações (`git commit -m 'Add some NovaFeature'`)
-4. Faça o Push para a Branch (`git push origin feature/NovaFeature`)
-5. Abra um Pull Request
-
-## 📚 Documentação (Wiki)
-
-Acesse nossa Wiki interna para guias detalhados:
-- [Página Inicial da Wiki](docs/WIKI/Home.md)
-- [Guia do Usuário](docs/WIKI/User-Guide.md)
-- [Arquitetura do Sistema](docs/WIKI/Technical-Architecture.md)
-- [Resolução de Problemas](docs/WIKI/Troubleshooting.md)
-
-## 📄 Licença
-
-Este projeto está sob a licença **Creative Commons Atribuição-NãoComercial-SemDerivações 4.0 Internacional (CC BY-NC-ND 4.0)**.
-
-- ✅ **Livre para Compartilhar:** Você pode copiar e redistribuir o material.
-- ❌ **Sem Uso Comercial:** Proibido vender ou lucrar com o software.
-- ❌ **Sem Derivações:** Proibido modificar ou criar obras derivadas.
-- 👤 **Atribuição:** Deve dar o crédito apropriado ao autor.
-
-Consulte o arquivo [LICENSE](LICENSE) para mais detalhes ou entre em contato: **contato@raillen.site**
+- **Monitoramento em Tempo Real (Watch Folder):** Detecta instantaneamente modificações, criações e exclusões no sistema de arquivos através do motor reativo do crate `notify` em Rust com debounce integrado.
+- **Blueprints de Organização:** Crie regras dinâmicas de estruturação e renomeação de pastas utilizando tokens dinâmicos (Data, Contador, Nome Original, Extensão, UUID, etc.) alimentados por um pipeline extensível de transformações (Tokenizer).
+- **Filtros Avançados:** Filtre arquivos por extensão, glob, regex, tamanho, data de criação/modificação ou metadados (como EXIF de imagens).
+- **Simulação (Dry-Run):** Pré-visualize de forma clara as ações exatas que o TidyFlow executará antes de aplicar qualquer alteração real em seus arquivos.
+- **Fila de Execução Controlada:** Gerenciamento centralizado de tarefas em background com controle de concorrência, prioridade e limites de velocidade.
+- **Auditoria & Rollback:** Histórico completo de auditoria persistido em SQLite com a capacidade de desfazer movimentações de arquivos indesejadas.
+- **Segurança Operacional:** Validação rigorosa de loops de diretórios recursivos e caminhos restritos através de políticas de permissão de diretórios (`PathPolicy`).
 
 ---
-Desenvolvido com ❤️ por [Raillen Santos](https://github.com/raillen)
+
+## 🛠️ Stack Técnica (TidyFlow v2)
+
+*   **Core (Backend):** Rust (tokio, sqlx, notify-debouncer-full, serde, tracing, regex, chrono)
+*   **Interface (Frontend):** Svelte 5 (Runes), TypeScript (modo estrito), Vite 6, Tailwind CSS 4
+*   **Desktop Shell:** Tauri 2 (IPC tipado com Specta, plugins nativos de dialog, notification e window state)
+*   **Persistência:** SQLite (via sqlx) para auditoria e histórico; JSON local para preferências e configurações rápidas.
+*   **Monorepo:** `pnpm` workspaces (web/desktop) e `Cargo` workspaces (crates Rust).
+
+---
+
+## 📦 Como Executar o Desenvolvimento
+
+### Pré-requisitos
+Certifique-se de ter instalado:
+*   [Node.js](https://nodejs.org/) (v18+)
+*   [pnpm](https://pnpm.io/) (v9+)
+*   [Rust](https://www.rust-lang.org/) (v1.78+)
+
+### Instalação & Execução
+```bash
+# 1. Clone o repositório
+git clone https://github.com/raillen/tidyflow.git
+cd tidyflow
+
+# 2. Instale as dependências do monorepo
+pnpm install
+
+# 3. Execute o aplicativo em modo de desenvolvimento (Tauri + Svelte)
+pnpm dev
+```
+
+---
+
+## 🧪 Executando Testes
+
+O projeto contém testes unitários e de integração abrangentes tanto para o frontend (Vitest) quanto para o backend (Cargo).
+
+```bash
+# Executar testes do core em Rust
+pnpm test:rust        # (atalho para `cargo test --workspace`)
+
+# Executar testes da interface Svelte/TS (Vitest)
+pnpm test
+
+# Verificar integridade e tipagem do Svelte
+pnpm --filter @tidyflow/desktop check
+```
+
+---
+
+## 📁 Estrutura do Projeto
+
+```text
+tidyflow/
+├── apps/
+│   └── desktop/                 # Shell Tauri 2 + Interface SvelteKit
+├── crates/                      # Módulos principais do core em Rust
+│   ├── autoflow-domain          # Entidades e regras de domínio puro
+│   ├── autoflow-application     # Casos de uso e orquestração de serviços
+│   ├── autoflow-infrastructure  # SQLite, watchers, IO e persistência
+│   ├── autoflow-core            # Fila de tarefas, agendamento e CLI
+│   └── autoflow-admin-server    # Servidor de monitoramento e agente remoto
+├── docs/                        # Documentação técnica e especificações (v2)
+├── package.json                 # Monorepo configs e scripts rápidos
+├── Cargo.toml                   # Workspace Cargo
+└── pnpm-workspace.yaml          # Monorepo pnpm workspaces
+```
+
+---
+Desenvolvido por [Raillen Santos](https://github.com/raillen)
