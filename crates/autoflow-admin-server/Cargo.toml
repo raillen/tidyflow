@@ -2,6 +2,7 @@
 name = "autoflow-admin-server"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 
 [dependencies]
 autoflow-domain = { path = "../autoflow-domain" }

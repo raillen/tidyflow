@@ -98,4 +98,13 @@ Se o TidyFlow te ajudou a otimizar sua rotina e economizar tempo, você pode apo
 *   **Buy Me a Coffee:** [buymeacoffee.com/raillen](https://www.buymeacoffee.com/raillen)
 
 ---
+
+## ⚖️ Licenciamento Híbrido
+
+O TidyFlow v2 adota uma estratégia de licenciamento híbrido para equilibrar a colaboração aberta e a proteção do produto:
+
+*   **Core & Domínio (`crates/autoflow-core` e `crates/autoflow-domain`):** Licenciados sob a licença dupla permissiva **[MIT](LICENSE-MIT)** ou **[Apache 2.0](LICENSE-APACHE)**. Qualquer desenvolvedor pode reutilizar livremente as engines de filtros, agendamento e tokenização de caminhos em seus próprios projetos.
+*   **Aplicativo Desktop Final e Outros Módulos (`apps/desktop` & crates de aplicação/infraestrutura):** Licenciados sob a licença copyleft **[GPL v3](LICENSE)**. Isso garante que a interface de usuário final e a casca do aplicativo permaneçam protegidas e exclusivamente de código aberto.
+
+---
 Desenvolvido por [Raillen Santos](https://github.com/raillen)
