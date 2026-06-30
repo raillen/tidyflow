@@ -352,7 +352,7 @@ pub struct AboutSettings {
 }
 
 fn default_project_name() -> String {
-    "AutoFlow".into()
+    "TidyFlow".into()
 }
 
 fn default_project_description() -> String {
@@ -364,7 +364,7 @@ fn default_creator_name() -> String {
 }
 
 fn default_creator_bio() -> String {
-    "Criador do AutoFlow e projetos Zenith.".into()
+    "Criador do TidyFlow e projetos Zenith.".into()
 }
 
 impl Default for AboutSettings {

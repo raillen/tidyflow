@@ -34,7 +34,7 @@ async fn notify_missed_schedules(window: &WebviewWindow, state: &AppState) {
         .app_handle()
         .notification()
         .builder()
-        .title("AutoFlow — agendamentos perdidos")
+        .title("TidyFlow — agendamentos perdidos")
         .body(&summary)
         .show()
     {
