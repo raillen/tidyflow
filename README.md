@@ -6,13 +6,18 @@
 
 ## 🚀 Principais Recursos
 
-- **Monitoramento em Tempo Real (Watch Folder):** Detecta instantaneamente modificações, criações e exclusões no sistema de arquivos através do motor reativo do crate `notify` em Rust com debounce integrado.
-- **Blueprints de Organização:** Crie regras dinâmicas de estruturação e renomeação de pastas utilizando tokens dinâmicos (Data, Contador, Nome Original, Extensão, UUID, etc.) alimentados por um pipeline extensível de transformações (Tokenizer).
-- **Filtros Avançados:** Filtre arquivos por extensão, glob, regex, tamanho, data de criação/modificação ou metadados (como EXIF de imagens).
-- **Simulação (Dry-Run):** Pré-visualize de forma clara as ações exatas que o TidyFlow executará antes de aplicar qualquer alteração real em seus arquivos.
-- **Fila de Execução Controlada:** Gerenciamento centralizado de tarefas em background com controle de concorrência, prioridade e limites de velocidade.
-- **Auditoria & Rollback:** Histórico completo de auditoria persistido em SQLite com a capacidade de desfazer movimentações de arquivos indesejadas.
-- **Segurança Operacional:** Validação rigorosa de loops de diretórios recursivos e caminhos restritos através de políticas de permissão de diretórios (`PathPolicy`).
+Abaixo estão os recursos centrais do TidyFlow v2, unindo a segurança e performance do Rust com a flexibilidade da interface moderna em Svelte 5:
+
+| Recurso | Descrição | Tecnologia Base |
+| :--- | :--- | :--- |
+| 🔄 **Watch Folders** | Monitoramento reativo em tempo real de alterações de disco com debounce automático para evitar execuções parciais. | Crate `notify` em Rust + canais assíncronos. |
+| 🏷️ **Blueprints & Tokenizer** | Regras flexíveis para renomear e estruturar diretórios in-place usando metadados e contadores dinâmicos (data, stem, UUID). | Engine customizada Rust (`autoflow-domain/src/tokenizer`). |
+| 🔍 **Filtros Avançados** | Regras rígidas de correspondência por extensão, glob patterns, expressões regulares, tamanho de arquivo, datas ou EXIF. | Engine de filtros e busca em Rust. |
+| ⏱️ **Agendador Integrado** | Execução programada de tarefas periódicas ou em horários específicos. | Engine core de agendamento em Rust. |
+| 🛡️ **Segurança de Caminhos** | Validação automática de diretórios autorizados, detecção de loops de recursão e bloqueio de caminhos restritos. | Módulo `PathPolicy` no core Rust. |
+| 🧪 **Simulação (Dry-Run)** | Exibe o plano exato das ações, colisões de nomes e alertas operacionais antes de qualquer gravação física no disco. | Rust dry-run engine + Tauri IPC. |
+| 📊 **Fila de Execução** | Controle refinado de concorrência, cancelamento com tokens assíncronos e prioridades de execução de jobs. | Tokio channels e workers assíncronos. |
+| 📝 **Histórico & Auditoria** | Logs operacionais completos com persistência local e interface interativa para rollback de movimentações de arquivos. | SQLite (via sqlx) + UI de auditoria Svelte. |
 
 ---
 
@@ -83,6 +88,25 @@ tidyflow/
 ├── Cargo.toml                   # Workspace Cargo
 └── pnpm-workspace.yaml          # Monorepo pnpm workspaces
 ```
+
+---
+
+## ☕ Apoie o Projeto (Donate)
+
+Se o TidyFlow te ajudou a otimizar sua rotina e economizar tempo, você pode apoiar o desenvolvimento do projeto através das seguintes formas:
+
+### ⚡ Pix (Brasil)
+*   **Chave Pix (E-mail):** `contato@raillen.site`
+*   **Identificação:** RAILLEN DOS SANTOS DE OLIVEIRA
+
+### 🏦 Depósito / Transferência Bancária (Banco Inter)
+*   **Banco:** 077 - Banco Inter
+*   **Agência:** 0007
+*   **Conta Corrente:** 2228476-1
+*   **Titular:** RAILLEN DOS SANTOS DE OLIVEIRA
+
+### 🌍 Global / Internacional
+*   **Buy Me a Coffee:** [buymeacoffee.com/raillen](https://www.buymeacoffee.com/raillen)
 
 ---
 Desenvolvido por [Raillen Santos](https://github.com/raillen)
