@@ -1,4 +1,7 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use crate::naming::NamingPattern;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -10,6 +13,10 @@ pub struct WatchConfig {
     pub detection: WatchDetectionMode,
     #[serde(default = "default_events")]
     pub events: Vec<WatchEventKind>,
+    #[serde(default)]
+    pub auto_correct: bool,
+    #[serde(default)]
+    pub naming_pattern: Option<NamingPattern>,
 }
 
 fn default_settle_seconds() -> u32 {
@@ -27,6 +34,8 @@ impl Default for WatchConfig {
             settle_seconds: default_settle_seconds(),
             detection: WatchDetectionMode::default(),
             events: default_events(),
+            auto_correct: false,
+            naming_pattern: None,
         }
     }
 }
@@ -79,6 +88,9 @@ impl WatchConfig {
                 "watch must include at least one event kind".into(),
             ));
         }
+        if let Some(ref np) = self.naming_pattern {
+            np.validate()?;
+        }
         match &self.detection {
             WatchDetectionMode::Realtime => Ok(()),
             WatchDetectionMode::Polling { interval_secs }
@@ -119,6 +131,28 @@ impl WatchConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum NormalizedWatchEvent {
+    FolderCreated {
+        blueprint_id: Uuid,
+        path: String,
+        folder_name: String,
+    },
+    FolderOutOfPattern {
+        blueprint_id: Uuid,
+        path: String,
+        folder_name: String,
+        expected_name: String,
+    },
+    BlueprintTriggered {
+        blueprint_id: Uuid,
+    },
+    JobTriggered {
+        job_id: Uuid,
+    },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,5 +175,38 @@ mod tests {
             ..Default::default()
         };
         assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_naming_regex() {
+        let config = WatchConfig {
+            enabled: true,
+            naming_pattern: Some(NamingPattern {
+                regex: Some("[invalid".to_string()),
+                template_override: None,
+            }),
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn accepts_valid_naming_regex() {
+        let config = WatchConfig {
+            enabled: true,
+            naming_pattern: Some(NamingPattern {
+                regex: Some("^\\d{4}.*".to_string()),
+                template_override: None,
+            }),
+            ..Default::default()
+        };
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn auto_correct_defaults_to_false() {
+        let config = WatchConfig::default();
+        assert!(!config.auto_correct);
+        assert!(config.naming_pattern.is_none());
     }
 }

@@ -4,43 +4,60 @@ import {
   countActiveFilters,
   fileFilterSchema,
   watchConfigSchema,
+  templateSegmentSchema,
+  templatePipelineSchema,
   type FileFilter,
+  type TemplateSegment,
+  type TemplatePipeline,
 } from "$lib/contracts/job";
+
+export { templateSegmentSchema, templatePipelineSchema };
+export type { TemplateSegment, TemplatePipeline };
 
 export const blueprintKindSchema = z.enum(["file", "folder"]);
 export const blueprintOperationSchema = z.enum(["move", "copy"]);
 export const counterScopeSchema = z.enum(["global", "perDay", "perFolder", "perParent"]);
-
-export const templateSegmentSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("literal"), value: z.string() }),
-  z.object({ kind: z.literal("token"), name: z.string() }),
-  z.object({ kind: z.literal("transform"), name: z.string() }),
-  z.object({ kind: z.literal("regexPreset"), name: z.string() }),
-]);
-
-export const templatePipelineSchema = z.object({
-  segments: z.array(templateSegmentSchema).default([]),
-});
 
 export const routingConfigSchema = z.object({
   pathTemplate: templatePipelineSchema.default({ segments: [] }),
   createIntermediateDirs: z.boolean().default(true),
 });
 
-export type FolderNode = {
+export const folderActionSchema = z.enum(["create", "rename", "move", "copy", "delete"]);
+
+export const folderPlanVariableSchema = z.object({
+  name: z.string().min(1),
+  label: z.string().default(""),
+  defaultValue: z.string().default(""),
+  required: z.boolean().default(true),
+});
+
+export type FolderActionNode = {
+  action: z.infer<typeof folderActionSchema>;
   name: string;
-  children: FolderNode[];
+  sourcePath: string;
+  targetPath: string;
+  children: FolderActionNode[];
 };
 
-export const folderNodeSchema: z.ZodType<FolderNode> = z.lazy(() =>
+export const folderActionNodeSchema: z.ZodType<FolderActionNode, z.ZodTypeDef, unknown> = z.lazy(() =>
   z.object({
-    name: z.string(),
-    children: z.array(folderNodeSchema),
+    action: folderActionSchema.default("create"),
+    name: z.string().default(""),
+    sourcePath: z.string().default(""),
+    targetPath: z.string().default(""),
+    children: z.array(folderActionNodeSchema).default([]),
   }),
 );
 
+export const folderNodeSchema = folderActionNodeSchema;
+
 export const folderPlanSchema = z.object({
-  nodes: z.array(folderNodeSchema).default([]),
+  version: z.number().int().positive().default(1),
+  variables: z.array(folderPlanVariableSchema).default([]),
+  allowDeleteNonEmpty: z.boolean().default(false),
+  confirmDeleteNonEmpty: z.boolean().default(false),
+  nodes: z.array(folderActionNodeSchema).default([]),
 });
 
 export const counterConfigSchema = z.object({
@@ -89,6 +106,12 @@ export const blueprintCollisionSchema = z.object({
   target: z.string(),
 });
 
+export const blueprintApplyResultSchema = z.object({
+  processed: z.number().int(),
+  failed: z.number().int(),
+  skipped: z.number().int(),
+});
+
 export const blueprintSimulationReportSchema = z.object({
   matched: z.number().int(),
   skipped: z.number().int(),
@@ -104,10 +127,12 @@ export const templatePreviewSchema = z.object({
   warnings: z.array(z.string()),
 });
 
-export const folderPlanPreviewNodeSchema: z.ZodType<FolderPlanPreviewNode> = z.lazy(() =>
+export const folderPlanPreviewNodeSchema: z.ZodType<FolderPlanPreviewNode, z.ZodTypeDef, unknown> = z.lazy(() =>
   z.object({
     name: z.string(),
     relativePath: z.string(),
+    action: folderActionSchema.default("create"),
+    sourcePath: z.string().default(""),
     children: z.array(folderPlanPreviewNodeSchema),
   }),
 );
@@ -120,18 +145,22 @@ export const folderPlanPreviewSchema = z.object({
   warnings: z.array(z.string()),
 });
 
-export type TemplateSegment = z.infer<typeof templateSegmentSchema>;
-export type TemplatePipeline = z.infer<typeof templatePipelineSchema>;
 export type RoutingConfig = z.infer<typeof routingConfigSchema>;
 export type FolderPlan = z.infer<typeof folderPlanSchema>;
+export type FolderPlanVariable = z.infer<typeof folderPlanVariableSchema>;
+export type FolderAction = z.infer<typeof folderActionSchema>;
+export type FolderNode = FolderActionNode;
 export type CounterConfig = z.infer<typeof counterConfigSchema>;
 export type Blueprint = z.infer<typeof blueprintSchema>;
 export type BlueprintSummary = z.infer<typeof blueprintSummarySchema>;
+export type BlueprintApplyResult = z.infer<typeof blueprintApplyResultSchema>;
 export type BlueprintSimulationReport = z.infer<typeof blueprintSimulationReportSchema>;
 export type TemplatePreview = z.infer<typeof templatePreviewSchema>;
 export type FolderPlanPreviewNode = {
   name: string;
   relativePath: string;
+  action: FolderAction;
+  sourcePath: string;
   children: FolderPlanPreviewNode[];
 };
 export type FolderPlanPreview = z.infer<typeof folderPlanPreviewSchema>;
@@ -276,16 +305,77 @@ export const TEMPLATE_REGEX_PRESETS = TEMPLATE_REGEX_GROUPS.flatMap((group) => g
 }));
 
 export const COUNTER_SCOPE_OPTIONS = [
-  { value: "global", label: "Global", hint: "Um contador único para todo o blueprint." },
+  { value: "global", label: "Global", hint: "Um contador único para toda a regra." },
   { value: "perDay", label: "Por dia", hint: "Reinicia a cada dia (YYYY-MM-DD)." },
   { value: "perFolder", label: "Por pasta destino", hint: "Sequência independente por pasta de destino." },
   { value: "perParent", label: "Por pasta pai", hint: "Sequência por pasta pai do arquivo de origem." },
 ] as const;
 
+export const FOLDER_ACTION_OPTIONS: { value: FolderAction; label: string; hint: string }[] = [
+  { value: "create", label: "Criar", hint: "Cria uma nova pasta no local indicado." },
+  { value: "rename", label: "Renomear", hint: "Troca o nome de uma pasta existente." },
+  { value: "move", label: "Mover", hint: "Move uma pasta existente para outro caminho." },
+  { value: "copy", label: "Copiar", hint: "Copia uma pasta existente para outro caminho." },
+  { value: "delete", label: "Apagar", hint: "Remove uma pasta existente." },
+] as const;
+
+export function folderActionLabel(action: FolderAction): string {
+  return FOLDER_ACTION_OPTIONS.find((option) => option.value === action)?.label ?? action;
+}
+
+export function createFolderActionNode(action: FolderAction = "create", name = "Nova pasta"): FolderActionNode {
+  return folderActionNodeSchema.parse({
+    action,
+    name,
+    sourcePath: "",
+    targetPath: "",
+    children: [],
+  });
+}
+
+export function createDefaultFolderPlan(): FolderPlan {
+  return folderPlanSchema.parse({
+    version: 1,
+    variables: [
+      {
+        name: "projectName",
+        label: "Nome do projeto",
+        defaultValue: "Projeto exemplo",
+        required: true,
+      },
+    ],
+    allowDeleteNonEmpty: false,
+    confirmDeleteNonEmpty: false,
+    nodes: [
+      {
+        action: "create",
+        name: "{projectName}",
+        sourcePath: "",
+        targetPath: "",
+        children: [
+          createFolderActionNode("create", "01 Briefing"),
+          createFolderActionNode("create", "02 Execucao"),
+          createFolderActionNode("create", "03 Entrega"),
+        ],
+      },
+    ],
+  });
+}
+
+export function createFolderVariableValues(folderPlan: FolderPlan | null | undefined): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const variable of folderPlan?.variables ?? []) {
+    const key = variable.name.trim();
+    if (!key) continue;
+    values[key] = variable.defaultValue ?? "";
+  }
+  return values;
+}
+
 export function createEmptyBlueprint(kind: BlueprintKind = "file"): Blueprint {
   return blueprintSchema.parse({
     id: crypto.randomUUID(),
-    name: kind === "file" ? "Novo blueprint de arquivos" : "Novo blueprint de pastas",
+    name: kind === "file" ? "Nova regra de arquivos" : "Nova estrutura de pastas",
     kind,
     rootPath: "",
     search: fileFilterSchema.parse({}),
@@ -304,7 +394,7 @@ export function createEmptyBlueprint(kind: BlueprintKind = "file"): Blueprint {
     recursive: true,
     conflict: "skip",
     renameTemplate: null,
-    folderPlan: kind === "folder" ? { nodes: [] } : null,
+    folderPlan: kind === "folder" ? createDefaultFolderPlan() : null,
     watch: null,
     counter: counterConfigSchema.parse({}),
     enabled: true,

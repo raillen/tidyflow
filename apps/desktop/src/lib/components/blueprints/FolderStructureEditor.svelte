@@ -1,0 +1,1028 @@
+<script lang="ts">
+  import {
+    createDefaultFolderPlan,
+    createFolderActionNode,
+    createFolderVariableValues,
+    FOLDER_ACTION_OPTIONS,
+    folderActionLabel,
+    type Blueprint,
+    type FolderAction,
+    type FolderActionNode,
+    type FolderPlanPreviewNode,
+    type FolderPlanVariable,
+  } from "$lib/contracts/blueprint";
+  import {
+    type WatchConfig as JobWatchConfig,
+    type WatchDetectionMode as JobWatchDetectionMode,
+    type WatchEventKind as JobWatchEventKind,
+  } from "$lib/contracts/job";
+  import { previewBlueprintPlan } from "$lib/core/ipc/client";
+  import { open } from "@tauri-apps/plugin-dialog";
+  import {
+    CalendarBlank,
+    CaretDoubleLeft,
+    CaretDoubleRight,
+    Eye,
+    FolderOpen,
+    FolderSimple,
+    IdentificationCard,
+    Plus,
+    ShieldWarning,
+    Sliders,
+    Trash,
+    TreeStructure,
+  } from "phosphor-svelte";
+
+  type NavPanel = "geral" | "variaveis" | "arvore" | "seguranca" | "automacao";
+
+  type Props = {
+    blueprint: Blueprint;
+    embedded?: boolean;
+    onsave?: () => void;
+  };
+
+  let { blueprint = $bindable(), embedded = true, onsave }: Props = $props();
+
+  let activePanel = $state<NavPanel>("arvore");
+  let navCollapsed = $state(false);
+  let planPreviewLoading = $state(false);
+  let planPreviewResult = $state<Awaited<ReturnType<typeof previewBlueprintPlan>> | null>(null);
+
+  const NAV_ITEMS: { id: NavPanel; label: string; icon: typeof IdentificationCard }[] = [
+    { id: "geral", label: "Geral", icon: IdentificationCard },
+    { id: "variaveis", label: "Variáveis", icon: Sliders },
+    { id: "arvore", label: "Árvore", icon: TreeStructure },
+    { id: "seguranca", label: "Segurança", icon: ShieldWarning },
+    { id: "automacao", label: "Automação", icon: Eye },
+  ];
+
+  const WATCH_EVENTS: { id: JobWatchEventKind; label: string }[] = [
+    { id: "create", label: "Criação" },
+    { id: "modify", label: "Modificação" },
+    { id: "remove", label: "Remoção" },
+    { id: "rename", label: "Renomeação" },
+  ];
+
+  const DETECTION_OPTIONS: { value: JobWatchDetectionMode["kind"]; label: string; hint: string }[] = [
+    { value: "realtime", label: "Tempo real", hint: "Eventos nativos do SO." },
+    { value: "polling", label: "Polling", hint: "Varredura periódica." },
+    { value: "hybrid", label: "Híbrido", hint: "Tempo real com polling de backup." },
+  ];
+
+  $effect(() => {
+    ensureFolderPlan();
+  });
+
+  const previewVariables = $derived(createFolderVariableValues(blueprint.folderPlan));
+
+  $effect(() => {
+    if (activePanel !== "arvore" && activePanel !== "seguranca" && activePanel !== "variaveis") return;
+    const rootPath = blueprint.rootPath;
+    const folderPlan = blueprint.folderPlan ?? createDefaultFolderPlan();
+    const variables = previewVariables;
+    const timer = setTimeout(async () => {
+      planPreviewLoading = true;
+      try {
+        planPreviewResult = await previewBlueprintPlan(rootPath, folderPlan, variables);
+      } catch {
+        planPreviewResult = null;
+      } finally {
+        planPreviewLoading = false;
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  });
+
+  async function pickRootFolder() {
+    const selected = await open({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      blueprint = { ...blueprint, rootPath: selected };
+    }
+  }
+
+  function ensureFolderPlan() {
+    if (!blueprint.folderPlan) {
+      blueprint = { ...blueprint, kind: "folder", folderPlan: createDefaultFolderPlan() };
+    }
+  }
+
+  function patchFolderPlan(partial: Partial<NonNullable<Blueprint["folderPlan"]>>) {
+    const folderPlan = blueprint.folderPlan ?? createDefaultFolderPlan();
+    blueprint = { ...blueprint, folderPlan: { ...folderPlan, ...partial } };
+  }
+
+  function patchWatch(partial: Partial<JobWatchConfig>) {
+    const base = blueprint.watch ?? defaultWatch();
+    blueprint = { ...blueprint, watch: { ...base, ...partial } };
+  }
+
+  function defaultWatch(): JobWatchConfig {
+    return {
+      enabled: true,
+      settleSeconds: 2,
+      detection: { kind: "realtime" },
+      events: ["create"],
+      autoCorrect: false,
+      namingPattern: {},
+    };
+  }
+
+  function setWatchEnabled(enabled: boolean) {
+    if (enabled) {
+      blueprint = {
+        ...blueprint,
+        watch: blueprint.watch ? { ...blueprint.watch, enabled: true } : defaultWatch(),
+      };
+    } else if (blueprint.watch) {
+      blueprint = { ...blueprint, watch: { ...blueprint.watch, enabled: false } };
+    } else {
+      blueprint = { ...blueprint, watch: null };
+    }
+  }
+
+  function setDetectionKind(kind: JobWatchDetectionMode["kind"]) {
+    if (kind === "realtime") patchWatch({ detection: { kind: "realtime" } });
+    if (kind === "polling") patchWatch({ detection: { kind: "polling", intervalSecs: 30 } });
+    if (kind === "hybrid") patchWatch({ detection: { kind: "hybrid", pollIntervalSecs: 30 } });
+  }
+
+  function toggleWatchEvent(event: JobWatchEventKind) {
+    const watch = blueprint.watch ?? defaultWatch();
+    const events = watch.events.includes(event)
+      ? watch.events.filter((item) => item !== event)
+      : [...watch.events, event];
+    if (events.length === 0) return;
+    patchWatch({ events });
+  }
+
+  function nodesSnapshot() {
+    ensureFolderPlan();
+    return $state.snapshot(blueprint.folderPlan!.nodes);
+  }
+
+  function variablesSnapshot() {
+    ensureFolderPlan();
+    return $state.snapshot(blueprint.folderPlan!.variables);
+  }
+
+  function findNode(nodes: FolderActionNode[], path: number[]) {
+    let current = nodes[path[0]!]!;
+    for (let i = 1; i < path.length; i++) {
+      current = current.children[path[i]!]!;
+    }
+    return current;
+  }
+
+  function patchNode(path: number[], partial: Partial<FolderActionNode>) {
+    const nodes = nodesSnapshot();
+    const node = findNode(nodes, path);
+    Object.assign(node, partial);
+    if (partial.action === "delete") {
+      node.children = [];
+    }
+    patchFolderPlan({ nodes });
+  }
+
+  function addRootAction(action: FolderAction = "create") {
+    const nodes = nodesSnapshot();
+    nodes.push(createFolderActionNode(action, action === "create" ? "Nova pasta" : ""));
+    patchFolderPlan({ nodes });
+  }
+
+  function addChildAction(path: number[]) {
+    const nodes = nodesSnapshot();
+    const node = findNode(nodes, path);
+    node.children.push(createFolderActionNode("create", "Subpasta"));
+    patchFolderPlan({ nodes });
+  }
+
+  function removeNode(path: number[]) {
+    const nodes = nodesSnapshot();
+    if (path.length === 1) {
+      nodes.splice(path[0]!, 1);
+    } else {
+      const parent = findNode(nodes, path.slice(0, -1));
+      parent.children.splice(path[path.length - 1]!, 1);
+    }
+    patchFolderPlan({ nodes });
+  }
+
+  function addVariable() {
+    const variables = variablesSnapshot();
+    variables.push({
+      name: "cliente",
+      label: "Cliente",
+      defaultValue: "",
+      required: true,
+    });
+    patchFolderPlan({ variables });
+  }
+
+  function patchVariable(index: number, partial: Partial<FolderPlanVariable>) {
+    const variables = variablesSnapshot();
+    variables[index] = { ...variables[index]!, ...partial };
+    patchFolderPlan({ variables });
+  }
+
+  function removeVariable(index: number) {
+    const variables = variablesSnapshot();
+    variables.splice(index, 1);
+    patchFolderPlan({ variables });
+  }
+</script>
+
+{#snippet planPreviewNode(node: FolderPlanPreviewNode, depth: number)}
+  <li class="preview-item" style:padding-left={`${depth * 1.1}rem`}>
+    <span class:danger={node.action === "delete"}>{folderActionLabel(node.action)}</span>
+    <code>{node.relativePath}</code>
+    {#if node.sourcePath}
+      <small>origem: {node.sourcePath}</small>
+    {/if}
+    {#if node.children.length}
+      <ul>
+        {#each node.children as child}
+          {@render planPreviewNode(child, depth + 1)}
+        {/each}
+      </ul>
+    {/if}
+  </li>
+{/snippet}
+
+{#snippet folderNodeEditor(node: FolderActionNode, path: number[], depth: number)}
+  <li class="folder-node" style:margin-left={`${depth * 1.25}rem`}>
+    <div class="node-grid">
+      <label class="field compact">
+        <span class="field-label">Ação</span>
+        <select
+          class="field-input"
+          value={node.action}
+          onchange={(e) => patchNode(path, { action: e.currentTarget.value as FolderAction })}
+        >
+          {#each FOLDER_ACTION_OPTIONS as option}
+            <option value={option.value}>{option.label}</option>
+          {/each}
+        </select>
+      </label>
+
+      {#if node.action === "create"}
+        <label class="field">
+          <span class="field-label">Nome/template</span>
+          <input
+            class="field-input mono"
+            value={node.name}
+            placeholder={"{projectName}"}
+            oninput={(e) => patchNode(path, { name: e.currentTarget.value })}
+          />
+        </label>
+      {:else if node.action === "rename"}
+        <label class="field">
+          <span class="field-label">Pasta origem</span>
+          <input
+            class="field-input mono"
+            value={node.sourcePath}
+            placeholder="Projeto antigo"
+            oninput={(e) => patchNode(path, { sourcePath: e.currentTarget.value })}
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">Novo nome/template</span>
+          <input
+            class="field-input mono"
+            value={node.name}
+            placeholder={"{projectName}"}
+            oninput={(e) => patchNode(path, { name: e.currentTarget.value })}
+          />
+        </label>
+      {:else if node.action === "move" || node.action === "copy"}
+        <label class="field">
+          <span class="field-label">Pasta origem</span>
+          <input
+            class="field-input mono"
+            value={node.sourcePath}
+            placeholder="Entrada/Projeto"
+            oninput={(e) => patchNode(path, { sourcePath: e.currentTarget.value })}
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">Destino/template</span>
+          <input
+            class="field-input mono"
+            value={node.targetPath}
+            placeholder={"{projectName}"}
+            oninput={(e) => patchNode(path, { targetPath: e.currentTarget.value })}
+          />
+        </label>
+      {:else}
+        <label class="field">
+          <span class="field-label">Pasta a apagar</span>
+          <input
+            class="field-input mono"
+            value={node.sourcePath}
+            placeholder="Projeto antigo"
+            oninput={(e) => patchNode(path, { sourcePath: e.currentTarget.value })}
+          />
+        </label>
+      {/if}
+
+      <div class="node-actions">
+        {#if node.action !== "delete"}
+          <button type="button" class="btn ghost" onclick={() => addChildAction(path)}>
+            <Plus size={12} />
+            Filha
+          </button>
+        {/if}
+        <button type="button" class="btn ghost danger" onclick={() => removeNode(path)}>
+          <Trash size={12} />
+        </button>
+      </div>
+    </div>
+
+    {#if node.children.length}
+      <ul class="folder-tree">
+        {#each node.children as child, index}
+          {@render folderNodeEditor(child, [...path, index], depth + 1)}
+        {/each}
+      </ul>
+    {/if}
+  </li>
+{/snippet}
+
+<form
+  id="blueprint-editor-form"
+  class="editor"
+  class:embedded
+  onsubmit={(e) => {
+    e.preventDefault();
+    blueprint = { ...blueprint, kind: "folder", folderPlan: blueprint.folderPlan ?? createDefaultFolderPlan() };
+    onsave?.();
+  }}
+>
+  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label="Seções da estrutura de pastas">
+    <button
+      type="button"
+      class="nav-toggle btn ghost"
+      aria-label={navCollapsed ? "Expandir menu" : "Recolher menu"}
+      onclick={() => (navCollapsed = !navCollapsed)}
+    >
+      {#if navCollapsed}
+        <CaretDoubleRight size={16} />
+      {:else}
+        <CaretDoubleLeft size={16} />
+      {/if}
+    </button>
+
+    {#each NAV_ITEMS as item}
+      {@const Icon = item.icon}
+      <button
+        type="button"
+        class="nav-item"
+        class:active={activePanel === item.id}
+        title={item.label}
+        onclick={() => (activePanel = item.id)}
+      >
+        <Icon size={18} weight={activePanel === item.id ? "fill" : "regular"} />
+        {#if !navCollapsed}
+          <span class="nav-label">{item.label}</span>
+        {/if}
+      </button>
+    {/each}
+  </nav>
+
+  <div class="editor-content">
+    {#if activePanel === "geral"}
+      <div class="panel-header">
+        <h3>Geral</h3>
+        <p>Nome, raiz e estado da receita.</p>
+      </div>
+
+      <details class="collapsible" open>
+        <summary>Identificação</summary>
+        <div class="collapsible-body">
+          <label class="field">
+            <span class="field-label">Nome</span>
+            <input class="field-input" bind:value={blueprint.name} maxlength="120" required />
+          </label>
+
+          <label class="toggle">
+            <input type="checkbox" bind:checked={blueprint.enabled} />
+            <span>Estrutura ativa</span>
+          </label>
+        </div>
+      </details>
+
+      <details class="collapsible" open>
+        <summary>Pasta raiz</summary>
+        <div class="collapsible-body">
+          <div class="path-row">
+            <label class="field">
+              <span class="field-label">Raiz da receita</span>
+              <input class="field-input" bind:value={blueprint.rootPath} placeholder="C:\pasta\raiz" required />
+            </label>
+            <button type="button" class="btn" onclick={pickRootFolder}>
+              <FolderOpen size={14} />
+              Escolher
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <details class="collapsible" open>
+        <summary>Conflitos</summary>
+        <div class="collapsible-body">
+          <label class="field">
+            <span class="field-label">Quando o destino já existir</span>
+            <select
+              class="field-input"
+              value={blueprint.conflict}
+              onchange={(e) =>
+                (blueprint = {
+                  ...blueprint,
+                  conflict: e.currentTarget.value as Blueprint["conflict"],
+                })}
+            >
+              <option value="skip">Ignorar</option>
+              <option value="overwrite">Sobrescrever</option>
+              <option value="rename">Renomear automaticamente</option>
+            </select>
+          </label>
+          <p class="muted">
+            Afeta ações de mover, copiar e renomear. Criar pasta existente ignora com “Ignorar” ou mantém com
+            “Sobrescrever”.
+          </p>
+        </div>
+      </details>
+    {:else if activePanel === "variaveis"}
+      <div class="panel-header">
+        <h3>Variáveis</h3>
+        <p>Campos usados nos templates da árvore.</p>
+      </div>
+
+      <details class="collapsible" open>
+        <summary>Campos da receita</summary>
+        <div class="collapsible-body">
+          <button type="button" class="btn" onclick={addVariable}>
+            <Plus size={14} />
+            Variável
+          </button>
+
+          {#if !blueprint.folderPlan?.variables.length}
+            <p class="muted">Nenhuma variável. Você ainda pode usar data, contador e texto fixo.</p>
+          {:else}
+            <ul class="variable-list">
+              {#each blueprint.folderPlan.variables as variable, index}
+                <li class="variable-row">
+                  <label class="field">
+                    <span class="field-label">Token</span>
+                    <input
+                      class="field-input mono"
+                      value={variable.name}
+                      placeholder="projectName"
+                      oninput={(e) => patchVariable(index, { name: e.currentTarget.value })}
+                    />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Rótulo</span>
+                    <input
+                      class="field-input"
+                      value={variable.label}
+                      placeholder="Nome do projeto"
+                      oninput={(e) => patchVariable(index, { label: e.currentTarget.value })}
+                    />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Valor padrão</span>
+                    <input
+                      class="field-input"
+                      value={variable.defaultValue}
+                      placeholder="Projeto exemplo"
+                      oninput={(e) => patchVariable(index, { defaultValue: e.currentTarget.value })}
+                    />
+                  </label>
+                  <label class="toggle variable-required">
+                    <input
+                      type="checkbox"
+                      checked={variable.required}
+                      onchange={(e) => patchVariable(index, { required: e.currentTarget.checked })}
+                    />
+                    <span>Obrigatória</span>
+                  </label>
+                  <button type="button" class="btn ghost danger" onclick={() => removeVariable(index)}>
+                    <Trash size={12} />
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+      </details>
+    {:else if activePanel === "arvore"}
+      <div class="panel-header">
+        <h3>Árvore</h3>
+        <p>Ações aplicadas dentro da raiz.</p>
+      </div>
+
+      <div class="tree-layout">
+        <details class="collapsible" open>
+          <summary>Ações</summary>
+          <div class="collapsible-body">
+            <div class="toolbar">
+              <button type="button" class="btn" onclick={() => addRootAction("create")}>
+                <Plus size={14} />
+                Criar pasta
+              </button>
+              <button type="button" class="btn ghost" onclick={() => addRootAction("rename")}>Renomear</button>
+              <button type="button" class="btn ghost" onclick={() => addRootAction("move")}>Mover</button>
+              <button type="button" class="btn ghost" onclick={() => addRootAction("copy")}>Copiar</button>
+              <button type="button" class="btn ghost danger" onclick={() => addRootAction("delete")}>Apagar</button>
+            </div>
+
+            {#if !blueprint.folderPlan?.nodes.length}
+              <p class="muted">Nenhuma ação definida.</p>
+            {:else}
+              <ul class="folder-tree">
+                {#each blueprint.folderPlan.nodes as node, index}
+                  {@render folderNodeEditor(node, [index], 0)}
+                {/each}
+              </ul>
+            {/if}
+          </div>
+        </details>
+
+        <aside class="preview-panel">
+          <h4>Preview</h4>
+          {#if planPreviewLoading}
+            <p class="muted">Calculando árvore...</p>
+          {:else if planPreviewResult}
+            <p class="preview-summary">
+              <strong>{planPreviewResult.folderCount}</strong>
+              ação(ões) sob <code>{planPreviewResult.rootPath || blueprint.rootPath || "-"}</code>
+            </p>
+            {#if planPreviewResult.warnings.length}
+              <ul class="warning-list">
+                {#each planPreviewResult.warnings as warning}
+                  <li>{warning}</li>
+                {/each}
+              </ul>
+            {/if}
+            {#if planPreviewResult.nodes.length}
+              <ul class="preview-tree">
+                {#each planPreviewResult.nodes as node}
+                  {@render planPreviewNode(node, 0)}
+                {/each}
+              </ul>
+            {/if}
+          {:else}
+            <p class="muted">Sem preview.</p>
+          {/if}
+        </aside>
+      </div>
+    {:else if activePanel === "seguranca"}
+      <div class="panel-header">
+        <h3>Segurança</h3>
+        <p>Proteções para ações destrutivas.</p>
+      </div>
+
+      <details class="collapsible" open>
+        <summary>Exclusão com conteúdo</summary>
+        <div class="collapsible-body">
+          <label class="toggle danger-text">
+            <input
+              type="checkbox"
+              checked={blueprint.folderPlan?.allowDeleteNonEmpty ?? false}
+              onchange={(e) => patchFolderPlan({ allowDeleteNonEmpty: e.currentTarget.checked })}
+            />
+            <span>Permitir apagar pastas com conteúdo</span>
+          </label>
+
+          <label class="toggle danger-text">
+            <input
+              type="checkbox"
+              checked={blueprint.folderPlan?.confirmDeleteNonEmpty ?? false}
+              onchange={(e) => patchFolderPlan({ confirmDeleteNonEmpty: e.currentTarget.checked })}
+            />
+            <span>Confirmo que esta regra pode apagar arquivos e subpastas</span>
+          </label>
+
+          <p class="muted">
+            A execução bloqueia qualquer exclusão com conteúdo quando uma dessas confirmações estiver desligada.
+          </p>
+        </div>
+      </details>
+    {:else if activePanel === "automacao"}
+      <div class="panel-header">
+        <h3>Automação</h3>
+        <p>Monitoramento da pasta raiz.</p>
+      </div>
+
+      <details class="collapsible" open>
+        <summary>Watch na raiz</summary>
+        <div class="collapsible-body">
+          <label class="toggle">
+            <input
+              type="checkbox"
+              checked={blueprint.watch?.enabled ?? false}
+              onchange={(e) => setWatchEnabled(e.currentTarget.checked)}
+            />
+            <span>Monitoramento ativo</span>
+          </label>
+
+          {#if blueprint.watch?.enabled}
+            <p class="field-hint">
+              Monitora <code>{blueprint.rootPath || "-"}</code>.
+            </p>
+
+            <label class="field">
+              <span class="field-label">Estabilização (segundos)</span>
+              <input
+                class="field-input"
+                type="number"
+                min="1"
+                max="60"
+                value={blueprint.watch.settleSeconds}
+                oninput={(e) =>
+                  patchWatch({
+                    settleSeconds: Math.min(60, Math.max(1, Number(e.currentTarget.value) || 2)),
+                  })}
+              />
+            </label>
+
+            <label class="field">
+              <span class="field-label">Método de detecção</span>
+              <select
+                class="field-input"
+                value={blueprint.watch.detection.kind}
+                onchange={(e) => setDetectionKind(e.currentTarget.value as JobWatchDetectionMode["kind"])}
+              >
+                {#each DETECTION_OPTIONS as option}
+                  <option value={option.value}>{option.label}</option>
+                {/each}
+              </select>
+            </label>
+
+            {#if blueprint.watch.detection.kind === "polling"}
+              <label class="field">
+                <span class="field-label">Intervalo (segundos)</span>
+                <input
+                  class="field-input"
+                  type="number"
+                  min="5"
+                  max="3600"
+                  value={blueprint.watch.detection.intervalSecs}
+                  oninput={(e) =>
+                    patchWatch({
+                      detection: {
+                        kind: "polling",
+                        intervalSecs: Math.max(5, Number(e.currentTarget.value) || 30),
+                      },
+                    })}
+                />
+              </label>
+            {:else if blueprint.watch.detection.kind === "hybrid"}
+              <label class="field">
+                <span class="field-label">Polling de backup (segundos)</span>
+                <input
+                  class="field-input"
+                  type="number"
+                  min="5"
+                  max="3600"
+                  value={blueprint.watch.detection.pollIntervalSecs}
+                  oninput={(e) =>
+                    patchWatch({
+                      detection: {
+                        kind: "hybrid",
+                        pollIntervalSecs: Math.max(5, Number(e.currentTarget.value) || 30),
+                      },
+                    })}
+                />
+              </label>
+            {/if}
+
+            <fieldset class="preset-group">
+              <legend class="field-label">Eventos</legend>
+              <div class="checkbox-grid">
+                {#each WATCH_EVENTS as event}
+                  <label class="toggle">
+                    <input
+                      type="checkbox"
+                      checked={blueprint.watch.events.includes(event.id)}
+                      onchange={() => toggleWatchEvent(event.id)}
+                    />
+                    <span>{event.label}</span>
+                  </label>
+                {/each}
+              </div>
+            </fieldset>
+
+            <div class="auto-correct-section">
+              <label class="toggle">
+                <input
+                  type="checkbox"
+                  checked={blueprint.watch?.autoCorrect ?? false}
+                  onchange={(e) => patchWatch({ autoCorrect: e.currentTarget.checked })}
+                />
+                <span>Auto-corrigir nomenclatura</span>
+              </label>
+              <p class="field-hint">
+                Pastas criadas fora do padrão serão renomeadas automaticamente e a estrutura interna será criada.
+              </p>
+
+              {#if blueprint.watch?.autoCorrect}
+                <label class="field">
+                  <span class="field-label">Regex de validação (opcional)</span>
+                  <input
+                    class="field-input"
+                    type="text"
+                    placeholder="^\\d{4}\\s+.*"
+                    value={blueprint.watch?.namingPattern?.regex ?? ""}
+                    oninput={(e) =>
+                      patchWatch({
+                        namingPattern: {
+                          ...blueprint.watch?.namingPattern,
+                          regex: e.currentTarget.value || undefined,
+                        },
+                      })}
+                  />
+                </label>
+                <p class="field-hint">
+                  Se definada, pastas cujo nome corresponder à regex serão consideradas válidas.
+                </p>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      </details>
+
+      {#if blueprint.lastRun}
+        <details class="collapsible">
+          <summary>Última execução</summary>
+          <div class="collapsible-body">
+            <p class="muted">
+              <CalendarBlank size={14} />
+              {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium" }).format(
+                new Date(blueprint.lastRun),
+              )}
+            </p>
+          </div>
+        </details>
+      {/if}
+    {/if}
+  </div>
+</form>
+
+<style>
+  .editor {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface-muted);
+  }
+
+  .editor.embedded {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .editor-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    width: 13.5rem;
+    padding: var(--space-3);
+    border-right: 1px solid var(--border);
+    background: var(--surface-muted);
+    transition: width 160ms ease;
+  }
+
+  .editor-nav.collapsed {
+    width: 52px;
+    padding-inline: var(--space-2);
+  }
+
+  .nav-toggle {
+    align-self: flex-end;
+    padding: var(--space-1);
+    margin-bottom: var(--space-2);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .nav-item.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .editor-content {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-4) var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .panel-header h3 {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: 650;
+  }
+
+  .panel-header p {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  .collapsible,
+  .preview-panel {
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+
+  .collapsible > summary {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .collapsible-body {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border-top: 1px solid var(--border);
+  }
+
+  .path-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-3);
+    align-items: end;
+  }
+
+  .tree-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 0.75fr);
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .toolbar,
+  .node-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .folder-tree,
+  .variable-list,
+  .preview-tree,
+  .preview-item ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .folder-node {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .node-grid,
+  .variable-row {
+    display: grid;
+    grid-template-columns: minmax(7rem, 0.45fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    align-items: end;
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-muted);
+  }
+
+  .variable-row {
+    grid-template-columns: minmax(7rem, 0.7fr) minmax(8rem, 1fr) minmax(8rem, 1fr) auto auto;
+  }
+
+  .field.compact {
+    min-width: 7rem;
+  }
+
+  .variable-required {
+    align-self: center;
+  }
+
+  .preview-panel {
+    padding: var(--space-4);
+    position: sticky;
+    top: 0;
+  }
+
+  .preview-panel h4 {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .preview-summary {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .preview-item {
+    display: grid;
+    gap: var(--space-1);
+    font-size: var(--text-xs);
+  }
+
+  .preview-item span {
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .preview-item span.danger,
+  .danger-text {
+    color: var(--danger);
+  }
+
+  .preview-item small {
+    color: var(--text-muted);
+  }
+
+  .warning-list {
+    margin: 0 0 var(--space-3);
+    padding-left: 1rem;
+    color: var(--danger);
+    font-size: var(--text-xs);
+  }
+
+  .checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: var(--space-2);
+  }
+
+  .preset-group {
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .auto-correct-section {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .field-hint,
+  .muted {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .mono,
+  code {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  @media (max-width: 980px) {
+    .tree-layout,
+    .node-grid,
+    .variable-row {
+      grid-template-columns: 1fr;
+    }
+
+    .preview-panel {
+      position: static;
+    }
+  }
+</style>

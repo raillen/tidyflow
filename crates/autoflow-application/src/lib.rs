@@ -1,6 +1,7 @@
 pub mod blueprints;
 pub mod execution;
 pub mod jobs;
+pub mod naming;
 pub mod notify;
 pub mod pack;
 pub mod ports;

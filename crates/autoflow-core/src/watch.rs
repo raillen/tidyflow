@@ -3,14 +3,16 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, UNIX_EPOCH};
 
-use autoflow_application::blueprints;
+use autoflow_application::naming;
 use autoflow_application::ports::JobStore;
 use autoflow_application::BlueprintStore;
-use autoflow_domain::{Blueprint, DomainError, Job, WatchConfig, WatchEventKind};
+use autoflow_domain::{
+    Blueprint, DomainError, Job, NormalizedWatchEvent, WatchConfig, WatchEventKind,
+};
 use autoflow_infrastructure::audit::SqliteAuditStore;
 use autoflow_infrastructure::blueprints::SqliteBlueprintStore;
 use autoflow_infrastructure::jobs::SqliteJobStore;
-use notify::event::ModifyKind;
+use notify::event::{CreateKind, ModifyKind};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, FileIdMap};
 use tokio::sync::mpsc;
@@ -41,7 +43,7 @@ struct WatchServiceInner {
     jobs: Arc<SqliteJobStore>,
     blueprints: Arc<SqliteBlueprintStore>,
     handles: Mutex<HashMap<WatchTarget, WatchHandle>>,
-    trigger_tx: mpsc::UnboundedSender<WatchTarget>,
+    trigger_tx: mpsc::UnboundedSender<NormalizedWatchEvent>,
 }
 
 impl WatchService {
@@ -57,27 +59,88 @@ impl WatchService {
         let audit_worker = audit.clone();
 
         tokio::spawn(async move {
-            while let Some(target) = trigger_rx.recv().await {
-                match target {
-                    WatchTarget::Job(job_id) => {
+            while let Some(event) = trigger_rx.recv().await {
+                match event {
+                    NormalizedWatchEvent::JobTriggered { job_id } => {
                         if let Err(error) = queue_worker.enqueue(job_id) {
                             if !matches!(error, DomainError::AlreadyRunning) {
                                 tracing::warn!(%job_id, %error, "watch failed to enqueue job");
                             }
                         }
                     }
-                    WatchTarget::Blueprint(blueprint_id) => {
+                    NormalizedWatchEvent::BlueprintTriggered { blueprint_id } => {
                         let store = blueprints_worker.clone();
                         let audit = audit_worker.clone();
                         tokio::spawn(async move {
-                            if let Err(error) = blueprints::apply_blueprint(
+                            let blueprint = match store.get(blueprint_id).await {
+                                Ok(blueprint) => blueprint,
+                                Err(error) => {
+                                    tracing::warn!(%blueprint_id, %error, "watch failed to load blueprint");
+                                    return;
+                                }
+                            };
+                            let variables = autoflow_application::blueprints::folder_plan_default_variables(
+                                blueprint.folder_plan.as_ref(),
+                            );
+                            if let Err(error) = autoflow_application::blueprints::apply_blueprint_with_variables(
                                 store.as_ref(),
                                 audit.as_ref(),
                                 blueprint_id,
+                                variables,
                             )
                             .await
                             {
                                 tracing::warn!(%blueprint_id, %error, "watch failed to apply blueprint");
+                            }
+                        });
+                    }
+                    NormalizedWatchEvent::FolderCreated {
+                        blueprint_id,
+                        path,
+                        folder_name,
+                    } => {
+                        tracing::info!(%blueprint_id, path = %path, %folder_name, "received FolderCreated event");
+                        let store = blueprints_worker.clone();
+                        let audit = audit_worker.clone();
+                        tokio::spawn(async move {
+                            if let Err(error) = naming::handle_folder_auto_correct(
+                                store.as_ref(),
+                                audit.as_ref(),
+                                blueprint_id,
+                                &path,
+                                &folder_name,
+                            )
+                            .await
+                            {
+                                tracing::warn!(%blueprint_id, %error, "auto-correct failed for folder");
+                            }
+                        });
+                    }
+                    NormalizedWatchEvent::FolderOutOfPattern {
+                        blueprint_id,
+                        path,
+                        folder_name,
+                        expected_name,
+                    } => {
+                        let store = blueprints_worker.clone();
+                        let audit = audit_worker.clone();
+                        tokio::spawn(async move {
+                            if let Err(error) = naming::handle_folder_auto_correct(
+                                store.as_ref(),
+                                audit.as_ref(),
+                                blueprint_id,
+                                &path,
+                                &folder_name,
+                            )
+                            .await
+                            {
+                                tracing::warn!(
+                                    %blueprint_id,
+                                    %folder_name,
+                                    %expected_name,
+                                    %error,
+                                    "auto-rename failed for out-of-pattern folder"
+                                );
                             }
                         });
                     }
@@ -129,7 +192,7 @@ impl WatchService {
         }
 
         let watch = job.watch.as_ref().expect("watch config required");
-        self.register(target, watch, &job.source_path, job.filters.recursive)?;
+        self.register_job(target, watch, &job.source_path, job.filters.recursive)?;
         Ok(())
     }
 
@@ -142,7 +205,7 @@ impl WatchService {
         }
 
         let watch = blueprint.watch.as_ref().expect("watch config required");
-        self.register(target, watch, &blueprint.root_path, blueprint.recursive)?;
+        self.register_blueprint(target, watch, blueprint)?;
         Ok(())
     }
 
@@ -158,7 +221,7 @@ impl WatchService {
         self.unregister(WatchTarget::Blueprint(blueprint_id));
     }
 
-    fn register(
+    fn register_job(
         &self,
         target: WatchTarget,
         watch: &WatchConfig,
@@ -174,7 +237,7 @@ impl WatchService {
         let mut poll_task = None;
 
         if watch.uses_realtime() {
-            debouncer = Some(self.start_realtime(target, watch, &source, recursive)?);
+            debouncer = Some(self.start_realtime_job(target, watch, &source, recursive)?);
         }
 
         if watch.uses_polling() {
@@ -195,7 +258,44 @@ impl WatchService {
         Ok(())
     }
 
-    fn start_realtime(
+    fn register_blueprint(
+        &self,
+        target: WatchTarget,
+        watch: &WatchConfig,
+        blueprint: &Blueprint,
+    ) -> Result<(), DomainError> {
+        let source = PathBuf::from(&blueprint.root_path);
+        if !source.exists() {
+            return Err(DomainError::SourceNotFound(blueprint.root_path.clone()));
+        }
+
+        let mut debouncer = None;
+        let mut poll_task = None;
+
+        if watch.uses_realtime() {
+            debouncer =
+                Some(self.start_realtime_blueprint(target, watch, blueprint, &source)?);
+        }
+
+        if watch.uses_polling() {
+            let interval_secs = watch
+                .poll_interval_secs()
+                .expect("polling interval required");
+            poll_task = Some(self.start_polling(target, &source, interval_secs));
+        }
+
+        self.inner.handles.lock().unwrap().insert(
+            target,
+            WatchHandle {
+                _debouncer: debouncer,
+                _poll_task: poll_task,
+            },
+        );
+
+        Ok(())
+    }
+
+    fn start_realtime_job(
         &self,
         target: WatchTarget,
         watch: &WatchConfig,
@@ -205,6 +305,10 @@ impl WatchService {
         let allowed = watch.events.clone();
         let tx = self.inner.trigger_tx.clone();
         let settle = Duration::from_secs(watch.settle_seconds as u64);
+        let job_id = match target {
+            WatchTarget::Job(id) => id,
+            WatchTarget::Blueprint(id) => id,
+        };
 
         let mut debouncer = new_debouncer(settle, None, move |result: DebounceEventResult| {
             let Ok(events) = result else {
@@ -212,7 +316,7 @@ impl WatchService {
             };
             for debounced in events {
                 if matches_watch_event(&debounced.event.kind, &allowed) {
-                    let _ = tx.send(target);
+                    let _ = tx.send(NormalizedWatchEvent::JobTriggered { job_id });
                     break;
                 }
             }
@@ -228,6 +332,84 @@ impl WatchService {
         debouncer
             .watcher()
             .watch(source, mode)
+            .map_err(|e| DomainError::Database(format!("watch path: {e}")))?;
+
+        Ok(debouncer)
+    }
+
+    fn start_realtime_blueprint(
+        &self,
+        target: WatchTarget,
+        watch: &WatchConfig,
+        _blueprint: &Blueprint,
+        source: &Path,
+    ) -> Result<FullDebouncer, DomainError> {
+        let allowed = watch.events.clone();
+        let tx = self.inner.trigger_tx.clone();
+        let settle = Duration::from_secs(watch.settle_seconds as u64);
+        let auto_correct = watch.auto_correct;
+        let blueprint_id = match target {
+            WatchTarget::Blueprint(id) => id,
+            WatchTarget::Job(id) => id,
+        };
+        let root_path = source.to_path_buf();
+
+        let mut debouncer = new_debouncer(settle, None, move |result: DebounceEventResult| {
+            let Ok(events) = result else {
+                tracing::warn!("debouncer received error result");
+                return;
+            };
+            for debounced in &events {
+                tracing::debug!(
+                    kind = ?debounced.event.kind,
+                    paths = ?debounced.event.paths,
+                    "debouncer event received"
+                );
+                if matches_watch_event(&debounced.event.kind, &allowed) {
+                    if auto_correct {
+                        if let EventKind::Create(CreateKind::Folder) = &debounced.event.kind {
+                            for path in &debounced.event.paths {
+                                let parent_matches = path.parent().map(|p| p == root_path).unwrap_or(false);
+                                tracing::info!(
+                                    path = %path.display(),
+                                    %parent_matches,
+                                    root = %root_path.display(),
+                                    "checking folder create event"
+                                );
+                                if parent_matches {
+                                    let folder_name = path
+                                        .file_name()
+                                        .and_then(|n| n.to_str())
+                                        .unwrap_or("")
+                                        .to_string();
+                                    tracing::info!(%folder_name, "emitting FolderCreated event");
+                                    let _ = tx.send(NormalizedWatchEvent::FolderCreated {
+                                        blueprint_id,
+                                        path: path.display().to_string(),
+                                        folder_name,
+                                    });
+                                    break;
+                                }
+                            }
+                        } else {
+                            let _ = tx.send(NormalizedWatchEvent::BlueprintTriggered {
+                                blueprint_id,
+                            });
+                        }
+                    } else {
+                        let _ = tx.send(NormalizedWatchEvent::BlueprintTriggered {
+                            blueprint_id,
+                        });
+                    }
+                    break;
+                }
+            }
+        })
+        .map_err(|e| DomainError::Database(format!("watch debouncer: {e}")))?;
+
+        debouncer
+            .watcher()
+            .watch(source, RecursiveMode::NonRecursive)
             .map_err(|e| DomainError::Database(format!("watch path: {e}")))?;
 
         Ok(debouncer)
@@ -252,7 +434,16 @@ impl WatchService {
                 let current = directory_snapshot(&source);
                 if snapshot != current {
                     snapshot = current;
-                    let _ = tx.send(target);
+                    match target {
+                        WatchTarget::Job(job_id) => {
+                            let _ = tx.send(NormalizedWatchEvent::JobTriggered { job_id });
+                        }
+                        WatchTarget::Blueprint(blueprint_id) => {
+                            let _ = tx.send(NormalizedWatchEvent::BlueprintTriggered {
+                                blueprint_id,
+                            });
+                        }
+                    }
                 }
             }
         })

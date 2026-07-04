@@ -70,6 +70,22 @@ export const scheduleConfigSchema = z.object({
 
 export const watchEventKindSchema = z.enum(["create", "modify", "remove", "rename"]);
 
+export const templateSegmentSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("literal"), value: z.string() }),
+  z.object({ kind: z.literal("token"), name: z.string() }),
+  z.object({ kind: z.literal("transform"), name: z.string() }),
+  z.object({ kind: z.literal("regexPreset"), name: z.string() }),
+]);
+
+export const templatePipelineSchema = z.object({
+  segments: z.array(templateSegmentSchema).default([]),
+});
+
+export const namingPatternSchema = z.object({
+  regex: z.string().nullish(),
+  templateOverride: templatePipelineSchema.nullish(),
+}).default({});
+
 export const watchDetectionModeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("realtime") }),
   z.object({
@@ -87,6 +103,8 @@ export const watchConfigSchema = z.object({
   settleSeconds: z.number().int().min(1).max(60).default(2),
   detection: watchDetectionModeSchema.default({ kind: "realtime" }),
   events: z.array(watchEventKindSchema).default(["create"]),
+  autoCorrect: z.boolean().default(false),
+  namingPattern: namingPatternSchema,
 });
 
 export const scriptsConfigSchema = z.object({
@@ -198,11 +216,14 @@ export type NotifyChannel = z.infer<typeof notifyChannelSchema>;
 export type SimulationReport = z.infer<typeof simulationReportSchema>;
 export type ActiveExecution = z.infer<typeof activeExecutionSchema>;
 export type ExecutionCompleted = z.infer<typeof executionCompletedSchema>;
+export type NamingPattern = z.infer<typeof namingPatternSchema>;
+export type TemplateSegment = z.infer<typeof templateSegmentSchema>;
+export type TemplatePipeline = z.infer<typeof templatePipelineSchema>;
 
 export function createEmptyJob(): Job {
   return {
     id: crypto.randomUUID(),
-    name: "Novo fluxo",
+    name: "Nova transferência",
     sourcePath: "",
     targetPath: "",
     mode: "copy",

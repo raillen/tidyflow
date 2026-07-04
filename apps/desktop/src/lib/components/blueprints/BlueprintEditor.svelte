@@ -1,15 +1,15 @@
 <script lang="ts">
   import {
     countBlueprintFilters,
+    createDefaultFolderPlan,
     parseTemplateDisplayString,
     pipelineToDisplayString,
     type Blueprint,
     type BlueprintKind,
     type BlueprintOperation,
-    type FolderNode,
-    type FolderPlanPreviewNode,
   } from "$lib/contracts/blueprint";
   import BlueprintTemplatePanel from "$lib/components/blueprints/BlueprintTemplatePanel.svelte";
+  import FolderStructureEditor from "$lib/components/blueprints/FolderStructureEditor.svelte";
   import {
     EXCLUDE_PRESETS,
     type FileFilter,
@@ -17,7 +17,7 @@
     type WatchDetectionMode as JobWatchDetectionMode,
     type WatchEventKind as JobWatchEventKind,
   } from "$lib/contracts/job";
-  import { previewBlueprintPlan, previewBlueprintTemplate } from "$lib/core/ipc/client";
+  import { previewBlueprintTemplate } from "$lib/core/ipc/client";
   import { open } from "@tauri-apps/plugin-dialog";
   import {
     ArrowsLeftRight,
@@ -27,24 +27,22 @@
     Copy,
     Eye,
     FolderOpen,
-    FolderSimple,
     Funnel,
     IdentificationCard,
-    Plus,
     TextAa,
-    Trash,
   } from "phosphor-svelte";
 
   type ConflictStrategy = Blueprint["conflict"];
-  type NavPanel = "geral" | "busca" | "template" | "pastas" | "automacao";
+  type NavPanel = "geral" | "busca" | "template" | "automacao";
 
   type Props = {
     blueprint: Blueprint;
     embedded?: boolean;
+    lockedKind?: BlueprintKind;
     onsave?: () => void;
   };
 
-  let { blueprint = $bindable(), embedded = true, onsave }: Props = $props();
+  let { blueprint = $bindable(), embedded = true, lockedKind, onsave }: Props = $props();
 
   let activePanel = $state<NavPanel>("geral");
   let navCollapsed = $state(false);
@@ -55,22 +53,16 @@
   let samplePath = $state("C:\\exemplo\\Docs\\relatorio.PDF");
   let previewLoading = $state(false);
   let previewResult = $state<Awaited<ReturnType<typeof previewBlueprintTemplate>> | null>(null);
-  let planPreviewLoading = $state(false);
-  let planPreviewResult = $state<Awaited<ReturnType<typeof previewBlueprintPlan>> | null>(null);
 
   const filterCount = $derived(countBlueprintFilters(blueprint.search));
+  const activeLabel = $derived((lockedKind ?? blueprint.kind) === "folder" ? "Estrutura ativa" : "Regra ativa");
 
-  const NAV_ITEMS: { id: NavPanel; label: string; icon: typeof IdentificationCard; folderOnly?: boolean }[] = [
+  const NAV_ITEMS: { id: NavPanel; label: string; icon: typeof IdentificationCard }[] = [
     { id: "geral", label: "Geral", icon: IdentificationCard },
     { id: "busca", label: "Busca", icon: Funnel },
     { id: "template", label: "Template", icon: TextAa },
-    { id: "pastas", label: "Pastas", icon: FolderSimple, folderOnly: true },
     { id: "automacao", label: "Automação", icon: Eye },
   ];
-
-  const visibleNavItems = $derived(
-    NAV_ITEMS.filter((item) => !item.folderOnly || blueprint.kind === "folder"),
-  );
 
   const WATCH_EVENTS: { id: JobWatchEventKind; label: string }[] = [
     { id: "create", label: "Criação" },
@@ -87,6 +79,15 @@
 
   let extensionsText = $state(blueprint.search.includeExtensions.join(", "));
   let excludePatternsText = $state(blueprint.search.excludePatterns.join("\n"));
+
+  $effect(() => {
+    if (!lockedKind || blueprint.kind === lockedKind) return;
+    blueprint = {
+      ...blueprint,
+      kind: lockedKind,
+      folderPlan: lockedKind === "folder" ? blueprint.folderPlan ?? createDefaultFolderPlan() : null,
+    };
+  });
 
   $effect(() => {
     extensionsText = blueprint.search.includeExtensions.join(", ");
@@ -108,23 +109,6 @@
         previewResult = null;
       } finally {
         previewLoading = false;
-      }
-    }, 350);
-    return () => clearTimeout(timer);
-  });
-
-  $effect(() => {
-    if (activePanel !== "pastas" || blueprint.kind !== "folder") return;
-    const rootPath = blueprint.rootPath;
-    const folderPlan = blueprint.folderPlan ?? { nodes: [] };
-    const timer = setTimeout(async () => {
-      planPreviewLoading = true;
-      try {
-        planPreviewResult = await previewBlueprintPlan(rootPath, folderPlan);
-      } catch {
-        planPreviewResult = null;
-      } finally {
-        planPreviewLoading = false;
       }
     }, 350);
     return () => clearTimeout(timer);
@@ -157,11 +141,8 @@
     blueprint = {
       ...blueprint,
       kind,
-      folderPlan: kind === "folder" ? blueprint.folderPlan ?? { nodes: [] } : blueprint.folderPlan,
+      folderPlan: kind === "folder" ? blueprint.folderPlan ?? createDefaultFolderPlan() : blueprint.folderPlan,
     };
-    if (kind === "file" && activePanel === "pastas") {
-      activePanel = "geral";
-    }
   }
 
   function setOperation(operation: BlueprintOperation) {
@@ -224,6 +205,8 @@
       settleSeconds: 2,
       detection: { kind: "realtime" },
       events: ["create"],
+      autoCorrect: false,
+      namingPattern: {},
     };
   }
 
@@ -267,78 +250,11 @@
     if (events.length === 0) return;
     patchWatch({ events });
   }
-
-  function ensureFolderPlan() {
-    if (!blueprint.folderPlan) {
-      blueprint = { ...blueprint, folderPlan: { nodes: [] } };
-    }
-  }
-
-  function addRootFolderNode() {
-    ensureFolderPlan();
-    blueprint = {
-      ...blueprint,
-      folderPlan: {
-        nodes: [...(blueprint.folderPlan?.nodes ?? []), { name: "Nova pasta", children: [] }],
-      },
-    };
-  }
-
-  function updateFolderNode(path: number[], name: string) {
-    ensureFolderPlan();
-    const nodes = $state.snapshot(blueprint.folderPlan!.nodes);
-    let current = nodes;
-    for (let i = 0; i < path.length - 1; i++) {
-      current = current[path[i]!]!.children;
-    }
-    current[path[path.length - 1]!]!.name = name;
-    blueprint = { ...blueprint, folderPlan: { nodes } };
-  }
-
-  function addChildFolderNode(path: number[]) {
-    ensureFolderPlan();
-    const nodes = $state.snapshot(blueprint.folderPlan!.nodes);
-    let current = nodes;
-    for (const index of path) {
-      current = current[index]!.children;
-    }
-    current.push({ name: "Subpasta", children: [] });
-    blueprint = { ...blueprint, folderPlan: { nodes } };
-  }
-
-  function removeFolderNode(path: number[]) {
-    ensureFolderPlan();
-    const nodes = $state.snapshot(blueprint.folderPlan!.nodes);
-    if (path.length === 1) {
-      nodes.splice(path[0]!, 1);
-    } else {
-      let current = nodes;
-      for (let i = 0; i < path.length - 1; i++) {
-        current = current[path[i]!]!.children;
-      }
-      current.splice(path[path.length - 1]!, 1);
-    }
-    blueprint = { ...blueprint, folderPlan: { nodes } };
-  }
-
-  function renderFolderNodes(nodes: FolderNode[], path: number[] = []) {
-    return nodes.map((node, index) => ({ node, path: [...path, index] }));
-  }
 </script>
 
-{#snippet planPreviewNode(node: FolderPlanPreviewNode, depth: number)}
-  <li class="plan-preview-item" style:padding-left={`${depth * 1.25}rem`}>
-    <code>{node.relativePath}</code>
-    {#if node.children.length}
-      <ul>
-        {#each node.children as child}
-          {@render planPreviewNode(child, depth + 1)}
-        {/each}
-      </ul>
-    {/if}
-  </li>
-{/snippet}
-
+{#if (lockedKind ?? blueprint.kind) === "folder"}
+  <FolderStructureEditor bind:blueprint {embedded} {onsave} />
+{:else}
 <form
   id="blueprint-editor-form"
   class="editor"
@@ -352,7 +268,7 @@
     onsave?.();
   }}
 >
-  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label="Seções do blueprint">
+  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label="Seções da regra de organização">
     <button
       type="button"
       class="nav-toggle btn ghost"
@@ -366,7 +282,7 @@
       {/if}
     </button>
 
-    {#each visibleNavItems as item}
+    {#each NAV_ITEMS as item}
       {@const Icon = item.icon}
       <button
         type="button"
@@ -405,30 +321,32 @@
 
           <label class="toggle">
             <input type="checkbox" bind:checked={blueprint.enabled} />
-            <span>Blueprint ativo</span>
+            <span>{activeLabel}</span>
           </label>
 
-          <div class="subsection">
-            <span class="field-label">Tipo</span>
-            <div class="option-grid">
-              <button
-                type="button"
-                class="option-btn"
-                class:selected={blueprint.kind === "file"}
-                onclick={() => setKind("file")}
-              >
-                Arquivos
-              </button>
-              <button
-                type="button"
-                class="option-btn"
-                class:selected={blueprint.kind === "folder"}
-                onclick={() => setKind("folder")}
-              >
-                Pastas
-              </button>
+          {#if !lockedKind}
+            <div class="subsection">
+              <span class="field-label">Tipo</span>
+              <div class="option-grid">
+                <button
+                  type="button"
+                  class="option-btn"
+                  class:selected={blueprint.kind === "file"}
+                  onclick={() => setKind("file")}
+                >
+                  Arquivos
+                </button>
+                <button
+                  type="button"
+                  class="option-btn"
+                  class:selected={blueprint.kind === "folder"}
+                  onclick={() => setKind("folder")}
+                >
+                  Pastas
+                </button>
+              </div>
             </div>
-          </div>
+          {/if}
         </div>
       </details>
 
@@ -631,91 +549,6 @@
         onPatchCounter={patchCounter}
         onAppendSegment={appendTemplateSegment}
       />
-    {:else if activePanel === "pastas"}
-      <div class="panel-header">
-        <h3>Plano de pastas</h3>
-        <p>Scaffolding opcional para blueprints de pastas.</p>
-      </div>
-
-      <details class="collapsible" open>
-        <summary>Árvore</summary>
-        <div class="collapsible-body">
-          <button type="button" class="btn" onclick={addRootFolderNode}>
-            <Plus size={14} />
-            Pasta raiz
-          </button>
-
-          {#if !blueprint.folderPlan?.nodes.length}
-            <p class="muted">Nenhuma pasta definida. O template de destino ainda funciona sozinho.</p>
-          {:else}
-            <ul class="folder-tree">
-              {#each renderFolderNodes(blueprint.folderPlan.nodes) as { node, path }}
-                <li class="folder-row">
-                  <input
-                    class="field-input"
-                    value={node.name}
-                    oninput={(e) => updateFolderNode(path, e.currentTarget.value)}
-                  />
-                  <button type="button" class="btn ghost" onclick={() => addChildFolderNode(path)}>
-                    <Plus size={12} />
-                  </button>
-                  <button type="button" class="btn ghost danger" onclick={() => removeFolderNode(path)}>
-                    <Trash size={12} />
-                  </button>
-                </li>
-                {#each renderFolderNodes(node.children, path) as child}
-                  <li class="folder-row nested">
-                    <input
-                      class="field-input"
-                      value={child.node.name}
-                      oninput={(e) => updateFolderNode(child.path, e.currentTarget.value)}
-                    />
-                    <button type="button" class="btn ghost" onclick={() => addChildFolderNode(child.path)}>
-                      <Plus size={12} />
-                    </button>
-                    <button type="button" class="btn ghost danger" onclick={() => removeFolderNode(child.path)}>
-                      <Trash size={12} />
-                    </button>
-                  </li>
-                {/each}
-              {/each}
-            </ul>
-          {/if}
-        </div>
-      </details>
-
-      <details class="collapsible" open>
-        <summary>Preview do scaffolding</summary>
-        <div class="collapsible-body">
-          {#if planPreviewLoading}
-            <p class="muted">Calculando árvore…</p>
-          {:else if planPreviewResult}
-            <div class="preview-box" class:invalid={!planPreviewResult.valid}>
-              <p>
-                <strong>{planPreviewResult.folderCount}</strong>
-                pasta(s) sob
-                <code>{planPreviewResult.rootPath || blueprint.rootPath || "—"}</code>
-              </p>
-              {#if planPreviewResult.warnings.length}
-                <ul>
-                  {#each planPreviewResult.warnings as warning}
-                    <li>{warning}</li>
-                  {/each}
-                </ul>
-              {/if}
-              {#if planPreviewResult.nodes.length}
-                <ul class="plan-preview-tree">
-                  {#each planPreviewResult.nodes as node}
-                    {@render planPreviewNode(node, 0)}
-                  {/each}
-                </ul>
-              {:else}
-                <p class="muted">Nenhuma pasta no plano.</p>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      </details>
     {:else if activePanel === "automacao"}
       <div class="panel-header">
         <h3>Automação</h3>
@@ -841,6 +674,7 @@
     {/if}
   </div>
 </form>
+{/if}
 
 <style>
   .editor {
@@ -1022,67 +856,6 @@
   .mono {
     font-family: var(--font-mono);
     font-size: var(--text-xs);
-  }
-
-  .preview-box {
-    padding: var(--space-3);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--success);
-    background: color-mix(in srgb, var(--success) 8%, transparent);
-    font-size: var(--text-sm);
-  }
-
-  .preview-box.invalid {
-    border-color: var(--danger);
-    background: color-mix(in srgb, var(--danger) 8%, transparent);
-  }
-
-  .preview-box p {
-    margin: 0 0 var(--space-2);
-  }
-
-  .preview-box ul {
-    margin: 0;
-    padding-left: 1rem;
-  }
-
-  .folder-tree {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-2);
-  }
-
-  .folder-row {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  .folder-row.nested {
-    margin-left: var(--space-4);
-  }
-
-  .plan-preview-tree {
-    list-style: none;
-    margin: var(--space-2) 0 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-1);
-  }
-
-  .plan-preview-item {
-    font-size: var(--text-xs);
-  }
-
-  .plan-preview-item ul {
-    list-style: none;
-    margin: var(--space-1) 0 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-1);
   }
 
   .field-hint {

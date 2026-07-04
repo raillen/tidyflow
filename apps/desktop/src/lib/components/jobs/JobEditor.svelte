@@ -212,6 +212,8 @@
       settleSeconds: 2,
       detection: { kind: "realtime" },
       events: ["create"],
+      autoCorrect: false,
+      namingPattern: {},
     };
   }
 
@@ -367,7 +369,7 @@
     onsave?.();
   }}
 >
-  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label="Seções do fluxo">
+  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label="Seções da transferência">
     <button
       type="button"
       class="nav-toggle btn ghost"
@@ -420,7 +422,7 @@
 
           <label class="toggle">
             <input type="checkbox" bind:checked={job.enabled} />
-            <span>Fluxo ativo</span>
+            <span>Transferência ativa</span>
           </label>
         </div>
       </details>
@@ -817,7 +819,7 @@
 
             {#if job.schedule.rule.kind === "weekly"}
               <p class="field-hint">
-                Escolha em quais dias o fluxo deve rodar automaticamente, no horário definido abaixo.
+                Escolha em quais dias a transferência deve rodar automaticamente, no horário definido abaixo.
               </p>
             {/if}
 
@@ -933,7 +935,7 @@
     {:else if activePanel === "monitoramento"}
       <div class="panel-header">
         <h3>Monitoramento</h3>
-        <p>Dispara o fluxo quando a pasta de origem muda. Exclusivo com agendamento.</p>
+        <p>Dispara a transferência quando a pasta de origem muda. Exclusivo com agendamento.</p>
       </div>
 
       <details class="collapsible" open>
@@ -1028,7 +1030,7 @@
             {/if}
 
             <fieldset class="preset-group">
-              <legend class="field-label">Eventos que disparam o fluxo</legend>
+              <legend class="field-label">Eventos que disparam a transferência</legend>
               <div class="checkbox-grid">
                 {#each WATCH_EVENTS as event}
                   <label class="toggle">

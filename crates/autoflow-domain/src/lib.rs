@@ -7,6 +7,7 @@ pub mod execution;
 pub mod file_filter;
 pub mod filter;
 pub mod job;
+pub mod naming;
 pub mod notify;
 pub mod path_policy;
 pub mod schedule;
@@ -37,9 +38,10 @@ pub use audit::{
     NewAuditEntry,
 };
 pub use blueprint::{
-    Blueprint, BlueprintCollision, BlueprintKind, BlueprintOperation, BlueprintPlanSample,
-    BlueprintSimulationReport, BlueprintSummary, FolderNode, FolderPlan, FolderPlanPreview,
-    FolderPlanPreviewNode, RoutingConfig, TemplatePreview,
+    Blueprint, BlueprintApplyResult, BlueprintCollision, BlueprintKind, BlueprintOperation,
+    BlueprintPlanSample, BlueprintSimulationReport, BlueprintSummary, FolderAction,
+    FolderActionNode, FolderNode, FolderPlan, FolderPlanPreview, FolderPlanPreviewNode,
+    FolderPlanVariable, RoutingConfig, TemplatePreview,
 };
 pub use counter::{CounterConfig, CounterScope};
 pub use error::DomainError;
@@ -56,7 +58,8 @@ pub use scripts::ScriptsConfig;
 pub use settings::{AdminAgentMode, AdminSettings, AppSettings, HealthStatus, ThemeMode};
 pub use tokenizer::{evaluate, TemplatePipeline, TemplateSegment, TokenContext, TokenError};
 pub use transfer::TransferOptions;
-pub use watch::{WatchConfig, WatchDetectionMode, WatchEventKind};
+pub use watch::{NormalizedWatchEvent, WatchConfig, WatchDetectionMode, WatchEventKind};
+pub use naming::NamingPattern;
 
 pub fn file_hash(path: &std::path::Path) -> Result<String, std::io::Error> {
     use std::io::Read;

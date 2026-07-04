@@ -24,5 +24,8 @@ walkdir = { workspace = true }
 zip = { workspace = true }
 
 [dev-dependencies]
+autoflow-infrastructure = { path = "../autoflow-infrastructure" }
+sqlx = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+uuid = { workspace = true }
