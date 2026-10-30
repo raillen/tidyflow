@@ -1,6 +1,7 @@
 <script lang="ts">
   import Modal from "$lib/components/ui/Modal.svelte";
   import type { BlueprintSimulationReport } from "$lib/contracts/blueprint";
+  import { t } from "$lib/i18n";
 
   type Props = {
     open: boolean;
@@ -14,20 +15,19 @@
 
 <Modal
   {open}
-  title="Simulação do blueprint"
+  title={t("blueprintSim.title")}
   description={blueprintName}
   size="md"
   {onclose}
 >
   {#if report}
     <p class="summary">
-      <strong>{report.matched}</strong> correspondente(s),
-      <strong>{report.skipped}</strong> ignorado(s)
+      {t("blueprintSim.summary", { matched: report.matched, skipped: report.skipped })}
     </p>
 
     {#if report.warnings.length}
       <section class="block">
-        <h3>Avisos</h3>
+        <h3>{t("simulation.warnings")}</h3>
         <ul>
           {#each report.warnings as warning}
             <li>{warning}</li>
@@ -38,7 +38,7 @@
 
     {#if report.collisions.length}
       <section class="block">
-        <h3>Colisões</h3>
+        <h3>{t("blueprintSim.collisions")}</h3>
         <ul class="sample">
           {#each report.collisions as row}
             <li>
@@ -53,7 +53,7 @@
 
     {#if report.planSample.length}
       <section class="block">
-        <h3>Amostra do plano</h3>
+        <h3>{t("blueprintSim.planSample")}</h3>
         <ul class="sample">
           {#each report.planSample as row}
             <li>
@@ -67,11 +67,11 @@
       </section>
     {/if}
   {:else}
-    <p class="muted">Sem dados de simulação.</p>
+    <p class="muted">{t("simulation.empty")}</p>
   {/if}
 
   {#snippet footer()}
-    <button type="button" class="btn primary" onclick={onclose}>Fechar</button>
+    <button type="button" class="btn primary" onclick={onclose}>{t("common.close")}</button>
   {/snippet}
 </Modal>
 

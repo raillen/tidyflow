@@ -8,6 +8,7 @@ const MIGRATION_001: &str = include_str!("../migrations/001_init.sql");
 const MIGRATION_002: &str = include_str!("../migrations/002_ui_state.sql");
 const MIGRATION_003: &str = include_str!("../migrations/003_blueprints.sql");
 const MIGRATION_004: &str = include_str!("../migrations/004_admin_commands.sql");
+const MIGRATION_005: &str = include_str!("../migrations/005_rollback_manifests.sql");
 
 pub async fn init_pool(data_dir: &Path) -> Result<SqlitePool, DomainError> {
     std::fs::create_dir_all(data_dir).map_err(|e| DomainError::Database(e.to_string()))?;
@@ -61,7 +62,13 @@ async fn ensure_audit_blueprint_column(pool: &SqlitePool) -> Result<(), DomainEr
 }
 
 async fn run_migrations(pool: &SqlitePool) -> Result<(), DomainError> {
-    for migration in [MIGRATION_001, MIGRATION_002, MIGRATION_003, MIGRATION_004] {
+    for migration in [
+        MIGRATION_001,
+        MIGRATION_002,
+        MIGRATION_003,
+        MIGRATION_004,
+        MIGRATION_005,
+    ] {
         for statement in migration
             .split(';')
             .map(str::trim)

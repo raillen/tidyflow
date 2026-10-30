@@ -3,6 +3,7 @@
   import { X } from "phosphor-svelte";
   import type { Snippet } from "svelte";
   import { loadModalState, saveModalState, type ModalUiState } from "$lib/core/ipc/ui-state";
+  import { t } from "$lib/i18n";
 
   type Props = {
     open: boolean;
@@ -127,7 +128,7 @@
           <p id="modal-desc" class="modal-desc">{description}</p>
         {/if}
       </div>
-      <button type="button" class="icon-btn" aria-label="Fechar" onclick={onclose}>
+      <button type="button" class="icon-btn" aria-label={t("common.close")} onclick={onclose}>
         <X size={16} weight="bold" />
       </button>
     </header>

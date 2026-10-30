@@ -50,9 +50,9 @@ pub async fn run_script(
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
 
     let duration = Duration::from_secs(timeout_secs as u64);
-    let child = command
-        .spawn()
-        .map_err(|e| DomainError::Database(format!("failed to spawn {} script: {e}", phase.label())))?;
+    let child = command.spawn().map_err(|e| {
+        DomainError::Database(format!("failed to spawn {} script: {e}", phase.label()))
+    })?;
 
     match timeout(duration, child.wait_with_output()).await {
         Ok(Ok(output)) => Ok(ScriptResult {
@@ -86,13 +86,11 @@ pub async fn run_pre_script(
         let detail = if result.timed_out {
             result.stderr.clone()
         } else {
-            format!(
-                "exit code {:?}: {}",
-                result.exit_code,
-                result.stderr.trim()
-            )
+            format!("exit code {:?}: {}", result.exit_code, result.stderr.trim())
         };
-        return Err(DomainError::Validation(format!("pre-script failed: {detail}")));
+        return Err(DomainError::Validation(format!(
+            "pre-script failed: {detail}"
+        )));
     }
     Ok(Some(result))
 }

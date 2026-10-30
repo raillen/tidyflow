@@ -11,7 +11,7 @@
     MagnifyingGlass,
   } from "phosphor-svelte";
   import {
-    AUDIT_STATUS_OPTIONS,
+    auditStatusOptions,
     auditFailureRate,
     auditStatusLabel,
     createDefaultAuditQuery,
@@ -24,7 +24,8 @@
     type AuditQuery,
     type AuditStatus,
   } from "$lib/contracts/audit";
-  import { exportAudit, queryAudit } from "$lib/core/ipc/client";
+  import { clearAudit, exportAudit, queryAudit } from "$lib/core/ipc/client";
+  import { t } from "$lib/i18n";
 
   let page = $state<AuditPage | null>(null);
   let loading = $state(true);
@@ -71,7 +72,7 @@
         selected = null;
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao carregar auditoria";
+      error = e instanceof Error ? e.message : t("history.loadError");
     } finally {
       loading = false;
     }
@@ -98,6 +99,17 @@
     void refresh();
   }
 
+  async function handleClear() {
+    if (!confirm(t("history.clearConfirm"))) return;
+    error = null;
+    try {
+      await clearAudit(true);
+      await refresh();
+    } catch (e) {
+      error = e instanceof Error ? e.message : t("history.clearError");
+    }
+  }
+
   async function handleExport(format: AuditExportFormat) {
     exporting = format;
     error = null;
@@ -111,7 +123,7 @@
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao exportar auditoria";
+      error = e instanceof Error ? e.message : t("history.exportError");
     } finally {
       exporting = null;
     }
@@ -127,6 +139,8 @@
         return "muted";
       case "FAILED":
         return "danger";
+      case "ROLLED_BACK":
+        return "muted";
     }
   }
 </script>
@@ -134,13 +148,13 @@
 <section class="page audit-page">
   <header class="page-header">
     <div>
-      <h1 class="page-title">Auditoria e logs</h1>
-      <p class="page-desc">Analytics, filtros, exportação e detalhes dos eventos processados.</p>
+      <h1 class="page-title">{t("history.title")}</h1>
+      <p class="page-desc">{t("history.subtitle")}</p>
     </div>
     <div class="header-actions">
       <button class="btn" type="button" onclick={refresh} disabled={loading}>
         <ArrowClockwise size={14} />
-        Atualizar
+        {t("history.refresh")}
       </button>
       <button class="btn" type="button" onclick={() => handleExport("csv")} disabled={!!exporting}>
         <DownloadSimple size={14} />
@@ -150,33 +164,36 @@
         <Export size={14} />
         JSON
       </button>
+      <button class="btn ghost danger" type="button" onclick={handleClear}>
+        {t("history.clear")}
+      </button>
     </div>
   </header>
 
   {#if summary}
-    <section class="analytics-grid" aria-label="Resumo da auditoria">
+    <section class="analytics-grid" aria-label={t("history.summaryAria")}>
       <article class="metric-card">
         <ChartBar size={18} weight="duotone" aria-hidden="true" />
         <div>
-          <span>Total filtrado</span>
+          <span>{t("history.totalFiltered")}</span>
           <strong>{summary.total}</strong>
         </div>
       </article>
       <article class="metric-card success">
-        <span>Sucesso</span>
+        <span>{t("history.success")}</span>
         <strong>{summary.copied + summary.moved + summary.organized}</strong>
       </article>
       <article class="metric-card danger">
-        <span>Falhas</span>
+        <span>{t("history.failures")}</span>
         <strong>{summary.failed}</strong>
         <small>{(auditFailureRate(summary) * 100).toFixed(1)}%</small>
       </article>
       <article class="metric-card">
-        <span>Volume</span>
+        <span>{t("history.volume")}</span>
         <strong>{formatFileSize(summary.totalBytes)}</strong>
       </article>
       <article class="metric-card">
-        <span>Duração média</span>
+        <span>{t("history.avgDuration")}</span>
         <strong>{formatDuration(summary.averageDurationMs)}</strong>
       </article>
     </section>
@@ -184,45 +201,45 @@
 
   <form
     class="filters panel"
-    aria-label="Filtros da auditoria"
+    aria-label={t("history.filtersAria")}
     onsubmit={(event) => {
       event.preventDefault();
       void applyFilters();
     }}
   >
     <label class="field search-field">
-      <span class="field-label">Busca</span>
+      <span class="field-label">{t("history.search")}</span>
       <span class="input-with-icon">
         <MagnifyingGlass size={14} aria-hidden="true" />
         <input
           class="field-input"
-          placeholder="Fluxo, caminho, arquivo ou detalhe"
+          placeholder={t("history.searchPlaceholder")}
           bind:value={searchText}
         />
       </span>
     </label>
 
     <label class="field">
-      <span class="field-label">Status</span>
+      <span class="field-label">{t("history.status")}</span>
       <select class="field-input" bind:value={statusFilter}>
-        {#each AUDIT_STATUS_OPTIONS as option}
+        {#each auditStatusOptions() as option}
           <option value={option.value}>{option.label}</option>
         {/each}
       </select>
     </label>
 
     <label class="field">
-      <span class="field-label">De</span>
+      <span class="field-label">{t("history.from")}</span>
       <input class="field-input" type="datetime-local" bind:value={dateFromInput} />
     </label>
 
     <label class="field">
-      <span class="field-label">Até</span>
+      <span class="field-label">{t("history.to")}</span>
       <input class="field-input" type="datetime-local" bind:value={dateToInput} />
     </label>
 
     <label class="field compact">
-      <span class="field-label">Limite</span>
+      <span class="field-label">{t("history.limit")}</span>
       <select
         class="field-input"
         value={query.limit}
@@ -238,9 +255,9 @@
     <div class="filter-actions">
       <button class="btn primary" type="submit">
         <Funnel size={14} />
-        Filtrar
+        {t("common.filter")}
       </button>
-      <button class="btn ghost" type="button" onclick={resetFilters}>Limpar</button>
+      <button class="btn ghost" type="button" onclick={resetFilters}>{t("history.resetFilters")}</button>
     </div>
   </form>
 
@@ -249,27 +266,27 @@
   {/if}
 
   <div class="audit-layout">
-    <section class="panel table-panel" aria-label="Registros de auditoria">
+    <section class="panel table-panel" aria-label={t("history.recordsAria")}>
       {#if loading}
-        <p class="muted">Carregando…</p>
+        <p class="muted">{t("common.loading")}</p>
       {:else if entries.length === 0}
         <div class="empty">
           <ClockCounterClockwise size={28} weight="duotone" aria-hidden="true" />
-          <p>Nenhum registro encontrado.</p>
-          <span class="muted">Ajuste os filtros ou execute um fluxo para gerar logs.</span>
+          <p>{t("history.empty")}</p>
+          <span class="muted">{t("history.emptyHint")}</span>
         </div>
       {:else}
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Data</th>
-                <th>Fluxo</th>
-                <th>Origem e destino</th>
-                <th>Status</th>
-                <th>Tamanho</th>
-                <th>Duração</th>
-                <th><span class="sr-only">Ações</span></th>
+                <th>{t("history.date")}</th>
+                <th>{t("history.flow")}</th>
+                <th>{t("history.sourceTarget")}</th>
+                <th>{t("history.status")}</th>
+                <th>{t("history.size")}</th>
+                <th>{t("history.duration")}</th>
+                <th><span class="sr-only">{t("common.actions")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -292,7 +309,7 @@
                   <td class="mono">{formatDuration(entry.durationMs)}</td>
                   <td>
                     <button class="btn ghost small" type="button" onclick={() => (selected = entry)}>
-                      Detalhes
+                      {t("history.details")}
                     </button>
                   </td>
                 </tr>
@@ -302,10 +319,10 @@
         </div>
 
         <footer class="pagination">
-          <span class="muted">Página {currentPage} de {totalPages} · {page?.total ?? 0} registro(s)</span>
+          <span class="muted">{t("history.pageOf", { page: currentPage, total: totalPages, count: page?.total ?? 0 })}</span>
           <div>
             <button class="btn" type="button" disabled={(query.offset ?? 0) === 0} onclick={() => changePage(-1)}>
-              Anterior
+              {t("history.previous")}
             </button>
             <button
               class="btn"
@@ -313,57 +330,57 @@
               disabled={currentPage >= totalPages}
               onclick={() => changePage(1)}
             >
-              Próxima
+              {t("history.next")}
             </button>
           </div>
         </footer>
       {/if}
     </section>
 
-    <aside class="panel detail-panel" aria-label="Detalhes do registro">
+    <aside class="panel detail-panel" aria-label={t("history.detailAria")}>
       {#if selected}
         <div class="detail-head">
           <FileMagnifyingGlass size={18} weight="duotone" aria-hidden="true" />
           <div>
-            <h2>Registro #{selected.id}</h2>
+            <h2>{t("history.recordTitle", { id: selected.id })}</h2>
             <p>{formatDateTime(selected.createdAt)}</p>
           </div>
         </div>
         <dl>
           <div>
-            <dt>Status</dt>
+            <dt>{t("history.status")}</dt>
             <dd>{auditStatusLabel(selected.status)}</dd>
           </div>
           <div>
-            <dt>Fluxo</dt>
+            <dt>{t("history.flow")}</dt>
             <dd>{selected.jobName}</dd>
           </div>
           <div>
-            <dt>Origem</dt>
+            <dt>{t("history.source")}</dt>
             <dd class="mono break">{selected.sourcePath}</dd>
           </div>
           <div>
-            <dt>Destino</dt>
+            <dt>{t("history.target")}</dt>
             <dd class="mono break">{selected.targetPath || "—"}</dd>
           </div>
           <div>
-            <dt>Tamanho</dt>
+            <dt>{t("history.size")}</dt>
             <dd>{formatFileSize(selected.fileSize)}</dd>
           </div>
           <div>
-            <dt>Duração</dt>
+            <dt>{t("history.duration")}</dt>
             <dd>{formatDuration(selected.durationMs)}</dd>
           </div>
           <div>
-            <dt>Detalhes</dt>
-            <dd>{selected.details || "Sem detalhes adicionais."}</dd>
+            <dt>{t("history.details")}</dt>
+            <dd>{selected.details || t("history.noDetails")}</dd>
           </div>
         </dl>
       {:else}
         <div class="empty detail-empty">
           <FileMagnifyingGlass size={30} weight="duotone" aria-hidden="true" />
-          <p>Selecione um registro.</p>
-          <span class="muted">Os detalhes aparecem aqui sem abrir outra tela.</span>
+          <p>{t("history.selectRecord")}</p>
+          <span class="muted">{t("history.selectRecordHint")}</span>
         </div>
       {/if}
     </aside>

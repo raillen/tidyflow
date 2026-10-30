@@ -40,6 +40,25 @@ pub enum CounterScope {
 }
 
 impl CounterConfig {
+    pub fn validate(&self) -> Result<(), crate::DomainError> {
+        if self.start == 0 {
+            return Err(crate::DomainError::Validation(
+                "counter start must be at least 1".into(),
+            ));
+        }
+        if self.start >= i64::MAX as u64 {
+            return Err(crate::DomainError::Validation(
+                "counter start is too large".into(),
+            ));
+        }
+        if self.padding > 12 {
+            return Err(crate::DomainError::Validation(
+                "counter padding must be between 0 and 12".into(),
+            ));
+        }
+        Ok(())
+    }
+
     pub fn scope_key(&self, parent: &str, folder: &str, date_key: &str) -> String {
         match self.scope {
             CounterScope::Global => "global".into(),

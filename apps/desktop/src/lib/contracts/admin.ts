@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { t } from "$lib/i18n";
 import { activeExecutionSchema, jobModeSchema, jobSchema } from "./job";
 import { adminAgentModeSchema } from "./settings";
 
@@ -410,64 +411,64 @@ export type AdminCommandQueueSummary = z.infer<typeof adminCommandQueueSummarySc
 export function instanceStatusLabel(status: AdminInstanceStatus): string {
   switch (status) {
     case "online":
-      return "Online";
+      return t("admin.status.online");
     case "warning":
-      return "Atenção";
+      return t("admin.status.warning");
     case "offline":
-      return "Offline";
+      return t("admin.status.offline");
   }
 }
 
 export function jobRuntimeStatusLabel(status: AdminJobRuntimeStatus): string {
   switch (status) {
     case "running":
-      return "Rodando";
+      return t("admin.jobStatus.running");
     case "scheduled":
-      return "Agendado";
+      return t("admin.jobStatus.scheduled");
     case "idle":
-      return "Ocioso";
+      return t("admin.jobStatus.idle");
     case "disabled":
-      return "Desativado";
+      return t("admin.jobStatus.disabled");
   }
 }
 
 export function commandKindLabel(kind: AdminCommandKind): string {
   switch (kind) {
     case "startJob":
-      return "Iniciar";
+      return t("admin.command.startJob");
     case "cancelExecution":
-      return "Cancelar execução";
+      return t("admin.command.cancelExecution");
     case "pauseJob":
-      return "Pausar";
+      return t("admin.command.pauseJob");
     case "resumeJob":
-      return "Continuar";
+      return t("admin.command.resumeJob");
     case "stopJob":
-      return "Parar";
+      return t("admin.command.stopJob");
     case "createJob":
-      return "Criar fluxo";
+      return t("admin.command.createJob");
     case "updateJob":
-      return "Editar fluxo";
+      return t("admin.command.updateJob");
     case "deleteJob":
-      return "Deletar fluxo";
+      return t("admin.command.deleteJob");
     case "applySettingsPolicy":
-      return "Aplicar política";
+      return t("admin.command.applySettingsPolicy");
     case "requestLogs":
-      return "Solicitar logs";
+      return t("admin.command.requestLogs");
   }
 }
 
 export function queuedCommandStatusLabel(status: AdminQueuedCommandStatus): string {
   switch (status) {
     case "pending":
-      return "Pendente";
+      return t("admin.queueStatus.pending");
     case "running":
-      return "Executando";
+      return t("admin.queueStatus.running");
     case "completed":
-      return "Concluído";
+      return t("admin.queueStatus.completed");
     case "failed":
-      return "Falhou";
+      return t("admin.queueStatus.failed");
     case "skipped":
-      return "Ignorado";
+      return t("admin.queueStatus.skipped");
   }
 }
 

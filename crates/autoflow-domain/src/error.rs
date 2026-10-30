@@ -16,6 +16,8 @@ pub enum DomainError {
     SourceNotFound(String),
     #[error("job already running")]
     AlreadyRunning,
+    #[error("folder does not match the folder plan: {0}")]
+    FolderOutOfPattern(String),
     #[error("database error: {0}")]
     Database(String),
     #[error("execution not found")]

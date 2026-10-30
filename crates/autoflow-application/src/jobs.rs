@@ -52,7 +52,7 @@ pub fn simulate_job_data(job: &Job) -> Result<SimulationReport, DomainError> {
         return Err(DomainError::SourceNotFound(job.source_path.clone()));
     }
 
-    let engine = FilterEngine::from_job(job).map_err(|e| DomainError::Validation(e))?;
+    let engine = FilterEngine::from_job(job).map_err(DomainError::Validation)?;
     let mut warnings = Vec::new();
 
     if let Some(regex) = &job.filters.name_regex {
@@ -71,9 +71,7 @@ pub fn simulate_job_data(job: &Job) -> Result<SimulationReport, DomainError> {
     let mut sample = Vec::new();
 
     for file in matched.iter().take(25) {
-        let relative = file
-            .strip_prefix(source)
-            .unwrap_or(file.as_path());
+        let relative = file.strip_prefix(source).unwrap_or(file.as_path());
         let target = std::path::Path::new(&job.target_path).join(relative);
         sample.push(SimulationSample {
             source: file.display().to_string(),
@@ -103,10 +101,7 @@ fn count_files(
             return;
         }
         total += 1;
-        if !engine
-            .should_process(path, job, source)
-            .unwrap_or(false)
-        {
+        if !engine.should_process(path, job, source).unwrap_or(false) {
             skipped += 1;
         }
     };

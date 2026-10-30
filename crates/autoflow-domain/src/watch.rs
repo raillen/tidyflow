@@ -40,9 +40,10 @@ impl Default for WatchConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum WatchDetectionMode {
+    #[default]
     Realtime,
     Polling {
         #[serde(default = "default_poll_interval")]
@@ -56,12 +57,6 @@ pub enum WatchDetectionMode {
 
 fn default_poll_interval() -> u32 {
     30
-}
-
-impl Default for WatchDetectionMode {
-    fn default() -> Self {
-        Self::Realtime
-    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -138,12 +133,6 @@ pub enum NormalizedWatchEvent {
         blueprint_id: Uuid,
         path: String,
         folder_name: String,
-    },
-    FolderOutOfPattern {
-        blueprint_id: Uuid,
-        path: String,
-        folder_name: String,
-        expected_name: String,
     },
     BlueprintTriggered {
         blueprint_id: Uuid,

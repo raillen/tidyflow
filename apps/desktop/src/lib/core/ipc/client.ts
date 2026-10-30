@@ -31,9 +31,11 @@ import {
   executionProgressSchema,
   jobSchema,
   jobSummarySchema,
+  rollbackResultSchema,
   simulationReportSchema,
   type Job,
   type JobSummary,
+  type RollbackResult,
   type SimulationReport,
 } from "$lib/contracts/job";
 import { z } from "zod";
@@ -49,6 +51,7 @@ import {
   type AuditQuery,
 } from "$lib/contracts/audit";
 import {
+  blueprintApplyResultSchema,
   blueprintSchema,
   blueprintSimulationReportSchema,
   blueprintSummarySchema,
@@ -57,6 +60,7 @@ import {
   templatePipelineSchema,
   templatePreviewSchema,
   type Blueprint,
+  type BlueprintApplyResult,
   type BlueprintSimulationReport,
   type BlueprintSummary,
   type FolderPlan,
@@ -77,6 +81,21 @@ export async function fetchSettings(): Promise<AppSettings> {
 
 export async function saveSettings(settings: AppSettings): Promise<AppSettings> {
   const raw: unknown = await invoke("settings_update", { settings });
+  return appSettingsSchema.parse(raw);
+}
+
+export async function setSecurityPin(pin: string): Promise<AppSettings> {
+  const raw: unknown = await invoke("security_set_pin", { pin });
+  return appSettingsSchema.parse(raw);
+}
+
+export async function verifySecurityPin(pin: string): Promise<boolean> {
+  const raw: unknown = await invoke("security_verify_pin", { pin });
+  return z.boolean().parse(raw);
+}
+
+export async function clearSecurityPin(): Promise<AppSettings> {
+  const raw: unknown = await invoke("security_clear_pin");
   return appSettingsSchema.parse(raw);
 }
 
@@ -197,6 +216,28 @@ export async function cancelExecution(executionId: string): Promise<void> {
   await invoke("executions_cancel", { executionId });
 }
 
+export async function rollbackJob(jobId: string): Promise<RollbackResult> {
+  const raw: unknown = await invoke("rollback_execute", { jobId });
+  return rollbackResultSchema.parse(raw);
+}
+
+export async function pauseQueue(): Promise<void> {
+  await invoke("queue_pause");
+}
+
+export async function resumeQueue(): Promise<void> {
+  await invoke("queue_resume");
+}
+
+export async function isQueuePaused(): Promise<boolean> {
+  const raw: unknown = await invoke("queue_is_paused");
+  return z.boolean().parse(raw);
+}
+
+export async function stopAllExecutions(): Promise<void> {
+  await invoke("queue_stop_all");
+}
+
 export async function listRecentAudit(limit = 100): Promise<AuditEntry[]> {
   const raw: unknown = await invoke("audit_list_recent", { limit });
   return z.array(auditEntrySchema).parse(raw);
@@ -218,6 +259,10 @@ export async function exportAudit(
     format,
   });
   return auditExportSchema.parse(raw);
+}
+
+export async function clearAudit(confirm = false): Promise<void> {
+  await invoke("audit_clear", { confirm });
 }
 
 export async function listBlueprints(): Promise<BlueprintSummary[]> {
@@ -249,18 +294,35 @@ export async function simulateBlueprint(id: string): Promise<BlueprintSimulation
   return blueprintSimulationReportSchema.parse(raw);
 }
 
-export async function applyBlueprint(id: string): Promise<{ processed: number; failed: number }> {
+export async function simulateBlueprintWithVariables(
+  id: string,
+  variables: Record<string, string>,
+): Promise<BlueprintSimulationReport> {
+  const raw: unknown = await invoke("blueprints_simulate_with_variables", { id, variables });
+  return blueprintSimulationReportSchema.parse(raw);
+}
+
+export async function applyBlueprint(id: string): Promise<BlueprintApplyResult> {
   const raw: unknown = await invoke("blueprints_apply", { id });
-  const tuple = z.tuple([z.number().int(), z.number().int()]).parse(raw);
-  return { processed: tuple[0], failed: tuple[1] };
+  return blueprintApplyResultSchema.parse(raw);
+}
+
+export async function applyBlueprintWithVariables(
+  id: string,
+  variables: Record<string, string>,
+): Promise<BlueprintApplyResult> {
+  const raw: unknown = await invoke("blueprints_apply_with_variables", { id, variables });
+  return blueprintApplyResultSchema.parse(raw);
 }
 
 export async function previewBlueprintTemplate(
   pipeline: TemplatePipeline,
   samplePath: string,
+  renameTemplate: TemplatePipeline | null = null,
 ): Promise<TemplatePreview> {
   const raw: unknown = await invoke("blueprints_preview_template", {
     pipeline: templatePipelineSchema.parse(pipeline),
+    renameTemplate: renameTemplate ? templatePipelineSchema.parse(renameTemplate) : null,
     samplePath,
   });
   return templatePreviewSchema.parse(raw);
@@ -269,10 +331,12 @@ export async function previewBlueprintTemplate(
 export async function previewBlueprintPlan(
   rootPath: string,
   folderPlan: FolderPlan,
+  variables: Record<string, string> = {},
 ): Promise<FolderPlanPreview> {
   const raw: unknown = await invoke("blueprints_preview_plan", {
     rootPath,
     folderPlan: folderPlanSchema.parse(folderPlan),
+    variables,
   });
   return folderPlanPreviewSchema.parse(raw);
 }

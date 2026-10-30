@@ -1,8 +1,9 @@
 # TidyFlow v2 — Documentação técnica
 
-**Status:** `Planejado` (spec para reimplementação; código legado continua em Avalonia/.NET)
+**Status:** `Em desenvolvimento` — o código atual já é **Tauri 2 + Svelte 5 + Rust**.
+Os documentos e planos que citam Avalonia/.NET são legado da v1.
 
-Esta pasta descreve como reconstruir o TidyFlow com **Tauri 2 + Svelte 5 + Rust**, de forma organizada e testável.
+Esta pasta descreve a arquitetura e os contratos do TidyFlow v2.
 
 ---
 
@@ -51,16 +52,18 @@ pnpm --filter @tidyflow/desktop check
 
 ---
 
-## Estado atual (Fase 0 — iniciado)
+## Estado atual (0.2.1-alpha)
 
-- [x] Branch `v2/tauri-svelte`
 - [x] Monorepo pnpm + Cargo workspace
 - [x] Crates Rust: domain, application, infrastructure, core
-- [x] Tauri app com commands `health`, `settings_get`, `settings_update`
-- [x] UI: sidebar, 5 rotas, tema light/dark, settings funcional
-- [x] Testes Rust (3) + Vitest Zod (2)
-- [ ] SQLite migrations (próximo passo)
-- [ ] CI GitHub Actions
+- [x] Tauri app com comandos de jobs, blueprints, auditoria e admin
+- [x] UI Svelte 5 com rotas de automação, blueprints, histórico e settings
+- [x] SQLite com migrations e stores
+- [x] Blueprints de arquivos e pastas, variáveis, preview e auto-correct
+- [x] Testes Rust de domínio/aplicação/core + Vitest dos contratos
+- [ ] Testes golden completos por transform
+- [ ] Cobertura Playwright de fluxos completos
+- [ ] Alinhamento final de toda a documentação legada
 
 ---
 

@@ -136,8 +136,10 @@ pub struct AdminFleetSummary {
 
 impl AdminFleetSummary {
     pub fn from_instances(instances: &[AdminInstanceSnapshot]) -> Self {
-        let mut summary = Self::default();
-        summary.total_instances = instances.len() as u32;
+        let mut summary = Self {
+            total_instances: instances.len() as u32,
+            ..Self::default()
+        };
 
         for instance in instances {
             match instance.status {

@@ -239,7 +239,11 @@ pub struct SmtpSettings {
     #[serde(default)]
     pub username: String,
     #[serde(default)]
+    pub password: String,
+    #[serde(default)]
     pub from_address: String,
+    #[serde(default)]
+    pub to_address: String,
     #[serde(default = "default_true")]
     pub use_tls: bool,
     #[serde(default)]
@@ -257,7 +261,9 @@ impl Default for SmtpSettings {
             host: String::new(),
             port: default_smtp_port(),
             username: String::new(),
+            password: String::new(),
             from_address: String::new(),
+            to_address: String::new(),
             use_tls: true,
             password_configured: false,
         }
@@ -403,6 +409,8 @@ pub struct AdminSettings {
     #[serde(default)]
     pub server_url: String,
     #[serde(default)]
+    pub enrollment_token: String,
+    #[serde(default)]
     pub enrollment_token_configured: bool,
     #[serde(default)]
     pub allow_remote_commands: bool,
@@ -432,6 +440,7 @@ impl Default for AdminSettings {
             instance_id: None,
             display_name: String::new(),
             server_url: String::new(),
+            enrollment_token: String::new(),
             enrollment_token_configured: false,
             allow_remote_commands: false,
             allow_batch_commands: false,
@@ -455,6 +464,8 @@ impl AppSettings {
 
         self.bandwidth_limit_mbps = self.performance.global_bandwidth_limit_mbps;
         self.log_retention_days = self.maintenance.log_retention_days;
+        self.notifications.smtp.password_configured =
+            !self.notifications.smtp.password.trim().is_empty();
         self.admin.display_name = self.admin.display_name.trim().to_string();
         self.admin.server_url = self
             .admin
@@ -530,6 +541,11 @@ impl AppSettings {
                 "notifications.smtp.host is required when SMTP is enabled".into(),
             ));
         }
+        if self.notifications.smtp.enabled && self.notifications.smtp.to_address.trim().is_empty() {
+            return Err(crate::DomainError::Validation(
+                "notifications.smtp.to_address is required when SMTP is enabled".into(),
+            ));
+        }
         if self.admin.display_name.len() > 120 {
             return Err(crate::DomainError::Validation(
                 "admin.display_name must be <= 120 characters".into(),
@@ -597,9 +613,11 @@ mod tests {
 
     #[test]
     fn normalizes_legacy_flat_settings_into_nested_sections() {
-        let mut settings = AppSettings::default();
-        settings.bandwidth_limit_mbps = 25;
-        settings.log_retention_days = 90;
+        let settings = AppSettings {
+            bandwidth_limit_mbps: 25,
+            log_retention_days: 90,
+            ..AppSettings::default()
+        };
 
         let normalized = settings.normalized();
 

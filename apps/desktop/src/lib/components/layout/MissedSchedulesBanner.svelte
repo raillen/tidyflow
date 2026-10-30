@@ -2,6 +2,7 @@
   import { clearMissedSchedules, listMissedSchedules, type MissedScheduleEntry } from "$lib/core/ipc/ui-state";
   import { Bell, X } from "phosphor-svelte";
   import { onMount } from "svelte";
+  import { t } from "$lib/i18n";
 
   let entries = $state<MissedScheduleEntry[]>([]);
   let dismissed = $state(false);
@@ -33,9 +34,9 @@
     if (entries.length === 0) return "";
     if (entries.length === 1) {
       const entry = entries[0];
-      return `O fluxo "${entry.jobName}" perdeu a execução agendada em ${formatWhen(entry.scheduledAt)}.`;
+      return t("missed.one", { job: entry.jobName, when: formatWhen(entry.scheduledAt) });
     }
-    return `${entries.length} fluxos perderam execuções agendadas enquanto o app estava fechado.`;
+    return t("missed.many", { count: entries.length });
   });
 
   function formatWhen(iso: string) {
@@ -49,9 +50,9 @@
   <div class="missed-banner" role="status">
     <Bell size={16} weight="fill" aria-hidden="true" />
     <p>{summary}</p>
-    <button type="button" class="btn ghost" onclick={handleDismiss} aria-label="Dispensar aviso">
+    <button type="button" class="btn ghost" onclick={handleDismiss} aria-label={t("missed.dismissAria")}>
       <X size={14} />
-      Dispensar
+      {t("missed.dismiss")}
     </button>
   </div>
 {/if}

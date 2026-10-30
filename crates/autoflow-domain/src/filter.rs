@@ -60,10 +60,8 @@ impl FilterEngine {
             return Ok(false);
         }
 
-        if !filters.include_hidden {
-            if is_hidden(file) {
-                return Ok(false);
-            }
+        if !filters.include_hidden && is_hidden(file) {
+            return Ok(false);
         }
 
         if let Some(min) = filters.min_size_bytes {
@@ -245,7 +243,7 @@ pub fn collect_files(job: &Job) -> Result<Vec<PathBuf>, std::io::Error> {
     }
 
     let engine = FilterEngine::from_job(job)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        .map_err(std::io::Error::other)?;
 
     if source.is_file() {
         if engine.should_process(source, job, source).unwrap_or(false) {
@@ -281,6 +279,8 @@ pub fn collect_files(job: &Job) -> Result<Vec<PathBuf>, std::io::Error> {
         }
     }
 
+    // Stable ordering keeps `{index}` and counters reproducible across runs.
+    files.sort();
     Ok(files)
 }
 

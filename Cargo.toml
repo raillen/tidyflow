@@ -36,6 +36,7 @@ axum = { version = "0.8", features = ["json"] }
 tower = { version = "0.5", features = ["util"] }
 zip = { version = "2", default-features = false, features = ["deflate", "aes-crypto", "time"] }
 keyring = "3"
+ring = "0.17"
 chrono-tz = "0.10"
 notify-debouncer-full = "0.3"
 notify = "6"

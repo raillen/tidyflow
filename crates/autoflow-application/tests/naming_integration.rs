@@ -115,20 +115,8 @@ fn matches_with_regex_pattern() {
     };
     let variables = BTreeMap::new();
 
-    assert!(folder_name_matches_pattern(
-        "2024-my-project",
-        Some(&np),
-        &plan,
-        &variables
-    )
-    .unwrap());
-    assert!(!folder_name_matches_pattern(
-        "my-project",
-        Some(&np),
-        &plan,
-        &variables
-    )
-    .unwrap());
+    assert!(folder_name_matches_pattern("2024-my-project", Some(&np), &plan, &variables).unwrap());
+    assert!(!folder_name_matches_pattern("my-project", Some(&np), &plan, &variables).unwrap());
 }
 
 #[test]
@@ -145,20 +133,8 @@ fn matches_with_template_override() {
     };
     let variables = BTreeMap::new();
 
-    assert!(folder_name_matches_pattern(
-        "override-name",
-        Some(&np),
-        &plan,
-        &variables
-    )
-    .unwrap());
-    assert!(!folder_name_matches_pattern(
-        "other",
-        Some(&np),
-        &plan,
-        &variables
-    )
-    .unwrap());
+    assert!(folder_name_matches_pattern("override-name", Some(&np), &plan, &variables).unwrap());
+    assert!(!folder_name_matches_pattern("other", Some(&np), &plan, &variables).unwrap());
 }
 
 #[test]
@@ -191,7 +167,7 @@ fn resolve_name_from_root_node() {
     let variables = BTreeMap::new();
 
     let resolved =
-        resolve_correct_folder_name("wrong-name", None, &plan, &variables).unwrap();
+        resolve_correct_folder_name("wrong-name", None, &plan, None, &variables).unwrap();
     assert_eq!(resolved, "expected-name");
 }
 
@@ -210,7 +186,7 @@ fn resolve_name_from_template_override() {
     let variables = BTreeMap::new();
 
     let resolved =
-        resolve_correct_folder_name("wrong", Some(&np), &plan, &variables).unwrap();
+        resolve_correct_folder_name("wrong", Some(&np), &plan, None, &variables).unwrap();
     assert_eq!(resolved, "override-result");
 }
 
@@ -220,8 +196,7 @@ fn resolve_name_with_variable() {
     let mut variables = BTreeMap::new();
     variables.insert("projectName".to_string(), "gamma".to_string());
 
-    let resolved =
-        resolve_correct_folder_name("wrong", None, &plan, &variables).unwrap();
+    let resolved = resolve_correct_folder_name("wrong", None, &plan, None, &variables).unwrap();
     assert_eq!(resolved, "gamma");
 }
 
@@ -236,8 +211,7 @@ fn resolve_fallback_to_original() {
     };
     let variables = BTreeMap::new();
 
-    let resolved =
-        resolve_correct_folder_name("keep-me", None, &plan, &variables).unwrap();
+    let resolved = resolve_correct_folder_name("keep-me", None, &plan, None, &variables).unwrap();
     assert_eq!(resolved, "keep-me");
 }
 
@@ -272,8 +246,18 @@ fn apply_children_creates_subfolders() {
             last_run: None,
         };
 
-        let result =
-            apply_children_structure(&audit, &blueprint, &root, &variables).await.unwrap();
+        let children = blueprint
+            .folder_plan
+            .as_ref()
+            .unwrap()
+            .nodes
+            .first()
+            .unwrap()
+            .children
+            .as_slice();
+        let result = apply_children_structure(&audit, &blueprint, &root, children, &variables)
+            .await
+            .unwrap();
         assert_eq!(result.processed, 2);
         assert_eq!(result.failed, 0);
 
@@ -314,8 +298,18 @@ fn apply_children_skips_existing_subfolders() {
             last_run: None,
         };
 
-        let result =
-            apply_children_structure(&audit, &blueprint, &root, &variables).await.unwrap();
+        let children = blueprint
+            .folder_plan
+            .as_ref()
+            .unwrap()
+            .nodes
+            .first()
+            .unwrap()
+            .children
+            .as_slice();
+        let result = apply_children_structure(&audit, &blueprint, &root, children, &variables)
+            .await
+            .unwrap();
         assert_eq!(result.processed, 1);
         assert_eq!(result.skipped, 1);
 

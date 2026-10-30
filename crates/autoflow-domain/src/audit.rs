@@ -10,6 +10,7 @@ pub enum AuditStatus {
     Ignored,
     Failed,
     Organized,
+    RolledBack,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

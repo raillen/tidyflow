@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { t } from "$lib/i18n";
 
 export const themeModeSchema = z.enum(["system", "light", "dark"]);
 export const processPrioritySchema = z.enum(["low", "normal", "high"]);
@@ -6,7 +7,7 @@ export const adminAgentModeSchema = z.enum(["localOnly", "managedAgent"]);
 
 export const accentColorSchema = z
   .string()
-  .regex(/^#[0-9A-Fa-f]{6}$/, "Cor de destaque inválida");
+  .regex(/^#[0-9A-Fa-f]{6}$/, t("settings.accentInvalid"));
 
 export const performanceSettingsSchema = z.object({
   maxThreads: z.number().int().min(1).max(128).default(2),
@@ -40,7 +41,9 @@ export const smtpSettingsSchema = z.object({
   host: z.string().default(""),
   port: z.number().int().min(1).max(65535).default(587),
   username: z.string().default(""),
+  password: z.string().default(""),
   fromAddress: z.string().default(""),
+  toAddress: z.string().default(""),
   useTls: z.boolean().default(true),
   passwordConfigured: z.boolean().default(false),
 });
@@ -92,6 +95,7 @@ export const adminSettingsSchema = z.object({
   instanceId: z.string().nullable().optional(),
   displayName: z.string().max(120).default(""),
   serverUrl: z.string().default(""),
+  enrollmentToken: z.string().default(""),
   enrollmentTokenConfigured: z.boolean().default(false),
   allowRemoteCommands: z.boolean().default(false),
   allowBatchCommands: z.boolean().default(false),
@@ -149,78 +153,88 @@ export const healthStatusSchema = z.object({
 
 export type HealthStatus = z.infer<typeof healthStatusSchema>;
 
-export const ACCENT_PRESETS = [
-  { id: "blue", label: "Azul", value: "#0064ff" },
-  { id: "violet", label: "Violeta", value: "#7c3aed" },
-  { id: "teal", label: "Teal", value: "#0d9488" },
-  { id: "green", label: "Verde", value: "#16a34a" },
-  { id: "amber", label: "Âmbar", value: "#d97706" },
-  { id: "rose", label: "Rosa", value: "#e11d48" },
-] as const;
+export function accentPresets() {
+  return [
+    { id: "blue", label: t("settings.accent.blue"), value: "#0064ff" },
+    { id: "violet", label: t("settings.accent.violet"), value: "#7c3aed" },
+    { id: "teal", label: t("settings.accent.teal"), value: "#0d9488" },
+    { id: "green", label: t("settings.accent.green"), value: "#16a34a" },
+    { id: "amber", label: t("settings.accent.amber"), value: "#d97706" },
+    { id: "rose", label: t("settings.accent.rose"), value: "#e11d48" },
+  ];
+}
 
-export const THEME_OPTIONS = [
-  { id: "system" as const, label: "Sistema" },
-  { id: "light" as const, label: "Claro" },
-  { id: "dark" as const, label: "Escuro" },
-] as const;
+export function themeOptions() {
+  return [
+    { id: "system" as const, label: t("settings.theme.system") },
+    { id: "light" as const, label: t("settings.theme.light") },
+    { id: "dark" as const, label: t("settings.theme.dark") },
+  ];
+}
 
-export const INTERFACE_FONT_OPTIONS = [
-  { id: "system", label: "Sistema" },
-  { id: "inter", label: "Inter" },
-  { id: "roboto", label: "Roboto" },
-  { id: "public-sans", label: "Public Sans" },
-  { id: "jetbrains-mono", label: "JetBrains Mono" },
-] as const;
+export function interfaceFontOptions() {
+  return [
+    { id: "system", label: t("settings.theme.system") },
+    { id: "inter", label: "Inter" },
+    { id: "roboto", label: "Roboto" },
+    { id: "public-sans", label: "Public Sans" },
+    { id: "jetbrains-mono", label: "JetBrains Mono" },
+  ];
+}
 
-export const LANGUAGE_OPTIONS = [
-  { id: "pt-BR", label: "Português (BR)" },
-  { id: "en-US", label: "English (US)" },
-  { id: "es-ES", label: "Español" },
-] as const;
+export function languageOptions() {
+  return [
+    { id: "pt-BR", label: "Português (BR)" },
+    { id: "en-US", label: "English (US)" },
+  ];
+}
 
-export const PROCESS_PRIORITY_OPTIONS = [
-  { id: "low" as const, label: "Baixa" },
-  { id: "normal" as const, label: "Normal" },
-  { id: "high" as const, label: "Alta" },
-] as const;
+export function processPriorityOptions() {
+  return [
+    { id: "low" as const, label: t("settings.priority.low") },
+    { id: "normal" as const, label: t("settings.priority.normal") },
+    { id: "high" as const, label: t("settings.priority.high") },
+  ];
+}
 
-export const ADMIN_AGENT_MODE_OPTIONS = [
-  { id: "localOnly" as const, label: "Somente local" },
-  { id: "managedAgent" as const, label: "Agent gerenciado" },
-] as const;
+export function adminAgentModeOptions() {
+  return [
+    { id: "localOnly" as const, label: t("settings.adminMode.localOnly") },
+    { id: "managedAgent" as const, label: t("settings.adminMode.managedAgent") },
+  ];
+}
 
-export const CHANGELOG_ENTRIES = [
-  {
-    version: "v2.1.0",
-    date: "2026-06-20",
-    groups: [
-      {
-        type: "feature",
-        label: "Novas features",
-        items: [
-          "Painel de auditoria com analytics, filtros, detalhes e exportação CSV/JSON.",
-          "Configurações avançadas para interface, performance, segurança, notificações e manutenção.",
-        ],
-      },
-      {
-        type: "fix",
-        label: "Correções",
-        items: ["Parser de templates aceita transforms com parâmetros como take, skip e slice."],
-      },
-    ],
-  },
-  {
-    version: "v2.0.0",
-    date: "2026-06-19",
-    groups: [
-      {
-        type: "feature",
-        label: "Novas features",
-        items: ["Base Tauri + Svelte + Rust para automações, blueprints e histórico."],
-      },
-    ],
-  },
-] as const;
+export function changelogEntries() {
+  return [
+    {
+      version: "v2.1.0",
+      date: "2026-06-20",
+      groups: [
+        {
+          type: "feature" as const,
+          label: t("settings.changelog.features"),
+          items: [t("settings.changelog.v210.item1"), t("settings.changelog.v210.item2")],
+        },
+        {
+          type: "fix" as const,
+          label: t("settings.changelog.fixes"),
+          items: [t("settings.changelog.v210.fix1")],
+        },
+      ],
+    },
+    {
+      version: "v2.0.0",
+      date: "2026-06-19",
+      groups: [
+        {
+          type: "feature" as const,
+          label: t("settings.changelog.features"),
+          items: [t("settings.changelog.v200.item1")],
+        },
+      ],
+    },
+  ];
+}
 
 export type ChangelogFilter = "all" | "feature" | "fix" | "security" | "maintenance";
 

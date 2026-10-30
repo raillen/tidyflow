@@ -27,6 +27,12 @@ impl ScheduleConfig {
         if !self.enabled {
             return Ok(());
         }
+        if self.timezone != "local" && self.timezone.parse::<chrono_tz::Tz>().is_err() {
+            return Err(crate::DomainError::Validation(format!(
+                "invalid schedule timezone: {}",
+                self.timezone
+            )));
+        }
         match &self.rule {
             ScheduleRule::Interval { minutes } if *minutes == 0 => Err(
                 crate::DomainError::Validation("schedule interval minutes must be >= 1".into()),
@@ -71,7 +77,7 @@ fn next_run(from: DateTime<Utc>, config: &ScheduleConfig) -> Option<DateTime<Utc
                 let mut candidate = day.and_hms_opt(*hour as u32, *minute as u32, 0)?;
                 let mut dt = Local.from_local_datetime(&candidate).latest()?;
                 if dt <= local {
-                    day = day + Duration::days(1);
+                    day += Duration::days(1);
                     candidate = day.and_hms_opt(*hour as u32, *minute as u32, 0)?;
                     dt = Local.from_local_datetime(&candidate).latest()?;
                 }
@@ -105,7 +111,7 @@ fn next_run(from: DateTime<Utc>, config: &ScheduleConfig) -> Option<DateTime<Utc
             let mut candidate = day.and_hms_opt(*hour as u32, *minute as u32, 0)?;
             let mut dt = tz.from_local_datetime(&candidate).latest()?;
             if dt <= local {
-                day = day + Duration::days(1);
+                day += Duration::days(1);
                 candidate = day.and_hms_opt(*hour as u32, *minute as u32, 0)?;
                 dt = tz.from_local_datetime(&candidate).latest()?;
             }

@@ -12,6 +12,7 @@
     simulateBlueprintWithVariables,
   } from "$lib/core/ipc/client";
   import { blueprintOperationLabel } from "$lib/contracts/blueprint";
+  import { t } from "$lib/i18n";
   import type {
     Blueprint,
     BlueprintKind,
@@ -58,7 +59,9 @@
   let runLoading = $state(false);
   let watchActiveMessage = $state<string | null>(null);
 
-  const moduleItemName = $derived(kind === "file" ? "regra de arquivos" : "estrutura de pastas");
+  const moduleItemName = $derived(
+    kind === "file" ? t("blueprints.module.fileItemName") : t("blueprints.module.folderItemName"),
+  );
   const filteredBlueprints = $derived(blueprints.filter((blueprint) => blueprint.kind === kind));
 
   async function refresh() {
@@ -67,7 +70,7 @@
     try {
       blueprints = await listBlueprints();
     } catch (e) {
-      error = e instanceof Error ? e.message : `Falha ao carregar ${moduleItemName}`;
+      error = e instanceof Error ? e.message : t("blueprints.module.errorLoad", { item: moduleItemName });
     } finally {
       loading = false;
     }
@@ -99,7 +102,7 @@
     if (kind === "folder") {
       const blueprint = await getBlueprint(id);
       if (blueprint.watch?.enabled) {
-        watchActiveMessage = "Monitoramento ativo — o watch já está em execução.";
+        watchActiveMessage = t("blueprints.module.watchActive");
         applyResult = null;
         error = null;
         return;
@@ -120,7 +123,7 @@
       applyResult = await applyBlueprint(id);
       await refresh();
     } catch (e) {
-      error = e instanceof Error ? e.message : `Falha ao aplicar ${moduleItemName}`;
+      error = e instanceof Error ? e.message : t("blueprints.module.errorApply", { item: moduleItemName });
     } finally {
       busyId = null;
     }
@@ -139,19 +142,19 @@
       simulationName = blueprint.name;
       simulationModalOpen = true;
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha na simulação";
+      error = e instanceof Error ? e.message : t("blueprints.module.errorSimulate");
     } finally {
       busyId = null;
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(`Excluir esta ${moduleItemName}?`)) return;
+    if (!confirm(t("blueprints.module.confirmDelete", { item: moduleItemName }))) return;
     try {
       await deleteBlueprint(id);
       await refresh();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao excluir";
+      error = e instanceof Error ? e.message : t("blueprints.module.errorDelete");
     }
   }
 
@@ -169,7 +172,7 @@
       runAction = action;
       runModalOpen = true;
     } catch (e) {
-      error = e instanceof Error ? e.message : `Falha ao preparar ${moduleItemName}`;
+      error = e instanceof Error ? e.message : t("blueprints.module.errorPrepare", { item: moduleItemName });
     } finally {
       busyId = null;
     }
@@ -197,7 +200,7 @@
         runBlueprint = null;
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : `Falha ao executar ${moduleItemName}`;
+      error = e instanceof Error ? e.message : t("blueprints.module.errorExecute", { item: moduleItemName });
     } finally {
       runLoading = false;
       busyId = null;
@@ -233,12 +236,16 @@
 
   {#if applyResult}
     <p class="banner success">
-      Aplicação concluída: {applyResult.processed} ok{#if applyResult.skipped}, {applyResult.skipped} ignorado{applyResult.skipped === 1 ? "" : "s"}{/if}{#if applyResult.failed}, {applyResult.failed} falha{applyResult.failed === 1 ? "" : "s"}{/if}
+      {t("blueprints.module.applyDone", {
+        processed: applyResult.processed,
+        skipped: applyResult.skipped,
+        failed: applyResult.failed,
+      })}
     </p>
   {/if}
 
   {#if loading}
-    <p class="muted">Carregando...</p>
+    <p class="muted">{t("blueprints.module.loading")}</p>
   {:else if filteredBlueprints.length === 0}
     <div class="empty panel">
       <FolderSimple size={28} weight="duotone" aria-hidden="true" />
@@ -256,20 +263,20 @@
             <button type="button" class="bp-name" onclick={() => openEditModal(blueprint.id)}>
               {blueprint.name}
             </button>
-            <span class="badge">{kind === "folder" ? "Receita" : blueprintOperationLabel(blueprint.operation)}</span>
+            <span class="badge">{kind === "folder" ? t("blueprints.module.recipe") : blueprintOperationLabel(blueprint.operation)}</span>
             {#if !blueprint.enabled}
-              <span class="badge muted">Desativado</span>
+              <span class="badge muted">{t("blueprints.module.disabled")}</span>
             {/if}
             {#if blueprint.watchEnabled}
-              <span class="badge muted">Monitorado</span>
+              <span class="badge muted">{t("blueprints.module.monitored")}</span>
             {/if}
             <p class="paths muted">{blueprint.rootPath || "-"}</p>
           </div>
           <div class="actions">
             <button
               class="btn ghost"
-              title="Editar"
-              aria-label={`Editar ${moduleItemName}`}
+              title={t("blueprints.module.edit")}
+              aria-label={t("blueprints.module.editItem", { item: moduleItemName })}
               onclick={() => openEditModal(blueprint.id)}
             >
               <PencilSimple size={14} />
@@ -280,15 +287,15 @@
               onclick={() => handleApply(blueprint.id)}
             >
               <Play size={14} weight="fill" />
-              Aplicar
+              {t("blueprints.module.apply")}
             </button>
             <button class="btn ghost" disabled={busyId === blueprint.id} onclick={() => handleSimulate(blueprint)}>
               <Eye size={14} />
-              Simular
+              {t("blueprints.module.simulate")}
             </button>
             <button class="btn ghost danger" onclick={() => handleDelete(blueprint.id)}>
               <Trash size={14} />
-              Excluir
+              {t("blueprints.module.delete")}
             </button>
           </div>
         </li>

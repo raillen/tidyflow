@@ -1,8 +1,15 @@
-use chrono::{DateTime, Utc};
+use std::collections::BTreeMap;
+use std::sync::OnceLock;
+
+use chrono::{DateTime, FixedOffset, Local};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
+
+mod display;
+
+pub use display::{format_template, parse_template};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -29,12 +36,14 @@ pub struct TokenContext {
     pub parent: String,
     #[serde(default)]
     pub grandparent: String,
-    pub now: DateTime<Utc>,
+    pub now: DateTime<FixedOffset>,
     pub counter: u64,
     #[serde(default)]
     pub counter_formatted: String,
     pub guid: Uuid,
     pub index: u64,
+    #[serde(default)]
+    pub variables: BTreeMap<String, String>,
 }
 
 impl TokenContext {
@@ -73,12 +82,59 @@ impl TokenContext {
             ext,
             parent,
             grandparent,
-            now: Utc::now(),
+            now: Local::now().fixed_offset(),
             counter,
             counter_formatted: String::new(),
             guid: Uuid::new_v4(),
             index,
+            variables: BTreeMap::new(),
         }
+    }
+
+    pub fn with_variables(mut self, variables: BTreeMap<String, String>) -> Self {
+        self.variables = variables;
+        self
+    }
+
+    /// Build a context whose `parent`/`grandparent` tokens are relative to a
+    /// blueprint root. Files directly inside the root get empty parent tokens
+    /// instead of the root folder's own name.
+    pub fn from_path_with_root(
+        path: &std::path::Path,
+        root: &std::path::Path,
+        index: u64,
+        counter: u64,
+    ) -> Self {
+        let mut ctx = Self::from_path(path, index, counter);
+        if let Ok(relative) = path.strip_prefix(root) {
+            let parent_path = relative.parent();
+            ctx.parent = parent_path
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+            ctx.grandparent = parent_path
+                .and_then(|p| p.parent())
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+        }
+        ctx
+    }
+
+    /// Build a context for a directory path. Folder names are not split into
+    /// stem/extension the way file names are.
+    pub fn for_directory(path: &std::path::Path, index: u64, counter: u64) -> Self {
+        let mut ctx = Self::from_path(path, index, counter);
+        ctx.original = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+        ctx.stem = ctx.original.clone();
+        ctx.ext = String::new();
+        ctx
     }
 }
 
@@ -133,7 +189,15 @@ fn resolve_token(name: &str, ctx: &TokenContext) -> Result<String, TokenError> {
         }
         "guid" => ctx.guid.to_string(),
         "index" => ctx.index.to_string(),
-        other => return Err(TokenError::UnknownToken(other.to_string())),
+        other => {
+            if let Some(value) = ctx.variables.get(other) {
+                value.clone()
+            } else if let Some(value) = ctx.variables.get(name) {
+                value.clone()
+            } else {
+                return Err(TokenError::UnknownToken(other.to_string()));
+            }
+        }
     })
 }
 
@@ -199,39 +263,44 @@ fn apply_transform(name: &str, input: &str) -> Result<String, TokenError> {
     })
 }
 
+fn compile_regex(cell: &'static OnceLock<Regex>, pattern: &'static str) -> &'static Regex {
+    cell.get_or_init(|| Regex::new(pattern).expect("valid built-in regex"))
+}
+
 fn apply_regex_preset(name: &str, input: &str) -> Result<String, TokenError> {
+    static REMOVE_DIGITS: OnceLock<Regex> = OnceLock::new();
+    static STRIP_SPECIAL: OnceLock<Regex> = OnceLock::new();
+    static EXTRACT_DATE: OnceLock<Regex> = OnceLock::new();
+    static REMOVE_PARENS: OnceLock<Regex> = OnceLock::new();
+    static DIGITS_ONLY: OnceLock<Regex> = OnceLock::new();
+    static LETTERS_ONLY: OnceLock<Regex> = OnceLock::new();
+
     let normalized = normalize_identifier(name);
     match normalized.as_str() {
-        "remove_digits" => {
-            let re = Regex::new(r"\d+").map_err(|e| TokenError::Regex(e.to_string()))?;
-            Ok(re.replace_all(input, "").to_string())
-        }
-        "strip_special" => {
-            let re =
-                Regex::new(r"[^\p{L}\p{N}._\- ]+").map_err(|e| TokenError::Regex(e.to_string()))?;
-            Ok(re.replace_all(input, "").to_string())
-        }
-        "extract_date" => {
-            let re = Regex::new(r"\d{4}[-_.]\d{2}[-_.]\d{2}|\d{2}[-_.]\d{2}[-_.]\d{4}")
-                .map_err(|e| TokenError::Regex(e.to_string()))?;
-            Ok(re
-                .find(input)
-                .map(|date| date.as_str().to_string())
-                .unwrap_or_default())
-        }
-        "remove_parens" => {
-            let re =
-                Regex::new(r"\s*\([^)]*\)\s*").map_err(|e| TokenError::Regex(e.to_string()))?;
-            Ok(collapse_spaces(re.replace_all(input, " ").as_ref()))
-        }
-        "digits_only" => {
-            let re = Regex::new(r"\D+").map_err(|e| TokenError::Regex(e.to_string()))?;
-            Ok(re.replace_all(input, "").to_string())
-        }
-        "letters_only" => {
-            let re = Regex::new(r"[^\p{L}]+").map_err(|e| TokenError::Regex(e.to_string()))?;
-            Ok(re.replace_all(input, "").to_string())
-        }
+        "remove_digits" => Ok(compile_regex(&REMOVE_DIGITS, r"\d+")
+            .replace_all(input, "")
+            .to_string()),
+        "strip_special" => Ok(compile_regex(&STRIP_SPECIAL, r"[^\p{L}\p{N}._\- ]+")
+            .replace_all(input, "")
+            .to_string()),
+        "extract_date" => Ok(compile_regex(
+            &EXTRACT_DATE,
+            r"\d{4}[-_.]\d{2}[-_.]\d{2}|\d{2}[-_.]\d{2}[-_.]\d{4}",
+        )
+        .find(input)
+        .map(|date| date.as_str().to_string())
+        .unwrap_or_default()),
+        "remove_parens" => Ok(collapse_spaces(
+            compile_regex(&REMOVE_PARENS, r"\s*\([^)]*\)\s*")
+                .replace_all(input, " ")
+                .as_ref(),
+        )),
+        "digits_only" => Ok(compile_regex(&DIGITS_ONLY, r"\D+")
+            .replace_all(input, "")
+            .to_string()),
+        "letters_only" => Ok(compile_regex(&LETTERS_ONLY, r"[^\p{L}]+")
+            .replace_all(input, "")
+            .to_string()),
         _ => Err(TokenError::UnknownRegexPreset(name.to_string())),
     }
 }
@@ -412,6 +481,9 @@ fn title_case(input: &str) -> String {
                 out.push(ch);
             }
             next_is_word_start = false;
+        } else if ch == '\'' {
+            // Keep apostrophes inside the current word: don't -> Don't.
+            out.push(ch);
         } else {
             out.push(ch);
             next_is_word_start = true;
@@ -422,20 +494,7 @@ fn title_case(input: &str) -> String {
 }
 
 fn to_snake(input: &str) -> String {
-    let mut out = String::new();
-    for (i, ch) in input.chars().enumerate() {
-        if ch.is_ascii_uppercase() {
-            if i > 0 {
-                out.push('_');
-            }
-            out.push(ch.to_ascii_lowercase());
-        } else if ch.is_whitespace() || ch == '-' {
-            out.push('_');
-        } else {
-            out.push(ch);
-        }
-    }
-    collapse_underscores(&out)
+    words_for_case(input).join("_")
 }
 
 fn to_camel(input: &str) -> String {
@@ -497,13 +556,17 @@ fn words_for_case(input: &str) -> Vec<String> {
 }
 
 fn collapse_spaces(input: &str) -> String {
-    let re = Regex::new(r"\s+").expect("valid regex");
-    re.replace_all(input.trim(), " ").to_string()
+    static COLLAPSE_SPACES: OnceLock<Regex> = OnceLock::new();
+    compile_regex(&COLLAPSE_SPACES, r"\s+")
+        .replace_all(input.trim(), " ")
+        .to_string()
 }
 
 fn collapse_underscores(input: &str) -> String {
-    let re = Regex::new(r"_+").expect("valid regex");
-    re.replace_all(input.trim_matches('_'), "_").to_string()
+    static COLLAPSE_UNDERSCORES: OnceLock<Regex> = OnceLock::new();
+    compile_regex(&COLLAPSE_UNDERSCORES, r"_+")
+        .replace_all(input.trim_matches('_'), "_")
+        .to_string()
 }
 
 fn strip_symbols(input: &str) -> String {
@@ -521,14 +584,29 @@ fn sanitize_windows_filename(input: &str) -> String {
     const INVALID: &[char] = &['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
     let mut out: String = input
         .chars()
-        .map(|c| if INVALID.contains(&c) { '_' } else { c })
+        .map(|c| {
+            if INVALID.contains(&c) || c.is_control() {
+                '_'
+            } else {
+                c
+            }
+        })
         .collect();
     out = out.trim_end_matches(&['.', ' '][..]).to_string();
     if out.is_empty() {
-        "file".into()
-    } else {
-        out
+        return "file".into();
     }
+
+    let stem = out
+        .split('.')
+        .next()
+        .unwrap_or(&out)
+        .trim()
+        .to_ascii_uppercase();
+    if crate::path_policy::WINDOWS_RESERVED.contains(&stem.as_str()) {
+        out.insert(0, '_');
+    }
+    out
 }
 
 #[cfg(test)]
@@ -538,7 +616,13 @@ mod tests {
 
     #[test]
     fn evaluates_tokens_and_transforms() {
-        let ctx = TokenContext::from_path(Path::new(r"C:\in\Docs\report.PDF"), 3, 7);
+        // Use native separators so the test exercises the same path semantics on every OS.
+        let path = format!(
+            "in{}Docs{}report.PDF",
+            std::path::MAIN_SEPARATOR,
+            std::path::MAIN_SEPARATOR
+        );
+        let ctx = TokenContext::from_path(Path::new(&path), 3, 7);
         let pipeline = TemplatePipeline {
             segments: vec![
                 TemplateSegment::Token {
@@ -573,11 +657,48 @@ mod tests {
     }
 
     #[test]
+    fn evaluates_literal_path_segments_and_brackets() {
+        let ctx = TokenContext::from_path(Path::new("root/Docs/report.pdf"), 1, 1);
+        let pipeline = parse_template("{parent}/docs/{stem}");
+        assert_eq!(evaluate(&pipeline, &ctx).unwrap(), "Docs/docs/report");
+
+        let bracketed = parse_template("[2024] {stem}");
+        assert_eq!(evaluate(&bracketed, &ctx).unwrap(), "[2024] report");
+    }
+
+    #[test]
+    fn root_relative_context_keeps_root_files_parent_empty() {
+        let ctx = TokenContext::from_path_with_root(
+            Path::new("root/report.pdf"),
+            Path::new("root"),
+            1,
+            1,
+        );
+        assert_eq!(ctx.parent, "");
+        assert_eq!(ctx.grandparent, "");
+
+        let nested = TokenContext::from_path_with_root(
+            Path::new("root/in/Docs/report.pdf"),
+            Path::new("root"),
+            1,
+            1,
+        );
+        assert_eq!(nested.parent, "Docs");
+        assert_eq!(nested.grandparent, "in");
+    }
+
+    #[test]
+    fn directory_context_does_not_split_folder_extensions() {
+        let ctx = TokenContext::for_directory(Path::new("root/v1.2"), 1, 1);
+        assert_eq!(ctx.stem, "v1.2");
+        assert_eq!(ctx.ext, "");
+        assert_eq!(ctx.original, "v1.2");
+    }
+
+    #[test]
     fn evaluates_new_tokens_from_path_and_clock() {
         let mut ctx = TokenContext::from_path(Path::new("root/in/Docs/report.PDF"), 3, 7);
-        ctx.now = DateTime::parse_from_rfc3339("2026-06-19T14:05:42Z")
-            .unwrap()
-            .with_timezone(&Utc);
+        ctx.now = DateTime::parse_from_rfc3339("2026-06-19T14:05:42Z").unwrap();
 
         let pipeline = TemplatePipeline {
             segments: vec![
@@ -606,8 +727,12 @@ mod tests {
         assert_transform(&ctx, "hello WORLD-file", "title", "Hello World-File");
         assert_transform(&ctx, "hello WORLD-file", "camel", "helloWorldFile");
         assert_transform(&ctx, "hello WORLD-file", "pascal", "HelloWorldFile");
+        assert_transform(&ctx, "XMLParser", "snake", "xml_parser");
+        assert_transform(&ctx, "XMLParser", "kebab", "xml-parser");
+        assert_transform(&ctx, "don't stop", "title", "Don't Stop");
         assert_transform(&ctx, "a  b\tc", "spacesToUnderscore", "a_b_c");
         assert_transform(&ctx, "a@b#c.pdf", "strip_symbols", "abc.pdf");
+        assert_transform(&ctx, "CON", "sanitize_windows_filename", "_CON");
     }
 
     #[test]

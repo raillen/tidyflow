@@ -1,15 +1,17 @@
 <script lang="ts">
   import {
-    COUNTER_SCOPE_OPTIONS,
-    TEMPLATE_QUICK_PATTERNS,
-    TEMPLATE_REGEX_GROUPS,
-    TEMPLATE_SYNTAX_LEGEND,
-    TEMPLATE_TOKEN_GROUPS,
-    TEMPLATE_TRANSFORM_GROUPS,
+    counterScopeOptions,
+    templateQuickPatterns,
+    templateRegexGroups,
+    templateSyntaxLegend,
+    templateTokenGroups,
+    templateTransformGroups,
     type Blueprint,
     type TemplatePreview,
+    type TemplateToolboxGroup,
     type TemplateToolboxItem,
   } from "$lib/contracts/blueprint";
+  import { t } from "$lib/i18n";
   import { Eye, Info, Lightning, TextAa } from "phosphor-svelte";
 
   type ToolboxTab = "tokens" | "transforms" | "regex";
@@ -24,7 +26,6 @@
     onSamplePathChange: (value: string) => void;
     onPatchRouting: (partial: Partial<Blueprint["routing"]>) => void;
     onPatchCounter: (partial: Partial<Blueprint["counter"]>) => void;
-    onAppendSegment: (suffix: string) => void;
   };
 
   let {
@@ -37,7 +38,6 @@
     onSamplePathChange,
     onPatchRouting,
     onPatchCounter,
-    onAppendSegment,
   }: Props = $props();
 
   let toolboxTab = $state<ToolboxTab>("tokens");
@@ -46,11 +46,11 @@
 
   const templatePlaceholder = "{year}/{month}/{stem}{ext}";
 
-  const filteredTokenGroups = $derived(filterGroups(TEMPLATE_TOKEN_GROUPS, toolboxFilter));
-  const filteredTransformGroups = $derived(filterGroups(TEMPLATE_TRANSFORM_GROUPS, toolboxFilter));
-  const filteredRegexGroups = $derived(filterGroups(TEMPLATE_REGEX_GROUPS, toolboxFilter));
+  const filteredTokenGroups = $derived(filterGroups(templateTokenGroups(), toolboxFilter));
+  const filteredTransformGroups = $derived(filterGroups(templateTransformGroups(), toolboxFilter));
+  const filteredRegexGroups = $derived(filterGroups(templateRegexGroups(), toolboxFilter));
 
-  function filterGroups(groups: typeof TEMPLATE_TOKEN_GROUPS, query: string) {
+  function filterGroups(groups: TemplateToolboxGroup[], query: string) {
     const q = query.trim().toLowerCase();
     if (!q) return groups;
     return groups
@@ -67,32 +67,37 @@
       .filter((group) => group.items.length > 0);
   }
 
-  function handleToolboxItem(item: TemplateToolboxItem, kind: "token" | "transform" | "regexPreset") {
-    if (kind === "token") {
-      const cursor = templateInput?.selectionStart ?? templateText.length;
-      const next =
-        templateText.slice(0, cursor) + item.syntax + templateText.slice(cursor);
-      onTemplateInput(next);
-    } else {
-      onAppendSegment(item.syntax);
-    }
-    templateInput?.focus();
+  function itemTitle(item: TemplateToolboxItem): string {
+    return item.example
+      ? t("blueprints.template.itemTitle", { hint: item.hint, example: item.example })
+      : t("blueprints.template.itemTitleNoExample", { hint: item.hint });
+  }
+
+  function handleToolboxItem(item: TemplateToolboxItem) {
+    const cursor = templateInput?.selectionStart ?? templateText.length;
+    const next = templateText.slice(0, cursor) + item.syntax + templateText.slice(cursor);
+    onTemplateInput(next);
+    const nextCursor = cursor + item.syntax.length;
+    requestAnimationFrame(() => {
+      templateInput?.focus();
+      templateInput?.setSelectionRange(nextCursor, nextCursor);
+    });
   }
 </script>
 
 <div class="template-workspace">
-  <section class="template-col template-col-editor" aria-label="Editor de template">
+  <section class="template-col template-col-editor" aria-label={t("blueprints.template.editorAria")}>
     <div class="panel-card">
       <div class="card-head">
         <TextAa size={16} weight="duotone" aria-hidden="true" />
         <div>
-          <h4>Caminho de destino</h4>
-          <p>Monte o caminho relativo dentro da pasta raiz.</p>
+          <h4>{t("blueprints.template.targetPath")}</h4>
+          <p>{t("blueprints.template.targetPathDesc")}</p>
         </div>
       </div>
 
       <label class="field">
-        <span class="field-label">Template</span>
+        <span class="field-label">{t("blueprints.template.templateLabel")}</span>
         <textarea
           bind:this={templateInput}
           class="field-input textarea mono template-input"
@@ -105,7 +110,7 @@
       </label>
 
       <div class="syntax-legend">
-        {#each TEMPLATE_SYNTAX_LEGEND as row}
+        {#each templateSyntaxLegend() as row}
           <div class="syntax-row" title={row.hint}>
             <code>{row.syntax}</code>
             <span>{row.label}</span>
@@ -119,21 +124,21 @@
           checked={blueprint.routing.createIntermediateDirs}
           onchange={(e) => onPatchRouting({ createIntermediateDirs: e.currentTarget.checked })}
         />
-        <span>Criar pastas intermediárias automaticamente</span>
+        <span>{t("blueprints.template.createIntermediateDirs")}</span>
       </label>
     </div>
 
     <div class="panel-card">
       <div class="card-head compact">
         <Lightning size={15} aria-hidden="true" />
-        <h4>Padrões rápidos</h4>
+        <h4>{t("blueprints.template.quickPatterns")}</h4>
       </div>
       <div class="quick-patterns">
-        {#each TEMPLATE_QUICK_PATTERNS as pattern}
+        {#each templateQuickPatterns() as pattern}
           <button
             type="button"
             class="quick-btn"
-            title={`Aplicar: ${pattern.value}`}
+            title={t("blueprints.template.applyPattern", { value: pattern.value })}
             onclick={() => onTemplateInput(pattern.value)}
           >
             {pattern.label}
@@ -144,12 +149,12 @@
 
     <details class="panel-card counter-card">
       <summary>
-        <span>Contador</span>
-        <span class="muted summary-hint">Escopo e formatação de {"{counter}"}</span>
+        <span>{t("blueprints.template.counter")}</span>
+        <span class="muted summary-hint">{t("blueprints.template.counterHint")}</span>
       </summary>
       <div class="counter-body">
         <label class="field">
-          <span class="field-label">Escopo</span>
+          <span class="field-label">{t("blueprints.template.counterScope")}</span>
           <select
             class="field-input"
             value={blueprint.counter.scope}
@@ -158,28 +163,33 @@
                 scope: e.currentTarget.value as Blueprint["counter"]["scope"],
               })}
           >
-            {#each COUNTER_SCOPE_OPTIONS as option}
+            {#each counterScopeOptions() as option}
               <option value={option.value} title={option.hint}>{option.label}</option>
             {/each}
           </select>
           <p class="field-hint">
-            {COUNTER_SCOPE_OPTIONS.find((o) => o.value === blueprint.counter.scope)?.hint}
+            {counterScopeOptions().find((o) => o.value === blueprint.counter.scope)?.hint}
           </p>
         </label>
 
         <div class="field-row">
           <label class="field">
-            <span class="field-label">Início</span>
+            <span class="field-label">{t("blueprints.template.counterStart")}</span>
             <input
               class="field-input"
               type="number"
-              min="0"
+              min="1"
               value={blueprint.counter.start}
-              oninput={(e) => onPatchCounter({ start: Number(e.currentTarget.value) || 1 })}
+              oninput={(e) => {
+                const value = Number(e.currentTarget.value);
+                onPatchCounter({
+                  start: Number.isFinite(value) ? Math.max(1, Math.trunc(value)) : 1,
+                });
+              }}
             />
           </label>
           <label class="field">
-            <span class="field-label">Padding (zeros)</span>
+            <span class="field-label">{t("blueprints.template.counterPadding")}</span>
             <input
               class="field-input"
               type="number"
@@ -194,17 +204,17 @@
     </details>
   </section>
 
-  <section class="template-col template-col-toolbox" aria-label="Toolbox de template">
+  <section class="template-col template-col-toolbox" aria-label={t("blueprints.template.toolboxAria")}>
     <div class="panel-card toolbox-card">
       <div class="card-head">
         <Info size={16} aria-hidden="true" />
         <div>
-          <h4>Toolbox</h4>
-          <p>Clique para inserir no cursor. Passe o mouse para ver detalhes.</p>
+          <h4>{t("blueprints.template.toolboxTitle")}</h4>
+          <p>{t("blueprints.template.toolboxDesc")}</p>
         </div>
       </div>
 
-      <div class="toolbox-tabs" role="tablist" aria-label="Categorias da toolbox">
+      <div class="toolbox-tabs" role="tablist" aria-label={t("blueprints.template.toolboxCategoriesAria")}>
         <button
           type="button"
           class="toolbox-tab"
@@ -213,7 +223,7 @@
           aria-selected={toolboxTab === "tokens"}
           onclick={() => (toolboxTab = "tokens")}
         >
-          Tokens
+          {t("blueprints.template.tabTokens")}
         </button>
         <button
           type="button"
@@ -223,7 +233,7 @@
           aria-selected={toolboxTab === "transforms"}
           onclick={() => (toolboxTab = "transforms")}
         >
-          Estilo
+          {t("blueprints.template.tabTransforms")}
         </button>
         <button
           type="button"
@@ -233,16 +243,16 @@
           aria-selected={toolboxTab === "regex"}
           onclick={() => (toolboxTab = "regex")}
         >
-          Regex
+          {t("blueprints.template.tabRegex")}
         </button>
       </div>
 
       <label class="field toolbox-search">
-        <span class="sr-only">Filtrar toolbox</span>
+        <span class="sr-only">{t("blueprints.template.filterAria")}</span>
         <input
           class="field-input"
           type="search"
-          placeholder="Filtrar…"
+          placeholder={t("blueprints.template.filterPlaceholder")}
           bind:value={toolboxFilter}
         />
       </label>
@@ -257,9 +267,9 @@
                   <button
                     type="button"
                     class="toolbox-chip"
-                    title={`${item.hint}${item.example ? ` Ex.: ${item.example}` : ""}`}
-                    aria-label={`${item.label}: ${item.hint}`}
-                    onclick={() => handleToolboxItem(item, "token")}
+                    title={itemTitle(item)}
+                    aria-label={t("blueprints.template.itemAria", { label: item.label, hint: item.hint })}
+                    onclick={() => handleToolboxItem(item)}
                   >
                     <code>{item.syntax}</code>
                     <span>{item.label}</span>
@@ -268,7 +278,7 @@
               </div>
             </div>
           {:else}
-            <p class="muted empty-toolbox">Nenhum token corresponde ao filtro.</p>
+            <p class="muted empty-toolbox">{t("blueprints.template.emptyTokens")}</p>
           {/each}
         {:else if toolboxTab === "transforms"}
           {#each filteredTransformGroups as group}
@@ -279,9 +289,9 @@
                   <button
                     type="button"
                     class="toolbox-chip"
-                    title={`${item.hint}${item.example ? ` Ex.: ${item.example}` : ""}`}
-                    aria-label={`${item.label}: ${item.hint}`}
-                    onclick={() => handleToolboxItem(item, "transform")}
+                    title={itemTitle(item)}
+                    aria-label={t("blueprints.template.itemAria", { label: item.label, hint: item.hint })}
+                    onclick={() => handleToolboxItem(item)}
                   >
                     <code>{item.syntax}</code>
                     <span>{item.label}</span>
@@ -290,7 +300,7 @@
               </div>
             </div>
           {:else}
-            <p class="muted empty-toolbox">Nenhuma transformação corresponde ao filtro.</p>
+            <p class="muted empty-toolbox">{t("blueprints.template.emptyTransforms")}</p>
           {/each}
         {:else}
           {#each filteredRegexGroups as group}
@@ -301,9 +311,9 @@
                   <button
                     type="button"
                     class="toolbox-chip"
-                    title={`${item.hint}${item.example ? ` Ex.: ${item.example}` : ""}`}
-                    aria-label={`${item.label}: ${item.hint}`}
-                    onclick={() => handleToolboxItem(item, "regexPreset")}
+                    title={itemTitle(item)}
+                    aria-label={t("blueprints.template.itemAria", { label: item.label, hint: item.hint })}
+                    onclick={() => handleToolboxItem(item)}
                   >
                     <code>{item.syntax}</code>
                     <span>{item.label}</span>
@@ -312,48 +322,48 @@
               </div>
             </div>
           {:else}
-            <p class="muted empty-toolbox">Nenhum preset corresponde ao filtro.</p>
+            <p class="muted empty-toolbox">{t("blueprints.template.emptyRegex")}</p>
           {/each}
         {/if}
       </div>
     </div>
   </section>
 
-  <aside class="template-col template-col-preview" aria-label="Preview ao vivo">
+  <aside class="template-col template-col-preview" aria-label={t("blueprints.template.previewAria")}>
     <div class="panel-card preview-card">
       <div class="card-head">
         <Eye size={16} weight="duotone" aria-hidden="true" />
         <div>
-          <h4>Preview ao vivo</h4>
-          <p>Atualiza enquanto você edita o template.</p>
+          <h4>{t("blueprints.template.previewTitle")}</h4>
+          <p>{t("blueprints.template.previewDesc")}</p>
         </div>
       </div>
 
       <label class="field">
-        <span class="field-label">Arquivo de exemplo</span>
+        <span class="field-label">{t("blueprints.template.sampleFile")}</span>
         <input
           class="field-input mono"
           value={samplePath}
           oninput={(e) => onSamplePathChange(e.currentTarget.value)}
-          placeholder="C:\exemplo\Docs\relatorio.PDF"
+          placeholder="exemplo/Docs/relatorio.PDF"
         />
       </label>
 
       <div class="preview-live" aria-live="polite">
         {#if previewLoading}
-          <p class="preview-state muted">Calculando…</p>
+          <p class="preview-state muted">{t("blueprints.template.calculating")}</p>
         {:else if previewResult}
           <div class="preview-result" class:invalid={!previewResult.valid}>
             <div class="preview-row">
-              <span class="preview-label">Destino</span>
+              <span class="preview-label">{t("blueprints.template.resultDestination")}</span>
               <code class="preview-value">{previewResult.resultPath || "—"}</code>
             </div>
             <div class="preview-row">
-              <span class="preview-label">Nome</span>
+              <span class="preview-label">{t("blueprints.template.resultName")}</span>
               <code class="preview-value">{previewResult.resultName || "—"}</code>
             </div>
             {#if !previewResult.valid}
-              <p class="preview-warning">Caminho inválido — revise tokens ou caracteres.</p>
+              <p class="preview-warning">{t("blueprints.template.invalidPath")}</p>
             {/if}
             {#if previewResult.warnings.length}
               <ul class="preview-warnings">
@@ -364,12 +374,12 @@
             {/if}
           </div>
         {:else}
-          <p class="preview-state muted">Informe um template e um arquivo de exemplo.</p>
+          <p class="preview-state muted">{t("blueprints.template.awaitingInput")}</p>
         {/if}
       </div>
 
       <p class="preview-footnote muted">
-        Transformações e regex presets aplicam-se ao trecho acumulado à esquerda no pipeline.
+        {t("blueprints.template.previewFootnote")}
       </p>
     </div>
   </aside>

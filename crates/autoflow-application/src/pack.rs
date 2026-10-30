@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io;
 use std::path::{Path, PathBuf};
 
 use autoflow_domain::DomainError;
@@ -34,24 +34,21 @@ pub fn create_encrypted_package(
         .filter(|e| e.file_type().is_file())
     {
         let path = entry.path();
+        if path == output_path || fs::canonicalize(path).ok() == fs::canonicalize(output_path).ok()
+        {
+            continue;
+        }
+
         let relative = path
             .strip_prefix(target_dir)
             .map_err(|e| DomainError::Database(e.to_string()))?;
-        let name = relative
-            .to_string_lossy()
-            .replace('\\', "/");
+        let name = relative.to_string_lossy().replace('\\', "/");
 
         writer
             .start_file(name, options)
             .map_err(|e| DomainError::Database(e.to_string()))?;
         let mut source = File::open(path).map_err(|e| DomainError::Database(e.to_string()))?;
-        let mut buffer = Vec::new();
-        source
-            .read_to_end(&mut buffer)
-            .map_err(|e| DomainError::Database(e.to_string()))?;
-        writer
-            .write_all(&buffer)
-            .map_err(|e| DomainError::Database(e.to_string()))?;
+        io::copy(&mut source, &mut writer).map_err(|e| DomainError::Database(e.to_string()))?;
     }
 
     writer
@@ -70,6 +67,10 @@ pub fn resolve_pack_path(target_dir: &Path, pack_filename: Option<&str>) -> Path
 }
 
 pub fn remove_files_in_dir(dir: &Path) -> Result<(), DomainError> {
+    remove_files_in_dir_except(dir, None)
+}
+
+pub fn remove_files_in_dir_except(dir: &Path, excluded: Option<&Path>) -> Result<(), DomainError> {
     if !dir.exists() {
         return Ok(());
     }
@@ -81,6 +82,11 @@ pub fn remove_files_in_dir(dir: &Path) -> Result<(), DomainError> {
         let path = entry.path();
         if path == dir {
             continue;
+        }
+        if let Some(excluded) = excluded {
+            if path == excluded || fs::canonicalize(path).ok() == fs::canonicalize(excluded).ok() {
+                continue;
+            }
         }
         if entry.file_type().is_dir() {
             fs::remove_dir(path).map_err(|e| DomainError::Database(e.to_string()))?;

@@ -1,6 +1,6 @@
 # API IPC — AutoFlow v2
 
-**Status:** `Planejado`
+**Status:** `Implementado (alpha)` — contratos sujeitos a mudança
 
 Contrato entre **Svelte UI** e **Rust core** via Tauri 2. Tipos gerados com `tauri-specta`.
 
@@ -116,28 +116,50 @@ CRUD padrão.
 ### `blueprints_preview_template`
 
 ```typescript
-// Input: { pipeline: TemplatePipeline; sample_path: string; kind: "file" | "folder" }
-// Output: { result_path: string; result_name: string; valid: boolean; warnings: string[] }
-```
-
-### `blueprints_simulate`
-
-```typescript
-// Input: { id: string }
+// Input: {
+//   pipeline: TemplatePipeline;
+//   renameTemplate?: TemplatePipeline | null;
+//   samplePath: string;
+// }
 // Output: {
-//   matched: number;
-//   skipped: number;
-//   collisions: number;
-//   sample: Array<{ source: string; target: string; action: string }>;
+//   resultPath: string;
+//   resultName: string;
+//   valid: boolean;
 //   warnings: string[];
 // }
 ```
 
-### `blueprints_apply`
+### `blueprints_preview_plan`
 
 ```typescript
-// Input: { id: string }
-// Output: { processed: number; failed: number; execution_id?: string }
+// Input: { rootPath: string; folderPlan: FolderPlan; variables: Record<string, string> }
+// Output: {
+//   rootPath: string;
+//   nodes: FolderPlanPreviewNode[];
+//   folderCount: number;
+//   valid: boolean;
+//   warnings: string[];
+// }
+```
+
+### `blueprints_simulate` / `blueprints_simulate_with_variables`
+
+```typescript
+// Input: { id: string; variables?: Record<string, string> }
+// Output: {
+//   matched: number;
+//   skipped: number;
+//   planSample: Array<{ source: string; target: string; action: string }>;
+//   warnings: string[];
+//   collisions: Array<{ source: string; target: string }>;
+// }
+```
+
+### `blueprints_apply` / `blueprints_apply_with_variables`
+
+```typescript
+// Input: { id: string; variables?: Record<string, string> }
+// Output: { processed: number; failed: number; skipped: number }
 ```
 
 ---

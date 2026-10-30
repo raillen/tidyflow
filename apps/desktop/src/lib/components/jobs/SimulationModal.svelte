@@ -1,6 +1,7 @@
 <script lang="ts">
   import Modal from "$lib/components/ui/Modal.svelte";
   import type { SimulationReport } from "$lib/contracts/job";
+  import { t } from "$lib/i18n";
 
   type Props = {
     open: boolean;
@@ -9,25 +10,24 @@
     onclose: () => void;
   };
 
-  let { open, report, jobName = "Fluxo", onclose }: Props = $props();
+  let { open, report, jobName = t("simulation.defaultName"), onclose }: Props = $props();
 </script>
 
 <Modal
   {open}
-  title="Simulação"
+  title={t("simulation.title")}
   description={jobName}
   size="md"
   {onclose}
 >
   {#if report}
     <p class="summary">
-      <strong>{report.filesMatched}</strong> arquivo(s) correspondentes,
-      <strong>{report.filesSkipped}</strong> ignorados
+      {t("simulation.summary", { matched: report.filesMatched, skipped: report.filesSkipped })}
     </p>
 
     {#if report.warnings.length}
       <section class="block">
-        <h3>Avisos</h3>
+        <h3>{t("simulation.warnings")}</h3>
         <ul>
           {#each report.warnings as warning}
             <li>{warning}</li>
@@ -38,7 +38,7 @@
 
     {#if report.sample.length}
       <section class="block">
-        <h3>Amostra</h3>
+        <h3>{t("simulation.sample")}</h3>
         <ul class="sample">
           {#each report.sample as row}
             <li>
@@ -52,11 +52,11 @@
       </section>
     {/if}
   {:else}
-    <p class="muted">Sem dados de simulação.</p>
+    <p class="muted">{t("simulation.empty")}</p>
   {/if}
 
   {#snippet footer()}
-    <button type="button" class="btn primary" onclick={onclose}>Fechar</button>
+    <button type="button" class="btn primary" onclick={onclose}>{t("common.close")}</button>
   {/snippet}
 </Modal>
 

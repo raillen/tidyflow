@@ -1,4 +1,5 @@
-use autoflow_domain::{Job, NotifyChannel, NotifyConfig, NotifyEvent};
+use crate::smtp::send_email;
+use autoflow_domain::{AppSettings, Job, NotifyChannel, NotifyConfig, NotifyEvent};
 use reqwest::Client;
 use serde_json::json;
 
@@ -13,9 +14,7 @@ pub fn fire_notify_event(job: &Job, event: NotifyEvent, detail: Option<&str>) {
     let job = job.clone();
     let detail = detail.map(str::to_owned);
     tokio::spawn(async move {
-        if let Err(error) =
-            send_notifications(&job.notify, &job, event, detail.as_deref()).await
-        {
+        if let Err(error) = send_notifications(&job.notify, &job, event, detail.as_deref()).await {
             tracing::warn!(job_id = %job.id, ?event, %error, "notification delivery failed");
         }
     });
@@ -54,9 +53,7 @@ async fn send_channel(
                 .map_err(|e| e.to_string())?;
         }
         NotifyChannel::Telegram {
-            bot_token,
-            chat_id,
-            ..
+            bot_token, chat_id, ..
         } => {
             let url = format!("https://api.telegram.org/bot{bot_token}/sendMessage");
             client
@@ -87,7 +84,7 @@ async fn send_channel(
     Ok(())
 }
 
-fn format_message(job: &Job, event: NotifyEvent, detail: Option<&str>) -> String {
+pub fn format_message(job: &Job, event: NotifyEvent, detail: Option<&str>) -> String {
     let mut message = format!(
         "AutoFlow [{}] {} — {}",
         event_label(event),
@@ -95,7 +92,7 @@ fn format_message(job: &Job, event: NotifyEvent, detail: Option<&str>) -> String
         job.id
     );
     if let Some(detail) = detail.filter(|d| !d.is_empty()) {
-        message.push_str("\n");
+        message.push('\n');
         message.push_str(detail);
     }
     message
@@ -106,5 +103,57 @@ fn event_label(event: NotifyEvent) -> &'static str {
         NotifyEvent::Started => "started",
         NotifyEvent::Completed => "completed",
         NotifyEvent::Failed => "failed",
+    }
+}
+
+pub async fn send_global_notifications(
+    settings: &AppSettings,
+    job: &Job,
+    success: bool,
+    detail: Option<&str>,
+) {
+    if !settings.notifications.enabled || !settings.notifications.webhook_enabled {
+        return;
+    }
+    if success && !settings.notifications.notify_on_success {
+        return;
+    }
+    if !success && !settings.notifications.notify_on_failure {
+        return;
+    }
+
+    let client = Client::new();
+    let event = if success {
+        NotifyEvent::Completed
+    } else {
+        NotifyEvent::Failed
+    };
+    let message = format_message(job, event, detail);
+
+    for webhook in &settings.notifications.webhooks {
+        if !webhook.enabled || webhook.url.trim().is_empty() {
+            continue;
+        }
+        let response = client
+            .post(&webhook.url)
+            .json(&serde_json::json!({
+                "event": event_label(event),
+                "jobId": job.id,
+                "jobName": job.name,
+                "message": message,
+                "detail": detail,
+            }))
+            .send()
+            .await;
+        if let Err(error) = response {
+            tracing::warn!(job_id = %job.id, %error, "global webhook notification failed");
+        }
+    }
+
+    if settings.notifications.smtp.enabled {
+        let subject = format!("TidyFlow: {}", if success { "concluído" } else { "falha" });
+        if let Err(error) = send_email(&settings.notifications.smtp, &subject, &message).await {
+            tracing::warn!(job_id = %job.id, %error, "global smtp notification failed");
+        }
     }
 }

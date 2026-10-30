@@ -9,15 +9,20 @@
     SquaresFour,
   } from "phosphor-svelte";
   import type { Component } from "svelte";
+  import { localeStore, t } from "$lib/i18n";
 
-  const links: { href: string; label: string; icon: Component }[] = [
-    { href: "/", label: "Dashboard", icon: SquaresFour },
-    { href: "/flows", label: "Fluxos", icon: FlowArrow },
-    { href: "/blueprints", label: "Blueprints", icon: Blueprint },
-    { href: "/admin", label: "Admin", icon: DesktopTower },
-    { href: "/history", label: "Histórico", icon: ClockCounterClockwise },
-    { href: "/settings", label: "Configurações", icon: GearSix },
-  ];
+  const links = $derived.by(() => {
+    const locale = $localeStore;
+    void locale;
+    return [
+      { href: "/", label: t("nav.dashboard"), icon: SquaresFour },
+      { href: "/flows", label: t("nav.flows"), icon: FlowArrow },
+      { href: "/blueprints", label: t("nav.blueprints"), icon: Blueprint },
+      { href: "/admin", label: t("nav.admin"), icon: DesktopTower },
+      { href: "/history", label: t("nav.history"), icon: ClockCounterClockwise },
+      { href: "/settings", label: t("nav.settings"), icon: GearSix },
+    ];
+  });
 
   function isActive(href: string, pathname: string): boolean {
     if (href === "/") return pathname === "/";
@@ -25,14 +30,14 @@
   }
 </script>
 
-<nav class="sidebar" aria-label="Navegação principal">
+<nav class="sidebar" aria-label={t("sidebar.mainNavigation")}>
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">
       <FlowArrow size={16} weight="bold" />
     </span>
     <div>
       <strong>TidyFlow</strong>
-      <small>v2 preview</small>
+      <small>0.2.1-alpha</small>
     </div>
   </div>
 

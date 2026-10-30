@@ -7,6 +7,7 @@ pub use queue::{ExecutionEvent, JobQueue};
 pub use scheduler::Scheduler;
 pub use watch::{WatchService, WatchTarget};
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,9 +16,9 @@ use autoflow_domain::{
     AdminAgentMode, AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult,
     AdminEnvelopeKind, AdminFleetSnapshot, AdminHeartbeatDelivery, AdminHeartbeatPayload,
     AdminQueuedCommand, AdminSignedEnvelope, AppSettings, AuditExport, AuditExportFormat,
-    AuditPage, AuditQuery, AuditStatus, Blueprint, BlueprintSimulationReport, BlueprintSummary,
-    DomainError, FolderPlan, FolderPlanPreview, HealthStatus, Job, JobSummary, NewAuditEntry,
-    SimulationReport, TemplatePipeline, TemplatePreview,
+    AuditPage, AuditQuery, AuditStatus, Blueprint, BlueprintApplyResult, BlueprintSimulationReport,
+    BlueprintSummary, DomainError, FolderPlan, FolderPlanPreview, HealthStatus, Job, JobSummary,
+    NewAuditEntry, RollbackResult, SimulationReport, TemplatePipeline, TemplatePreview,
 };
 use autoflow_infrastructure::{
     admin::SqliteAdminCommandStore,
@@ -25,6 +26,7 @@ use autoflow_infrastructure::{
     blueprints::SqliteBlueprintStore,
     database,
     jobs::SqliteJobStore,
+    rollback::SqliteRollbackStore,
     secrets::AdminSecretStore,
     settings::SqliteSettingsStore,
     ui_state::{MissedScheduleEntry, SqliteMissedScheduleStore, SqliteUiStateStore},
@@ -32,7 +34,7 @@ use autoflow_infrastructure::{
 use serde_json::Value;
 use uuid::Uuid;
 
-use autoflow_application::{blueprints, jobs, ports::AuditStore};
+use autoflow_application::{blueprints, jobs, ports::AuditStore, ports::SettingsStore};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -44,6 +46,7 @@ struct AppStateInner {
     jobs: Arc<SqliteJobStore>,
     blueprints: Arc<SqliteBlueprintStore>,
     audit: Arc<SqliteAuditStore>,
+    rollback: Arc<SqliteRollbackStore>,
     ui_state: Arc<SqliteUiStateStore>,
     missed: Arc<SqliteMissedScheduleStore>,
     admin_commands: Arc<SqliteAdminCommandStore>,
@@ -62,10 +65,12 @@ impl AppState {
             .map_err(|e| DomainError::Database(e.to_string()))?;
 
         let pool = database::init_pool(&data_dir).await?;
+        let vault = autoflow_infrastructure::vault::SecretVault::load(&data_dir)?;
         let derived_instance_id = admin::derive_instance_id(&data_dir);
         let settings = Arc::new(SqliteSettingsStore::new(pool.clone()));
         settings.ensure_default().await?;
         let mut current_settings = settings.get_async().await?.normalized();
+        let retention_days = current_settings.maintenance.log_retention_days;
         let instance_id = current_settings
             .admin
             .instance_id
@@ -76,14 +81,27 @@ impl AppState {
             settings.update_async(current_settings).await?;
         }
 
-        let jobs = Arc::new(SqliteJobStore::new(pool.clone()));
+        let jobs = Arc::new(SqliteJobStore::with_vault(pool.clone(), vault));
         let blueprints = Arc::new(SqliteBlueprintStore::new(pool.clone()));
         let audit = Arc::new(SqliteAuditStore::new(pool.clone()));
+        let rollback = Arc::new(SqliteRollbackStore::new(pool.clone()));
+        if retention_days > 0 {
+            if let Err(error) = audit.purge_older_than(retention_days).await {
+                tracing::warn!(%error, "failed to purge old audit entries");
+            }
+        }
         let ui_state = Arc::new(SqliteUiStateStore::new(pool.clone()));
         let missed = Arc::new(SqliteMissedScheduleStore::new(pool.clone()));
         let admin_commands = Arc::new(SqliteAdminCommandStore::new(pool.clone()));
         let admin_secrets = AdminSecretStore::new();
-        let queue = JobQueue::start(data_dir.clone(), jobs.clone(), audit.clone(), events);
+        let queue = JobQueue::start(
+            data_dir.clone(),
+            jobs.clone(),
+            audit.clone(),
+            settings.clone(),
+            rollback.clone(),
+            events,
+        );
         Scheduler::start(jobs.clone(), missed.clone(), queue.clone());
         let watch = WatchService::start(
             jobs.clone(),
@@ -98,6 +116,7 @@ impl AppState {
                 jobs,
                 blueprints,
                 audit,
+                rollback,
                 ui_state,
                 missed,
                 admin_commands,
@@ -108,6 +127,8 @@ impl AppState {
             }),
         };
         state.start_admin_heartbeat_worker();
+        admin::start_remote_agent(state.clone());
+        state.start_backup_worker(data_dir.clone());
 
         Ok(state)
     }
@@ -245,6 +266,66 @@ impl AppState {
         });
     }
 
+    fn start_backup_worker(&self, data_dir: PathBuf) {
+        let state = self.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(3600));
+            interval.tick().await;
+            loop {
+                interval.tick().await;
+                let settings = match state.get_settings().await {
+                    Ok(settings) => settings,
+                    Err(_) => continue,
+                };
+                if !settings.maintenance.backup_enabled {
+                    continue;
+                }
+                let backup_dir = std::path::PathBuf::from(&settings.maintenance.backup_directory);
+                if backup_dir.as_os_str().is_empty() {
+                    continue;
+                }
+                if let Err(error) = std::fs::create_dir_all(&backup_dir) {
+                    tracing::warn!(%error, "failed to create backup directory");
+                    continue;
+                }
+                let db_path = data_dir.join("autoflow.db");
+                if !db_path.exists() {
+                    continue;
+                }
+                let timestamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
+                let destination = backup_dir.join(format!("autoflow-{timestamp}.sqlite"));
+                if let Err(error) = std::fs::copy(&db_path, &destination) {
+                    tracing::warn!(%error, "failed to create database backup");
+                    continue;
+                }
+                if let Ok(entries) = std::fs::read_dir(&backup_dir) {
+                    let mut backups: Vec<std::path::PathBuf> = entries
+                        .filter_map(|entry| entry.ok())
+                        .map(|entry| entry.path())
+                        .filter(|path| {
+                            path.file_name()
+                                .and_then(|name| name.to_str())
+                                .map(|name| {
+                                    name.starts_with("autoflow-") && name.ends_with(".sqlite")
+                                })
+                                .unwrap_or(false)
+                        })
+                        .collect();
+                    backups.sort();
+                    let retention = settings.maintenance.backup_retention_count.max(1) as usize;
+                    while backups.len() > retention {
+                        if let Some(old) = backups.first() {
+                            let _ = std::fs::remove_file(old);
+                            backups.remove(0);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     pub async fn admin_generate_agent_secret(&self) -> Result<(String, AppSettings), DomainError> {
         let secret = generate_admin_agent_secret();
         self.admin_set_agent_secret(secret.clone()).await?;
@@ -370,6 +451,34 @@ impl AppState {
         self.inner.settings.get_async().await
     }
 
+    pub fn get_settings_sync(&self) -> AppSettings {
+        self.inner.settings.get()
+    }
+
+    pub async fn security_set_pin(&self, pin: String) -> Result<AppSettings, DomainError> {
+        let hash = autoflow_application::security::hash_pin(&pin)?;
+        let mut settings = self.get_settings().await?;
+        settings.security.pin_enabled = true;
+        settings.security.access_pin_hash = Some(hash);
+        self.update_settings(settings).await
+    }
+
+    pub async fn security_verify_pin(&self, pin: String) -> Result<bool, DomainError> {
+        let settings = self.get_settings().await?;
+        match settings.security.access_pin_hash {
+            Some(hash) => Ok(autoflow_application::security::verify_pin(&pin, &hash)),
+            None => Ok(false),
+        }
+    }
+
+    pub async fn security_clear_pin(&self) -> Result<AppSettings, DomainError> {
+        let mut settings = self.get_settings().await?;
+        settings.security.pin_enabled = false;
+        settings.security.access_pin_hash = None;
+        settings.security.require_pin_on_startup = false;
+        self.update_settings(settings).await
+    }
+
     pub async fn update_settings(&self, settings: AppSettings) -> Result<AppSettings, DomainError> {
         self.inner.settings.update_async(settings).await?;
         self.inner.settings.get_async().await
@@ -418,6 +527,15 @@ impl AppState {
         jobs::simulate_job_draft(job)
     }
 
+    pub async fn rollback_job(&self, job_id: Uuid) -> Result<RollbackResult, DomainError> {
+        autoflow_application::rollback::rollback_job(
+            self.inner.rollback.as_ref(),
+            self.inner.audit.as_ref(),
+            job_id,
+        )
+        .await
+    }
+
     pub async fn list_blueprints(&self) -> Result<Vec<BlueprintSummary>, DomainError> {
         blueprints::list_blueprints(self.inner.blueprints.as_ref()).await
     }
@@ -453,7 +571,16 @@ impl AppState {
         blueprints::simulate_blueprint(self.inner.blueprints.as_ref(), id).await
     }
 
-    pub async fn apply_blueprint(&self, id: Uuid) -> Result<(u32, u32), DomainError> {
+    pub async fn simulate_blueprint_with_variables(
+        &self,
+        id: Uuid,
+        variables: BTreeMap<String, String>,
+    ) -> Result<BlueprintSimulationReport, DomainError> {
+        blueprints::simulate_blueprint_with_variables(self.inner.blueprints.as_ref(), id, variables)
+            .await
+    }
+
+    pub async fn apply_blueprint(&self, id: Uuid) -> Result<BlueprintApplyResult, DomainError> {
         blueprints::apply_blueprint(
             self.inner.blueprints.as_ref(),
             self.inner.audit.as_ref(),
@@ -462,24 +589,56 @@ impl AppState {
         .await
     }
 
+    pub async fn apply_blueprint_with_variables(
+        &self,
+        id: Uuid,
+        variables: BTreeMap<String, String>,
+    ) -> Result<BlueprintApplyResult, DomainError> {
+        blueprints::apply_blueprint_with_variables(
+            self.inner.blueprints.as_ref(),
+            self.inner.audit.as_ref(),
+            id,
+            variables,
+        )
+        .await
+    }
+
     pub fn preview_template(
         &self,
         pipeline: TemplatePipeline,
+        rename_template: Option<TemplatePipeline>,
         sample_path: String,
     ) -> TemplatePreview {
-        blueprints::preview_template(pipeline, sample_path)
+        blueprints::preview_template(pipeline, rename_template, sample_path)
     }
 
     pub fn preview_folder_plan(
         &self,
         root_path: String,
         folder_plan: FolderPlan,
+        variables: BTreeMap<String, String>,
     ) -> FolderPlanPreview {
-        blueprints::preview_folder_plan(root_path, folder_plan)
+        blueprints::preview_folder_plan(root_path, folder_plan, variables)
     }
 
     pub fn run_job(&self, job_id: Uuid) -> Result<Uuid, DomainError> {
         self.inner.queue.enqueue(job_id)
+    }
+
+    pub fn pause_queue(&self) {
+        self.inner.queue.pause();
+    }
+
+    pub fn resume_queue(&self) {
+        self.inner.queue.resume();
+    }
+
+    pub fn is_queue_paused(&self) -> bool {
+        self.inner.queue.is_paused()
+    }
+
+    pub fn stop_all_executions(&self) -> Result<(), DomainError> {
+        self.inner.queue.stop_all()
     }
 
     pub fn cancel_execution(&self, execution_id: Uuid) -> Result<(), DomainError> {
@@ -499,6 +658,15 @@ impl AppState {
 
     pub async fn query_audit(&self, query: AuditQuery) -> Result<AuditPage, DomainError> {
         self.inner.audit.query(query).await
+    }
+
+    pub async fn clear_audit(&self, confirm: bool) -> Result<(), DomainError> {
+        if !confirm {
+            return Err(DomainError::Validation(
+                "audit clear requires confirmation".into(),
+            ));
+        }
+        self.inner.audit.clear().await
     }
 
     pub async fn export_audit(

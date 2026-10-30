@@ -22,14 +22,13 @@
     Trash,
   } from "phosphor-svelte";
   import {
-    ACCENT_PRESETS,
-    ADMIN_AGENT_MODE_OPTIONS,
-    CHANGELOG_ENTRIES,
-    INTERFACE_FONT_OPTIONS,
-    LANGUAGE_OPTIONS,
-    PROCESS_PRIORITY_OPTIONS,
-    THEME_OPTIONS,
-    hashPin,
+    accentPresets,
+    adminAgentModeOptions,
+    changelogEntries,
+    interfaceFontOptions,
+    languageOptions,
+    processPriorityOptions,
+    themeOptions,
     type AppSettings,
     type ChangelogFilter,
     type ThemeMode,
@@ -44,8 +43,10 @@
     generateAdminAgentSecret,
     saveSettings,
     setAdminAgentSecret,
+    setSecurityPin,
   } from "$lib/core/ipc/client";
   import { applyAppearance } from "$lib/core/stores/theme";
+  import { setLocale, t, type Locale } from "$lib/i18n";
   import type { HealthStatus } from "$lib/contracts/settings";
   import type { Component } from "svelte";
 
@@ -60,17 +61,17 @@
     | "about"
     | "changelog";
 
-  const tabs: { id: SettingsTab; label: string; icon: Component }[] = [
-    { id: "general", label: "Geral", icon: GearSix },
-    { id: "performance", label: "Performance", icon: SlidersHorizontal },
-    { id: "security", label: "Segurança", icon: LockKey },
-    { id: "notifications", label: "Notificações", icon: Bell },
-    { id: "admin", label: "Admin", icon: DesktopTower },
-    { id: "maintenance", label: "Manutenção", icon: ClockCounterClockwise },
-    { id: "support", label: "Suporte", icon: Coffee },
-    { id: "about", label: "Sobre", icon: Info },
-    { id: "changelog", label: "Changelog", icon: FloppyDisk },
-  ];
+  const tabs = $derived<{ id: SettingsTab; label: string; icon: Component }[]>([
+    { id: "general", label: t("settings.general"), icon: GearSix },
+    { id: "performance", label: t("settings.performance"), icon: SlidersHorizontal },
+    { id: "security", label: t("settings.security"), icon: LockKey },
+    { id: "notifications", label: t("settings.notifications"), icon: Bell },
+    { id: "admin", label: t("settings.admin"), icon: DesktopTower },
+    { id: "maintenance", label: t("settings.maintenance"), icon: ClockCounterClockwise },
+    { id: "support", label: t("settings.support"), icon: Coffee },
+    { id: "about", label: t("settings.about"), icon: Info },
+    { id: "changelog", label: t("settings.changelogTitle"), icon: FloppyDisk },
+  ]);
 
   let settings = $state<AppSettings | null>(null);
   let health = $state<HealthStatus | null>(null);
@@ -83,10 +84,11 @@
   let generatedAdminSecret = $state<string | null>(null);
   let changelogSearch = $state("");
   let changelogFilter = $state<ChangelogFilter>("all");
-  let expandedVersions = $state<string[]>([CHANGELOG_ENTRIES[0]?.version ?? ""]);
+  let expandedVersions = $state<string[]>([changelogEntries()[0]?.version ?? ""]);
+  let initialLanguage = $state("pt-BR");
 
   const filteredChangelog = $derived(
-    CHANGELOG_ENTRIES.map((entry) => ({
+    changelogEntries().map((entry) => ({
       ...entry,
       groups: entry.groups.filter((group) => {
         const matchesType = changelogFilter === "all" || group.type === changelogFilter;
@@ -100,11 +102,12 @@
   onMount(async () => {
     try {
       settings = await fetchSettings();
+      initialLanguage = settings.language;
       health = await fetchHealth();
       applyAppearance(settings);
       updatePixQrCode();
     } catch (e) {
-      message = e instanceof Error ? e.message : "Erro ao carregar configuracoes";
+      message = e instanceof Error ? e.message : t("settings.loadError");
     }
   });
 
@@ -122,18 +125,26 @@
       if (!next.security.pinEnabled) {
         next.security = { ...next.security, accessPinHash: null };
       } else if (newPin || confirmPin) {
-        if (newPin.length < 4) throw new Error("O PIN precisa ter pelo menos 4 caracteres.");
-        if (newPin !== confirmPin) throw new Error("A confirmação do PIN não confere.");
-        next.security = { ...next.security, accessPinHash: await hashPin(newPin) };
+        if (newPin.length < 4) throw new Error(t("settings.pinMin"));
+        if (newPin !== confirmPin) throw new Error(t("settings.pinMismatch"));
       }
 
       settings = await saveSettings(next);
+      if (next.security.pinEnabled && (newPin || confirmPin)) {
+        settings = await setSecurityPin(newPin);
+      }
       newPin = "";
       confirmPin = "";
       applyAppearance(settings);
-      message = "Configurações salvas.";
+      if (next.language !== initialLanguage) {
+        initialLanguage = next.language;
+        setLocale(next.language as Locale);
+        window.location.reload();
+        return;
+      }
+      message = t("settings.saved");
     } catch (e) {
-      message = e instanceof Error ? e.message : "Erro ao salvar";
+      message = e instanceof Error ? e.message : t("settings.saveError");
     } finally {
       saving = false;
     }
@@ -179,7 +190,7 @@
   async function saveAdminSecret() {
     if (!settings) return;
     if (adminSecretInput.trim().length < 32) {
-      message = "O segredo do agent precisa ter pelo menos 32 caracteres.";
+      message = t("settings.agentSecretMin");
       return;
     }
 
@@ -189,9 +200,9 @@
       settings = await setAdminAgentSecret(adminSecretInput);
       adminSecretInput = "";
       generatedAdminSecret = null;
-      message = "Segredo do agent salvo no cofre do sistema.";
+      message = t("settings.agentSecretSaved");
     } catch (e) {
-      message = e instanceof Error ? e.message : "Erro ao salvar segredo do agent";
+      message = e instanceof Error ? e.message : t("settings.agentSecretSaveError");
     } finally {
       saving = false;
     }
@@ -205,16 +216,16 @@
       settings = generated.settings;
       generatedAdminSecret = generated.secret;
       adminSecretInput = "";
-      message = "Segredo gerado e salvo. Copie agora se precisar cadastrar no servidor.";
+      message = t("settings.agentSecretGenerated");
     } catch (e) {
-      message = e instanceof Error ? e.message : "Erro ao gerar segredo do agent";
+      message = e instanceof Error ? e.message : t("settings.agentSecretGenerateError");
     } finally {
       saving = false;
     }
   }
 
   async function clearAdminSecret() {
-    if (!window.confirm("Remover o segredo do agent salvo neste computador?")) {
+    if (!window.confirm(t("settings.agentSecretRemoveConfirm"))) {
       return;
     }
 
@@ -224,9 +235,9 @@
       settings = await clearAdminAgentSecret();
       adminSecretInput = "";
       generatedAdminSecret = null;
-      message = "Segredo do agent removido do cofre.";
+      message = t("settings.agentSecretRemoved");
     } catch (e) {
-      message = e instanceof Error ? e.message : "Erro ao remover segredo do agent";
+      message = e instanceof Error ? e.message : t("settings.agentSecretRemoveError");
     } finally {
       saving = false;
     }
@@ -236,9 +247,9 @@
     if (!generatedAdminSecret) return;
     try {
       await navigator.clipboard.writeText(generatedAdminSecret);
-      message = "Segredo copiado para a area de transferencia.";
+      message = t("settings.agentSecretCopyOk");
     } catch {
-      message = "Nao foi possivel copiar o segredo neste ambiente.";
+      message = t("settings.agentSecretCopyError");
     }
   }
 
@@ -298,15 +309,21 @@
   async function copyText(text: string) {
     try {
       await navigator.clipboard.writeText(text);
-      message = "Copiado para a área de transferência.";
+      message = t("settings.copied");
       setTimeout(() => {
-        if (message === "Copiado para a área de transferência.") {
+        if (message === t("settings.copied")) {
           message = null;
         }
       }, 3000);
     } catch {
-      message = "Não foi possível copiar neste ambiente.";
+      message = t("settings.copyError");
     }
+  }
+
+  function handleLanguageChange(value: string) {
+    if (!settings) return;
+    settings = { ...settings, language: value };
+    setLocale(value as Locale);
   }
 
   function toggleVersion(version: string) {
@@ -319,18 +336,18 @@
 <section class="page settings-page">
   <header class="page-header">
     <div>
-      <h1 class="page-title">Configurações</h1>
-      <p class="page-desc">Controle geral, segurança, logs, suporte e informações do projeto.</p>
+      <h1 class="page-title">{t("settings.title")}</h1>
+      <p class="page-desc">{t("settings.subtitle")}</p>
     </div>
     <button class="btn primary" type="button" onclick={handleSave} disabled={!settings || saving}>
       <CheckCircle size={16} weight="bold" />
-      {saving ? "Salvando…" : "Salvar"}
+      {saving ? t("settings.saving") : t("common.save")}
     </button>
   </header>
 
   {#if settings}
     <div class="settings-layout">
-      <nav class="settings-nav panel" aria-label="Seções de configuração">
+      <nav class="settings-nav panel" aria-label={t("settings.navAria")}>
         {#each tabs as tab}
           {@const Icon = tab.icon}
           <button
@@ -354,12 +371,12 @@
       >
         {#if activeTab === "general"}
           <section class="panel section">
-            <SectionTitle icon={Palette} title="Geral" text="Tema, idioma, fonte e comportamento da janela." />
+            <SectionTitle icon={Palette} title={t("settings.general")} text={t("settings.generalText")} />
 
             <div class="subsection">
-              <span class="field-label">Tema</span>
+              <span class="field-label">{t("settings.theme")}</span>
               <div class="choice-grid three">
-                {#each THEME_OPTIONS as option}
+                {#each themeOptions() as option}
                   {@const Icon = themeIcon(option.id)}
                   <button
                     type="button"
@@ -376,9 +393,9 @@
             </div>
 
             <div class="subsection">
-              <span class="field-label">Cor de destaque</span>
-              <div class="accent-grid" role="radiogroup" aria-label="Cor de destaque">
-                {#each ACCENT_PRESETS as preset}
+              <span class="field-label">{t("settings.accentColor")}</span>
+              <div class="accent-grid" role="radiogroup" aria-label={t("settings.accentColor")}>
+                {#each accentPresets() as preset}
                   <button
                     type="button"
                     class="accent-swatch"
@@ -397,22 +414,22 @@
 
             <div class="field-row">
               <label class="field">
-                <span class="field-label">Idioma</span>
-                <select class="field-input" bind:value={settings.language}>
-                  {#each LANGUAGE_OPTIONS as option}
+                <span class="field-label">{t("settings.language")}</span>
+                <select class="field-input" bind:value={settings.language} onchange={(event) => handleLanguageChange(event.currentTarget.value)}>
+                  {#each languageOptions() as option}
                     <option value={option.id}>{option.label}</option>
                   {/each}
                 </select>
               </label>
 
               <label class="field">
-                <span class="field-label">Fonte da interface</span>
+                <span class="field-label">{t("settings.interfaceFont")}</span>
                 <select
                   class="field-input"
                   value={settings.interfaceFont}
                   onchange={(event) => setInterfaceFont(event.currentTarget.value)}
                 >
-                  {#each INTERFACE_FONT_OPTIONS as option}
+                  {#each interfaceFontOptions() as option}
                     <option value={option.id}>{option.label}</option>
                   {/each}
                 </select>
@@ -420,96 +437,96 @@
             </div>
 
             <div class="toggle-grid">
-              <ToggleField bind:checked={settings.autostart} label="Iniciar com o sistema" />
-              <ToggleField bind:checked={settings.closeToTray} label="Fechar para a bandeja" />
-              <ToggleField bind:checked={settings.startMinimized} label="Iniciar minimizado" />
+              <ToggleField bind:checked={settings.autostart} label={t("settings.autostart")} />
+              <ToggleField bind:checked={settings.closeToTray} label={t("settings.closeToTray")} />
+              <ToggleField bind:checked={settings.startMinimized} label={t("settings.startMinimized")} />
             </div>
           </section>
         {:else if activeTab === "performance"}
           <section class="panel section">
-            <SectionTitle icon={SlidersHorizontal} title="Performance" text="Limites para CPU, memória, fila e banda." />
+            <SectionTitle icon={SlidersHorizontal} title={t("settings.performance")} text={t("settings.performanceText")} />
 
             <div class="field-row three">
-              <NumberField bind:value={settings.maxParallelFiles} label="Arquivos paralelos por job" min={1} max={64} />
-              <NumberField bind:value={settings.performance.maxThreads} label="Threads máximas" min={1} max={128} />
-              <NumberField bind:value={settings.performance.memoryLimitMb} label="Memória máxima (MB, 0 = livre)" min={0} />
+              <NumberField bind:value={settings.maxParallelFiles} label={t("settings.maxParallelFiles")} min={1} max={64} />
+              <NumberField bind:value={settings.performance.maxThreads} label={t("settings.maxThreads")} min={1} max={128} />
+              <NumberField bind:value={settings.performance.memoryLimitMb} label={t("settings.memoryLimit")} min={0} />
             </div>
 
             <div class="field-row three">
               <label class="field">
-                <span class="field-label">Prioridade do processo</span>
+                <span class="field-label">{t("settings.processPriority")}</span>
                 <select class="field-input" bind:value={settings.performance.processPriority}>
-                  {#each PROCESS_PRIORITY_OPTIONS as option}
+                  {#each processPriorityOptions() as option}
                     <option value={option.id}>{option.label}</option>
                   {/each}
                 </select>
               </label>
-              <NumberField bind:value={settings.performance.globalBandwidthLimitMbps} label="Banda global (Mbps, 0 = livre)" min={0} />
-              <NumberField bind:value={settings.performance.queuePollIntervalMs} label="Intervalo da fila (ms)" min={100} />
+              <NumberField bind:value={settings.performance.globalBandwidthLimitMbps} label={t("settings.bandwidth")} min={0} />
+              <NumberField bind:value={settings.performance.queuePollIntervalMs} label={t("settings.queuePoll")} min={100} />
             </div>
 
-            <ToggleField bind:checked={settings.performance.pauseWhenOnBattery} label="Pausar tarefas pesadas na bateria" />
+            <ToggleField bind:checked={settings.performance.pauseWhenOnBattery} label={t("settings.pauseOnBattery")} />
           </section>
         {:else if activeTab === "security"}
           <section class="panel section">
-            <SectionTitle icon={ShieldCheck} title="Segurança" text="PIN, bloqueio automático e preparação para criptografia." />
+            <SectionTitle icon={ShieldCheck} title={t("settings.security")} text={t("settings.securityText")} />
 
             <div class="toggle-grid">
-              <ToggleField bind:checked={settings.security.pinEnabled} label="Exigir PIN de acesso" />
-              <ToggleField bind:checked={settings.security.requirePinOnStartup} label="Pedir PIN ao iniciar" />
-              <ToggleField bind:checked={settings.security.lockOnMinimize} label="Bloquear ao minimizar" />
-              <ToggleField bind:checked={settings.security.lockOnTray} label="Bloquear ao ir para a bandeja" />
-              <ToggleField bind:checked={settings.security.encryptionEnabled} label="Usar chave mestre de criptografia" />
-              <ToggleField bind:checked={settings.security.maskSensitivePaths} label="Mascarar caminhos sensíveis nos logs" />
+              <ToggleField bind:checked={settings.security.pinEnabled} label={t("settings.pinEnabled")} />
+              <ToggleField bind:checked={settings.security.requirePinOnStartup} label={t("settings.pinOnStartup")} />
+              <ToggleField bind:checked={settings.security.lockOnMinimize} label={t("settings.lockOnMinimize")} />
+              <ToggleField bind:checked={settings.security.lockOnTray} label={t("settings.lockOnTray")} />
+              <ToggleField bind:checked={settings.security.encryptionEnabled} label={t("settings.encryption")} />
+              <ToggleField bind:checked={settings.security.maskSensitivePaths} label={t("settings.maskPaths")} />
             </div>
 
             {#if settings.security.pinEnabled}
               <div class="field-row">
                 <label class="field">
-                  <span class="field-label">Novo PIN</span>
+                  <span class="field-label">{t("settings.newPin")}</span>
                   <input class="field-input" type="password" bind:value={newPin} autocomplete="new-password" />
                 </label>
                 <label class="field">
-                  <span class="field-label">Confirmar PIN</span>
+                  <span class="field-label">{t("settings.confirmPin")}</span>
                   <input class="field-input" type="password" bind:value={confirmPin} autocomplete="new-password" />
                 </label>
               </div>
               <p class="hint">
-                O PIN é salvo como hash SHA-256. Para produção, a próxima camada deve trocar isso por KDF com salt.
+                {t("settings.pinHashHint")}
               </p>
             {/if}
 
             <label class="field">
-              <span class="field-label">Dica da chave mestre</span>
-              <input class="field-input" bind:value={settings.security.masterKeyHint} placeholder="Ex.: chave do cofre local" />
+              <span class="field-label">{t("settings.masterKeyHint")}</span>
+              <input class="field-input" bind:value={settings.security.masterKeyHint} placeholder={t("settings.masterKeyPlaceholder")} />
             </label>
           </section>
         {:else if activeTab === "notifications"}
           <section class="panel section">
-            <SectionTitle icon={Bell} title="Notificações" text="Desktop, webhooks, SMTP/e-mail e futuro painel admin." />
+            <SectionTitle icon={Bell} title={t("settings.notifications")} text={t("settings.notificationsText")} />
 
             <div class="toggle-grid">
-              <ToggleField bind:checked={settings.notifications.enabled} label="Ativar notificações" />
-              <ToggleField bind:checked={settings.notifications.desktopEnabled} label="Notificações desktop" />
-              <ToggleField bind:checked={settings.notifications.notifyOnSuccess} label="Avisar sucesso" />
-              <ToggleField bind:checked={settings.notifications.notifyOnFailure} label="Avisar falhas" />
-              <ToggleField bind:checked={settings.notifications.webhookEnabled} label="Enviar para webhooks" />
-              <ToggleField bind:checked={settings.notifications.adminPanelEnabled} label="Preparar painel admin futuro" />
+              <ToggleField bind:checked={settings.notifications.enabled} label={t("settings.notificationsEnabled")} />
+              <ToggleField bind:checked={settings.notifications.desktopEnabled} label={t("settings.desktopEnabled")} />
+              <ToggleField bind:checked={settings.notifications.notifyOnSuccess} label={t("settings.notifyOnSuccess")} />
+              <ToggleField bind:checked={settings.notifications.notifyOnFailure} label={t("settings.notifyOnFailure")} />
+              <ToggleField bind:checked={settings.notifications.webhookEnabled} label={t("settings.webhookEnabled")} />
+              <ToggleField bind:checked={settings.notifications.adminPanelEnabled} label={t("settings.adminPanelEnabled")} />
             </div>
 
             <div class="subsection">
               <div class="section-line">
-                <h3>Webhooks</h3>
+                <h3>{t("settings.webhooks")}</h3>
                 <button class="btn" type="button" onclick={addWebhook}>
                   <Plus size={14} />
-                  Adicionar
+                  {t("settings.add")}
                 </button>
               </div>
               {#each settings.notifications.webhooks as webhook, index}
                 <div class="nested-card">
                   <div class="field-row">
                     <label class="field">
-                      <span class="field-label">Nome</span>
+                      <span class="field-label">{t("common.name")}</span>
                       <input class="field-input" bind:value={webhook.name} />
                     </label>
                     <label class="field">
@@ -518,209 +535,221 @@
                     </label>
                   </div>
                   <div class="nested-actions">
-                    <ToggleField bind:checked={webhook.enabled} label="Ativo" />
+                    <ToggleField bind:checked={webhook.enabled} label={t("settings.active")} />
                     <button class="btn ghost danger" type="button" onclick={() => removeWebhook(index)}>
                       <Trash size={14} />
-                      Remover
+                      {t("settings.remove")}
                     </button>
                   </div>
                 </div>
               {:else}
-                <p class="muted">Nenhum webhook configurado.</p>
+                <p class="muted">{t("settings.noWebhooks")}</p>
               {/each}
             </div>
 
             <div class="subsection">
-              <h3>SMTP / e-mail</h3>
-              <ToggleField bind:checked={settings.notifications.smtp.enabled} label="Ativar SMTP" />
+              <h3>{t("settings.smtp")}</h3>
+              <ToggleField bind:checked={settings.notifications.smtp.enabled} label={t("settings.smtpEnabled")} />
               <div class="field-row three">
                 <label class="field">
-                  <span class="field-label">Host</span>
+                  <span class="field-label">{t("settings.host")}</span>
                   <input class="field-input" bind:value={settings.notifications.smtp.host} placeholder="smtp.exemplo.com" />
                 </label>
-                <NumberField bind:value={settings.notifications.smtp.port} label="Porta" min={1} max={65535} />
+                <NumberField bind:value={settings.notifications.smtp.port} label={t("settings.port")} min={1} max={65535} />
                 <label class="field">
-                  <span class="field-label">Remetente</span>
+                  <span class="field-label">{t("settings.from")}</span>
                   <input class="field-input" bind:value={settings.notifications.smtp.fromAddress} placeholder="tidyflow@exemplo.com" />
                 </label>
               </div>
               <div class="field-row">
                 <label class="field">
-                  <span class="field-label">Usuário</span>
+                  <span class="field-label">{t("settings.username")}</span>
                   <input class="field-input" bind:value={settings.notifications.smtp.username} />
                 </label>
-                <ToggleField bind:checked={settings.notifications.smtp.useTls} label="Usar TLS" />
+                <label class="field">
+                  <span class="field-label">{t("settings.password")}</span>
+                  <input class="field-input" type="password" bind:value={settings.notifications.smtp.password} />
+                </label>
+                <label class="field">
+                  <span class="field-label">{t("settings.to")}</span>
+                  <input class="field-input" bind:value={settings.notifications.smtp.toAddress} placeholder="destino@exemplo.com" />
+                </label>
+                <ToggleField bind:checked={settings.notifications.smtp.useTls} label={t("settings.useTls")} />
               </div>
             </div>
           </section>
         {:else if activeTab === "admin"}
           <section class="panel section">
-            <SectionTitle icon={DesktopTower} title="Admin" text="Identidade da instância, servidor web e permissões do agent." />
+            <SectionTitle icon={DesktopTower} title={t("settings.admin")} text={t("settings.adminText")} />
 
             <div class="toggle-grid">
-              <ToggleField bind:checked={settings.admin.enabled} label="Ativar monitoramento admin" />
-              <ToggleField bind:checked={settings.admin.allowRemoteCommands} label="Permitir comandos remotos" />
-              <ToggleField bind:checked={settings.admin.allowBatchCommands} label="Permitir ações em lote" />
+              <ToggleField bind:checked={settings.admin.enabled} label={t("settings.adminEnabled")} />
+              <ToggleField bind:checked={settings.admin.allowRemoteCommands} label={t("settings.allowRemote")} />
+              <ToggleField bind:checked={settings.admin.allowBatchCommands} label={t("settings.allowBatch")} />
             </div>
 
             <div class="field-row">
               <label class="field">
-                <span class="field-label">Modo</span>
+                <span class="field-label">{t("settings.mode")}</span>
                 <select class="field-input" bind:value={settings.admin.mode}>
-                  {#each ADMIN_AGENT_MODE_OPTIONS as option}
+                  {#each adminAgentModeOptions() as option}
                     <option value={option.id}>{option.label}</option>
                   {/each}
                 </select>
               </label>
               <label class="field">
-                <span class="field-label">Nome exibido no painel</span>
-                <input class="field-input" bind:value={settings.admin.displayName} placeholder="Ex.: Financeiro 01" />
+                <span class="field-label">{t("settings.displayName")}</span>
+                <input class="field-input" bind:value={settings.admin.displayName} placeholder={t("settings.displayNamePlaceholder")} />
               </label>
             </div>
 
             <div class="field-row">
               <label class="field">
-                <span class="field-label">ID da instância</span>
-                <input class="field-input" value={settings.admin.instanceId ?? "gerado no próximo início"} readonly />
+                <span class="field-label">{t("settings.instanceId")}</span>
+                <input class="field-input" value={settings.admin.instanceId ?? t("settings.generatedOnStart")} readonly />
               </label>
               <label class="field">
-                <span class="field-label">Servidor Admin Web</span>
+                <span class="field-label">{t("settings.serverUrl")}</span>
                 <input class="field-input" bind:value={settings.admin.serverUrl} placeholder="https://admin.tidyflow.local" />
+              </label>
+              <label class="field">
+                <span class="field-label">{t("settings.enrollmentToken")}</span>
+                <input class="field-input" type="password" bind:value={settings.admin.enrollmentToken} placeholder={t("settings.enrollmentTokenPlaceholder")} />
               </label>
             </div>
 
             <div class="field-row three">
-              <NumberField bind:value={settings.admin.heartbeatIntervalSecs} label="Heartbeat (s)" min={10} max={3600} />
-              <NumberField bind:value={settings.admin.inventoryIntervalSecs} label="Inventário (s)" min={60} max={86400} />
+              <NumberField bind:value={settings.admin.heartbeatIntervalSecs} label={t("settings.heartbeat")} min={10} max={3600} />
+              <NumberField bind:value={settings.admin.inventoryIntervalSecs} label={t("settings.inventory")} min={60} max={86400} />
               <label class="field">
-                <span class="field-label">Token de matrícula</span>
+                <span class="field-label">{t("settings.enrollmentTokenStatus")}</span>
                 <input
                   class="field-input"
-                  value={settings.admin.enrollmentTokenConfigured ? "Configurado" : "Não configurado"}
+                  value={settings.admin.enrollmentTokenConfigured ? t("settings.configured") : t("settings.notConfigured")}
                   readonly
                 />
               </label>
             </div>
 
-            <section class="subsection nested-card" aria-label="Segredo do agent admin">
+            <section class="subsection nested-card" aria-label={t("settings.agentSecret")}>
               <div class="section-line">
-                <h3>Segredo do agent</h3>
+                <h3>{t("settings.agentSecret")}</h3>
                 <span class="status-pill" class:enabled={settings.admin.enrollmentTokenConfigured}>
-                  {settings.admin.enrollmentTokenConfigured ? "No cofre" : "Nao configurado"}
+                  {settings.admin.enrollmentTokenConfigured ? t("settings.inVault") : t("settings.notConfigured")}
                 </span>
               </div>
 
               <label class="field">
-                <span class="field-label">Inserir segredo recebido do servidor</span>
+                <span class="field-label">{t("settings.secretHint")}</span>
                 <input
                   class="field-input"
                   type="password"
                   bind:value={adminSecretInput}
                   autocomplete="new-password"
-                  placeholder="Cole aqui o segredo de matricula ou assinatura"
+                  placeholder={t("settings.secretPlaceholder")}
                 />
               </label>
 
               <div class="secret-actions">
                 <button class="btn primary" type="button" onclick={saveAdminSecret} disabled={saving || adminSecretInput.trim().length < 32}>
-                  Salvar no cofre
+                  {t("settings.saveToVault")}
                 </button>
                 <button class="btn" type="button" onclick={generateAdminSecret} disabled={saving}>
-                  Gerar local
+                  {t("settings.generateLocal")}
                 </button>
                 <button class="btn danger" type="button" onclick={clearAdminSecret} disabled={saving || !settings.admin.enrollmentTokenConfigured}>
-                  Limpar
+                  {t("settings.clear")}
                 </button>
               </div>
 
               {#if generatedAdminSecret}
-                <div class="generated-secret" aria-label="Segredo gerado">
+                <div class="generated-secret" aria-label={t("settings.generatedSecretAria")}>
                   <code>{generatedAdminSecret}</code>
-                  <button class="btn" type="button" onclick={copyGeneratedAdminSecret}>Copiar</button>
+                  <button class="btn" type="button" onclick={copyGeneratedAdminSecret}>{t("settings.copy")}</button>
                 </div>
               {/if}
             </section>
 
             <p class="hint">
-              O modo web usa conexão de saída do agent para o servidor. Comandos destrutivos devem continuar auditados e confirmados.
+              {t("settings.webModeHint")}
             </p>
           </section>
         {:else if activeTab === "maintenance"}
           <section class="panel section">
-            <SectionTitle icon={ClockCounterClockwise} title="Manutenção" text="Retenção, limpeza, otimização e backup do banco." />
+            <SectionTitle icon={ClockCounterClockwise} title={t("settings.maintenance")} text={t("settings.maintenanceText")} />
 
             <div class="field-row three">
-              <NumberField bind:value={settings.maintenance.logRetentionDays} label="Retenção de logs (dias)" min={0} />
-              <NumberField bind:value={settings.maintenance.backupIntervalHours} label="Intervalo de backup (horas)" min={1} />
-              <NumberField bind:value={settings.maintenance.backupRetentionCount} label="Backups mantidos" min={1} />
+              <NumberField bind:value={settings.maintenance.logRetentionDays} label={t("settings.logRetention")} min={0} />
+              <NumberField bind:value={settings.maintenance.backupIntervalHours} label={t("settings.backupInterval")} min={1} />
+              <NumberField bind:value={settings.maintenance.backupRetentionCount} label={t("settings.backupsKept")} min={1} />
             </div>
 
             <div class="toggle-grid">
-              <ToggleField bind:checked={settings.maintenance.autoCompactDatabase} label="Compactar banco automaticamente" />
-              <ToggleField bind:checked={settings.maintenance.optimizeAfterCleanup} label="Otimizar após limpeza" />
-              <ToggleField bind:checked={settings.maintenance.backupEnabled} label="Ativar backup automático" />
+              <ToggleField bind:checked={settings.maintenance.autoCompactDatabase} label={t("settings.autoCompact")} />
+              <ToggleField bind:checked={settings.maintenance.optimizeAfterCleanup} label={t("settings.optimizeAfterCleanup")} />
+              <ToggleField bind:checked={settings.maintenance.backupEnabled} label={t("settings.backupEnabled")} />
             </div>
 
             <label class="field">
-              <span class="field-label">Diretório de backup</span>
+              <span class="field-label">{t("settings.backupDirectory")}</span>
               <input class="field-input" bind:value={settings.maintenance.backupDirectory} placeholder="D:\Backups\TidyFlow" />
             </label>
           </section>
         {:else if activeTab === "support"}
           <section class="panel section">
-            <SectionTitle icon={Coffee} title="Suporte e doações" text="Canais para projeto open source, Pix, depósito e Buy Me a Coffee." />
+            <SectionTitle icon={Coffee} title={t("settings.support")} text={t("settings.supportText")} />
 
-            <ToggleField bind:checked={settings.support.donationsEnabled} label="Mostrar seção de doações" />
+            <ToggleField bind:checked={settings.support.donationsEnabled} label={t("settings.showDonations")} />
             
             <div class="support-cards-grid">
               <div class="support-card">
-                <h4>Contato de Suporte</h4>
+                <h4>{t("settings.supportContact")}</h4>
                 <div class="copy-field">
                   <span class="value-text">contato@raillen.site</span>
                   <button type="button" class="btn small" onclick={() => copyText("contato@raillen.site")}>
-                    Copiar
+                    {t("settings.copy")}
                   </button>
                 </div>
               </div>
 
               <div class="support-card">
-                <h4>Apoiar no Buy Me a Coffee</h4>
+                <h4>{t("settings.buyMe")}</h4>
                 <button type="button" class="btn primary" onclick={() => openUrl("https://www.buymeacoffee.com/raillen")}>
-                  Apoiar no Buy Me a Coffee
+                  {t("settings.buyMe")}
                 </button>
               </div>
             </div>
 
             <div class="pix-donation-container">
               <div class="pix-info">
-                <h4>Doação via Pix</h4>
-                <p class="muted text-xs">Escaneie o código ao lado ou copie a chave Pix para apoiar o desenvolvimento do projeto.</p>
+                <h4>{t("settings.pixTitle")}</h4>
+                <p class="muted text-xs">{t("settings.pixDesc")}</p>
                 <div class="copy-field">
-                  <span class="label-tiny">Chave Pix:</span>
+                  <span class="label-tiny">{t("settings.pixKey")}</span>
                   <span class="value-text">contato@raillen.site</span>
                   <button type="button" class="btn small" onclick={() => copyText("contato@raillen.site")}>
-                    Copiar
+                    {t("settings.copy")}
                   </button>
                 </div>
                 {#if pixPayload}
                   <div class="copy-field margin-top-sm">
-                    <span class="label-tiny">Pix Copia e Cola:</span>
+                    <span class="label-tiny">{t("settings.pixCopyPaste")}</span>
                     <input class="field-input text-xs" readonly value={pixPayload} />
                     <button type="button" class="btn small" onclick={() => copyText(pixPayload)}>
-                      Copiar
+                      {t("settings.copy")}
                     </button>
                   </div>
                 {/if}
               </div>
               {#if pixQrCodeUrl}
                 <div class="pix-qrcode">
-                  <img src={pixQrCodeUrl} alt="QR Code Pix para Doação" />
+                  <img src={pixQrCodeUrl} alt={t("settings.pixQrAlt")} />
                 </div>
               {/if}
             </div>
 
             <div class="deposit-info-container">
-              <h4>Dados para depósito</h4>
+              <h4>{t("settings.depositTitle")}</h4>
               <pre class="deposit-details">
 - BRAZIL
 RAILLEN DOS SANTOS DE OLIVEIRA
@@ -738,25 +767,25 @@ Bank Address: 5 Penn Plaza, New York, NY 10001
           </section>
         {:else if activeTab === "about"}
           <section class="panel section">
-            <SectionTitle icon={Info} title="Sobre" text="Descrição do projeto, versão e links do criador." />
+            <SectionTitle icon={Info} title={t("settings.about")} text={t("settings.aboutText")} />
 
             <div class="about-container">
               <div class="about-app-card">
                 <h3>TidyFlow</h3>
-                <span class="version-badge">Versão {health?.version ?? "0.2.1-alpha"}</span>
-                <p class="description">Automação local para organizar, copiar e mover arquivos com auditoria clara.</p>
+                <span class="version-badge">{t("settings.version")} {health?.version ?? "0.2.1-alpha"}</span>
+                <p class="description">{t("settings.description")}</p>
               </div>
 
               <div class="about-creator-card">
-                <h4>Criador</h4>
+                <h4>{t("settings.creator")}</h4>
                 <strong class="creator-name">Raillen Santos</strong>
                 <p class="bio">
-                  Atuando profissionalmente na intersecção entre Marketing e Design, sou um entusiasta da tecnologia movido pela curiosidade técnica. Com uma base sólida em desenvolvimento web e automação, busco unir estética e funcionalidade para criar soluções que simplificam o cotidiano e potencializam resultados.
+                  {t("settings.creatorBio")}
                 </p>
                 
                 <div class="creator-links">
                   <button type="button" class="btn" onclick={() => openUrl("https://raillen.site")}>
-                    Site Oficial
+                    {t("settings.officialSite")}
                   </button>
                   <button type="button" class="btn" onclick={() => openUrl("https://github.com/raillen")}>
                     GitHub
@@ -770,21 +799,21 @@ Bank Address: 5 Penn Plaza, New York, NY 10001
           </section>
         {:else}
           <section class="panel section">
-            <SectionTitle icon={FloppyDisk} title="Changelog" text="Atualizações por versão, com busca e filtros." />
+            <SectionTitle icon={FloppyDisk} title={t("settings.changelogTitle")} text={t("settings.changelogText")} />
 
             <div class="field-row">
               <label class="field">
-                <span class="field-label">Pesquisar</span>
-                <input class="field-input" bind:value={changelogSearch} placeholder="feature, bug, versão..." />
+                <span class="field-label">{t("settings.changelogSearch")}</span>
+                <input class="field-input" bind:value={changelogSearch} placeholder={t("settings.changelogSearchPlaceholder")} />
               </label>
               <label class="field">
-                <span class="field-label">Tipo</span>
+                <span class="field-label">{t("settings.changelogType")}</span>
                 <select class="field-input" bind:value={changelogFilter}>
-                  <option value="all">Todos</option>
-                  <option value="feature">Novas features</option>
-                  <option value="fix">Bug fix</option>
-                  <option value="security">Segurança</option>
-                  <option value="maintenance">Manutenção</option>
+                  <option value="all">{t("settings.changelogAll")}</option>
+                  <option value="feature">{t("settings.changelogFeatures")}</option>
+                  <option value="fix">{t("settings.changelogFix")}</option>
+                  <option value="security">{t("settings.changelogSecurity")}</option>
+                  <option value="maintenance">{t("settings.changelogMaintenance")}</option>
                 </select>
               </label>
             </div>
@@ -812,21 +841,21 @@ Bank Address: 5 Penn Plaza, New York, NY 10001
                   {/if}
                 </article>
               {:else}
-                <p class="muted">Nenhuma entrada corresponde ao filtro.</p>
+                <p class="muted">{t("settings.changelogEmpty")}</p>
               {/each}
             </div>
           </section>
         {/if}
 
         {#if message}
-          <p class:success={message === "Configurações salvas."} class="feedback" aria-live="polite">{message}</p>
+          <p class:success={message === t("settings.saved")} class="feedback" aria-live="polite">{message}</p>
         {/if}
       </form>
     </div>
   {:else if message}
     <p class="banner error" role="alert">{message}</p>
   {:else}
-    <p class="muted" aria-live="polite">Carregando configurações…</p>
+    <p class="muted" aria-live="polite">{t("settings.loading")}</p>
   {/if}
 </section>
 

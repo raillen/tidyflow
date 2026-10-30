@@ -16,5 +16,17 @@ pub trait BlueprintStore: Send + Sync {
         scope_key: &str,
         value: u64,
     ) -> Result<(), DomainError>;
+    async fn next_counter(
+        &self,
+        blueprint_id: Uuid,
+        scope_key: &str,
+        start: u64,
+    ) -> Result<u64, DomainError> {
+        let current = self.get_counter(blueprint_id, scope_key).await?;
+        let value = if current == 0 { start } else { current };
+        self.set_counter(blueprint_id, scope_key, value.saturating_add(1))
+            .await?;
+        Ok(value)
+    }
     async fn update_last_run(&self, id: Uuid) -> Result<(), DomainError>;
 }

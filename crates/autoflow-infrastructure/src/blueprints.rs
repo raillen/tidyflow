@@ -39,8 +39,13 @@ impl BlueprintStore for SqliteBlueprintStore {
 
         Ok(rows
             .into_iter()
-            .filter_map(|(payload,)| Self::deserialize(&payload).ok())
-            .map(|bp| bp.summary())
+            .filter_map(|(payload,)| match Self::deserialize(&payload) {
+                Ok(blueprint) => Some(blueprint.summary()),
+                Err(error) => {
+                    tracing::warn!(%error, "skipping invalid blueprint payload");
+                    None
+                }
+            })
             .collect())
     }
 
@@ -153,9 +158,83 @@ impl BlueprintStore for SqliteBlueprintStore {
         Ok(())
     }
 
+    async fn next_counter(
+        &self,
+        blueprint_id: Uuid,
+        scope_key: &str,
+        start: u64,
+    ) -> Result<u64, DomainError> {
+        if start == 0 || start >= i64::MAX as u64 {
+            return Err(DomainError::Validation(
+                "counter start must be between 1 and i64::MAX - 1".into(),
+            ));
+        }
+
+        let (value,): (i64,) = sqlx::query_as(
+            "INSERT INTO blueprint_counters (blueprint_id, scope_key, value)
+             VALUES (?, ?, ?)
+             ON CONFLICT(blueprint_id, scope_key) DO UPDATE SET
+               value = CASE
+                 WHEN blueprint_counters.value > 0 THEN blueprint_counters.value + 1
+                 ELSE excluded.value
+               END
+             RETURNING value - 1",
+        )
+        .bind(blueprint_id.to_string())
+        .bind(scope_key)
+        .bind(start.saturating_add(1) as i64)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DomainError::Database(e.to_string()))?;
+
+        Ok(value as u64)
+    }
+
     async fn update_last_run(&self, id: Uuid) -> Result<(), DomainError> {
         let mut blueprint = self.get(id).await?;
         blueprint.last_run = Some(Utc::now());
         self.save(&blueprint).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    #[tokio::test]
+    async fn next_counter_is_atomic_and_preserves_start() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .expect("sqlite");
+        sqlx::query(
+            "CREATE TABLE blueprint_counters (
+                blueprint_id TEXT NOT NULL,
+                scope_key TEXT NOT NULL,
+                value INTEGER NOT NULL,
+                PRIMARY KEY (blueprint_id, scope_key)
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("table");
+
+        let store = SqliteBlueprintStore::new(pool);
+        let blueprint_id = Uuid::new_v4();
+
+        assert_eq!(
+            store.next_counter(blueprint_id, "global", 5).await.unwrap(),
+            5
+        );
+        assert_eq!(
+            store.next_counter(blueprint_id, "global", 5).await.unwrap(),
+            6
+        );
+        assert_eq!(
+            store.next_counter(blueprint_id, "global", 5).await.unwrap(),
+            7
+        );
     }
 }

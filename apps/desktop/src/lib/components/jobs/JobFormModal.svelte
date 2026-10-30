@@ -4,6 +4,7 @@
   import { countActiveFilters, createEmptyJob, type Job, type SimulationReport } from "$lib/contracts/job";
   import { createJob, getJob, simulateJob, simulateJobDraft, updateJob } from "$lib/core/ipc/client";
   import { Eye, FloppyDisk } from "phosphor-svelte";
+  import { t } from "$lib/i18n";
 
   type Props = {
     open: boolean;
@@ -23,18 +24,18 @@
   let error = $state<string | null>(null);
   let loaded = $state(false);
 
-  const title = $derived(mode === "create" ? "Novo fluxo" : job.name || "Editar fluxo");
+  const title = $derived(mode === "create" ? t("jobForm.newFlow") : job.name || t("jobForm.editFlow"));
   const description = $derived(
     mode === "create"
-      ? "Configure origem, destino e regras de processamento."
-      : "Ajuste caminhos, modo e filtros do job.",
+      ? t("jobForm.createDesc")
+      : t("jobForm.editDesc"),
   );
 
   const filterCount = $derived(countActiveFilters(job.filters));
   const filterSummary = $derived(
     filterCount === 0
-      ? "Nenhum filtro ativo"
-      : `${filterCount} filtro${filterCount === 1 ? "" : "s"} ativo${filterCount === 1 ? "" : "s"}`,
+      ? t("jobForm.noFilters")
+      : t("jobForm.filtersActive", { count: filterCount }),
   );
 
   $effect(() => {
@@ -55,7 +56,7 @@
     }
 
     if (!jobId) {
-      error = "ID do fluxo inválido";
+      error = t("jobForm.invalidId");
       loading = false;
       return;
     }
@@ -71,7 +72,7 @@
       })
       .catch((e) => {
         if (cancelled) return;
-        error = e instanceof Error ? e.message : "Fluxo não encontrado";
+        error = e instanceof Error ? e.message : t("jobForm.notFound");
       })
       .finally(() => {
         if (!cancelled) loading = false;
@@ -94,7 +95,7 @@
       onsaved?.();
       onclose();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao salvar fluxo";
+      error = e instanceof Error ? e.message : t("jobForm.saveError");
     } finally {
       saving = false;
     }
@@ -108,9 +109,9 @@
         mode === "edit" && job.id
           ? await simulateJob(job.id)
           : await simulateJobDraft(job);
-      onsimulated?.(report, job.name.trim() || "Fluxo");
+      onsimulated?.(report, job.name.trim() || t("simulation.defaultName"));
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha na simulação";
+      error = e instanceof Error ? e.message : t("jobForm.simulateError");
     } finally {
       simulating = false;
     }
@@ -119,7 +120,7 @@
 
 <Modal {open} {title} {description} size="large" persistKey="modal.jobForm" {onclose}>
   {#if loading}
-    <p class="state-msg muted">Carregando fluxo…</p>
+    <p class="state-msg muted">{t("jobForm.loading")}</p>
   {:else if error && !loaded}
     <p class="state-msg error" role="alert">{error}</p>
   {:else}
@@ -139,7 +140,7 @@
         onclick={handleSimulate}
       >
         <Eye size={14} />
-        {simulating ? "Simulando…" : "Simular"}
+        {simulating ? t("jobForm.simulating") : t("common.simulate")}
       </button>
       <button
         type="submit"
@@ -148,7 +149,7 @@
         disabled={saving || !loaded || loading}
       >
         <FloppyDisk size={14} weight="bold" />
-        {saving ? "Salvando…" : "Salvar"}
+        {saving ? t("settings.saving") : t("common.save")}
       </button>
     </div>
   {/snippet}

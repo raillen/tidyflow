@@ -1,5 +1,10 @@
 # Plano de Refatoração: Separação de Transferência e Organização (Blueprint)
 
+> **LEGADO (v1 / C# / Avalonia).** A separação já foi feita no v2; este documento
+> mantém o histórico da decisão. Veja o código atual em
+> `crates/autoflow-domain/src/blueprint.rs` e
+> [`docs/v2/BLUEPRINT-SPEC.md`](../v2/BLUEPRINT-SPEC.md).
+
 ## 1. Visão Geral
 Este plano descreve a separação das funcionalidades de transporte de arquivos (Cópia/Movimentação) das funcionalidades de organização in-place (Scaffolding/Renomeação), criando um módulo dedicado chamado **Blueprint**.
 

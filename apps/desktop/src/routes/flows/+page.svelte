@@ -4,9 +4,14 @@
   import {
     cancelExecution,
     deleteJob,
+    isQueuePaused,
     listJobs,
+    pauseQueue,
+    resumeQueue,
+    rollbackJob,
     runJob,
     simulateJob,
+    stopAllExecutions,
   } from "$lib/core/ipc/client";
   import type { JobSummary, SimulationReport } from "$lib/contracts/job";
   import {
@@ -17,11 +22,13 @@
   import { page } from "$app/stores";
   import { onMount } from "svelte";
   import { Eye, PencilSimple, Play, Plus, Trash } from "phosphor-svelte";
+  import { t } from "$lib/i18n";
 
   let jobs = $state<JobSummary[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
   let busyId = $state<string | null>(null);
+  let queuePaused = $state(false);
 
   let jobModalOpen = $state(false);
   let jobModalMode = $state<"create" | "edit">("create");
@@ -37,13 +44,20 @@
     try {
       jobs = await listJobs();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao carregar fluxos";
+      error = e instanceof Error ? e.message : t("flows.loadError");
     } finally {
       loading = false;
     }
   }
 
-  onMount(refresh);
+  onMount(async () => {
+    await refresh();
+    try {
+      queuePaused = await isQueuePaused();
+    } catch {
+      queuePaused = false;
+    }
+  });
 
   function openCreateModal() {
     jobModalMode = "create";
@@ -91,7 +105,7 @@
     try {
       await runJob(id);
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao executar";
+      error = e instanceof Error ? e.message : t("flows.runError");
     } finally {
       busyId = null;
     }
@@ -106,19 +120,19 @@
       simulationJobName = job.name;
       simulationModalOpen = true;
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha na simulação";
+      error = e instanceof Error ? e.message : t("flows.simulateError");
     } finally {
       busyId = null;
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir este fluxo?")) return;
+    if (!confirm(t("flows.deleteConfirm"))) return;
     try {
       await deleteJob(id);
       await refresh();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao excluir";
+      error = e instanceof Error ? e.message : t("flows.deleteError");
     }
   }
 
@@ -126,24 +140,69 @@
     try {
       await cancelExecution(executionId);
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao cancelar";
+      error = e instanceof Error ? e.message : t("flows.cancelError");
+    }
+  }
+
+  async function handleRollback(id: string) {
+    if (!confirm(t("flows.rollbackConfirm"))) return;
+    busyId = id;
+    error = null;
+    try {
+      const result = await rollbackJob(id);
+      error = null;
+      await refresh();
+      alert(t("flows.rollbackDone", { reverted: result.revertedCount, skipped: result.skippedCount }));
+    } catch (e) {
+      error = e instanceof Error ? e.message : t("flows.rollbackError");
+    } finally {
+      busyId = null;
+    }
+  }
+
+  async function handlePauseQueue() {
+    try {
+      await pauseQueue();
+      queuePaused = true;
+    } catch (e) {
+      error = e instanceof Error ? e.message : t("flows.pauseError");
+    }
+  }
+
+  async function handleResumeQueue() {
+    try {
+      await resumeQueue();
+      queuePaused = false;
+    } catch (e) {
+      error = e instanceof Error ? e.message : t("flows.resumeError");
+    }
+  }
+
+  async function handleStopAll() {
+    if (!confirm(t("flows.stopAllConfirm"))) return;
+    try {
+      await stopAllExecutions();
+      await refresh();
+      queuePaused = await isQueuePaused();
+    } catch (e) {
+      error = e instanceof Error ? e.message : t("flows.stopAllError");
     }
   }
 
   function modeLabel(mode: JobSummary["mode"]) {
-    return mode === "copy" ? "Cópia" : "Mover";
+    return mode === "copy" ? t("flows.copy") : t("flows.move");
   }
 </script>
 
 <section class="page">
   <header class="page-header">
     <div>
-      <h1 class="page-title">Fluxos</h1>
-      <p class="page-desc">Jobs de cópia e movimentação de arquivos.</p>
+      <h1 class="page-title">{t("flows.title")}</h1>
+      <p class="page-desc">{t("flows.subtitle")}</p>
     </div>
     <button type="button" class="btn primary" onclick={openCreateModal}>
       <Plus size={15} weight="bold" />
-      Novo fluxo
+      {t("flows.newFlow")}
     </button>
   </header>
 
@@ -153,16 +212,31 @@
 
   {#if $lastCompleted}
     <p class="banner" class:success={$lastCompleted.success} class:fail={!$lastCompleted.success}>
-      Execução concluída — {$lastCompleted.processed} ok, {$lastCompleted.failed} falhas
+      {t("flows.completedSummary", { ok: $lastCompleted.processed, failed: $lastCompleted.failed })}
       {#if $lastCompleted.errorMessage}
         ({$lastCompleted.errorMessage})
       {/if}
     </p>
   {/if}
 
+  <section class="panel queue-controls" aria-label={t("flows.queueControls")}>
+    <div class="queue-row">
+      <strong>{t("flows.queue")}</strong>
+      <span class="muted">{queuePaused ? t("flows.queuePausedShort") : t("flows.queueActiveShort")}</span>
+      <div class="actions">
+        {#if queuePaused}
+          <button class="btn primary" type="button" onclick={handleResumeQueue}>{t("flows.resume")}</button>
+        {:else}
+          <button class="btn ghost" type="button" onclick={handlePauseQueue}>{t("flows.pause")}</button>
+        {/if}
+        <button class="btn ghost danger" type="button" onclick={handleStopAll}>{t("flows.stopAll")}</button>
+      </div>
+    </div>
+  </section>
+
   {#if Object.keys($activeExecutions).length > 0}
-    <section class="panel" aria-label="Execuções ativas">
-      <h2>Em execução</h2>
+    <section class="panel" aria-label={t("flows.activeExecutionsAria")}>
+      <h2>{t("flows.activeExecutions")}</h2>
       <ul class="exec-list">
         {#each Object.values($activeExecutions) as exec}
           <li>
@@ -173,7 +247,7 @@
               <span class="percent">{exec.percent.toFixed(0)}%</span>
             </div>
             <button class="btn ghost" onclick={() => handleCancel(exec.executionId)}>
-              Cancelar
+              {t("common.cancel")}
             </button>
           </li>
         {/each}
@@ -182,13 +256,13 @@
   {/if}
 
   {#if loading}
-    <p class="muted">Carregando…</p>
+    <p class="muted">{t("common.loading")}</p>
   {:else if jobs.length === 0}
     <div class="empty panel">
-      <p>Nenhum fluxo cadastrado.</p>
+      <p>{t("flows.noFlows")}</p>
       <button type="button" class="btn primary" onclick={openCreateModal}>
         <Plus size={14} weight="bold" />
-        Criar primeiro fluxo
+        {t("flows.createFirst")}
       </button>
     </div>
   {:else}
@@ -201,10 +275,10 @@
             </button>
             <span class="badge">{modeLabel(job.mode)}</span>
             {#if !job.enabled}
-              <span class="badge muted">Desativado</span>
+              <span class="badge muted">{t("common.disabled")}</span>
             {/if}
             {#if job.watchEnabled}
-              <span class="badge muted">Watch</span>
+              <span class="badge muted">{t("flows.watch")}</span>
             {/if}
             <p class="paths muted">
               {job.sourcePath || "—"} → {job.targetPath || "—"}
@@ -213,8 +287,8 @@
           <div class="actions">
             <button
               class="btn ghost"
-              title="Editar"
-              aria-label="Editar fluxo"
+              title={t("common.edit")}
+              aria-label={t("flows.edit")}
               onclick={() => openEditModal(job.id)}
             >
               <PencilSimple size={14} />
@@ -225,7 +299,7 @@
               onclick={() => handleRun(job.id)}
             >
               <Play size={14} weight="fill" />
-              Executar
+              {t("flows.run")}
             </button>
             <button
               class="btn ghost"
@@ -233,11 +307,18 @@
               onclick={() => handleSimulate(job)}
             >
               <Eye size={14} />
-              Simular
+              {t("flows.simulate")}
+            </button>
+            <button
+              class="btn ghost"
+              disabled={busyId === job.id}
+              onclick={() => handleRollback(job.id)}
+            >
+              {t("flows.rollback")}
             </button>
             <button class="btn ghost danger" onclick={() => handleDelete(job.id)}>
               <Trash size={14} />
-              Excluir
+              {t("common.delete")}
             </button>
           </div>
         </li>
@@ -386,6 +467,19 @@
     justify-content: space-between;
     gap: var(--space-4);
     align-items: center;
+  }
+
+  .queue-controls .queue-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .queue-controls .actions {
+    margin-left: auto;
+    display: flex;
+    gap: var(--space-2);
   }
 
   .exec-main {

@@ -3,8 +3,10 @@
     createDefaultFolderPlan,
     createFolderActionNode,
     createFolderVariableValues,
-    FOLDER_ACTION_OPTIONS,
+    folderActionOptions,
     folderActionLabel,
+    parseTemplateDisplayString,
+    pipelineToDisplayString,
     type Blueprint,
     type FolderAction,
     type FolderActionNode,
@@ -17,6 +19,7 @@
     type WatchEventKind as JobWatchEventKind,
   } from "$lib/contracts/job";
   import { previewBlueprintPlan } from "$lib/core/ipc/client";
+  import { currentLocale, t } from "$lib/i18n";
   import { open } from "@tauri-apps/plugin-dialog";
   import {
     CalendarBlank,
@@ -46,28 +49,47 @@
   let activePanel = $state<NavPanel>("arvore");
   let navCollapsed = $state(false);
   let planPreviewLoading = $state(false);
+  let renameTemplateText = $state("");
+  let renameTemplateFocused = $state(false);
+
+  $effect(() => {
+    const pipeline = blueprint.watch?.namingPattern?.templateOverride ?? null;
+    if (!renameTemplateFocused) {
+      renameTemplateText = pipeline ? pipelineToDisplayString(pipeline) : "";
+    }
+  });
   let planPreviewResult = $state<Awaited<ReturnType<typeof previewBlueprintPlan>> | null>(null);
 
-  const NAV_ITEMS: { id: NavPanel; label: string; icon: typeof IdentificationCard }[] = [
-    { id: "geral", label: "Geral", icon: IdentificationCard },
-    { id: "variaveis", label: "Variáveis", icon: Sliders },
-    { id: "arvore", label: "Árvore", icon: TreeStructure },
-    { id: "seguranca", label: "Segurança", icon: ShieldWarning },
-    { id: "automacao", label: "Automação", icon: Eye },
-  ];
+  function navItems(): { id: NavPanel; label: string; icon: typeof IdentificationCard }[] {
+    return [
+      { id: "geral", label: t("folders.nav.general"), icon: IdentificationCard },
+      { id: "variaveis", label: t("folders.nav.variables"), icon: Sliders },
+      { id: "arvore", label: t("folders.nav.tree"), icon: TreeStructure },
+      { id: "seguranca", label: t("folders.nav.security"), icon: ShieldWarning },
+      { id: "automacao", label: t("jobs.nav.automation"), icon: Eye },
+    ];
+  }
 
-  const WATCH_EVENTS: { id: JobWatchEventKind; label: string }[] = [
-    { id: "create", label: "Criação" },
-    { id: "modify", label: "Modificação" },
-    { id: "remove", label: "Remoção" },
-    { id: "rename", label: "Renomeação" },
-  ];
+  function watchEvents(): { id: JobWatchEventKind; label: string }[] {
+    return [
+      { id: "create", label: t("jobs.event.create") },
+      { id: "modify", label: t("jobs.event.modify") },
+      { id: "remove", label: t("jobs.event.remove") },
+      { id: "rename", label: t("jobs.event.rename") },
+    ];
+  }
 
-  const DETECTION_OPTIONS: { value: JobWatchDetectionMode["kind"]; label: string; hint: string }[] = [
-    { value: "realtime", label: "Tempo real", hint: "Eventos nativos do SO." },
-    { value: "polling", label: "Polling", hint: "Varredura periódica." },
-    { value: "hybrid", label: "Híbrido", hint: "Tempo real com polling de backup." },
-  ];
+  function detectionOptions(): {
+    value: JobWatchDetectionMode["kind"];
+    label: string;
+    hint: string;
+  }[] {
+    return [
+      { value: "realtime", label: t("jobs.detection.realtime"), hint: t("jobs.detection.realtimeHint") },
+      { value: "polling", label: t("jobs.detection.polling"), hint: t("jobs.detection.pollingHint") },
+      { value: "hybrid", label: t("jobs.detection.hybrid"), hint: t("jobs.detection.hybridHint") },
+    ];
+  }
 
   $effect(() => {
     ensureFolderPlan();
@@ -153,6 +175,26 @@
       : [...watch.events, event];
     if (events.length === 0) return;
     patchWatch({ events });
+  }
+
+  function patchNamingPattern(partial: Partial<NonNullable<JobWatchConfig["namingPattern"]>>) {
+    const watch = blueprint.watch ?? defaultWatch();
+    blueprint = {
+      ...blueprint,
+      watch: { ...watch, namingPattern: { ...watch.namingPattern, ...partial } },
+    };
+  }
+
+  function syncRenameTemplateText() {
+    const pipeline = blueprint.watch?.namingPattern?.templateOverride ?? null;
+    renameTemplateText = pipeline ? pipelineToDisplayString(pipeline) : "";
+  }
+
+  function handleRenameTemplateInput(value: string) {
+    renameTemplateText = value;
+    patchNamingPattern({
+      templateOverride: value.trim() ? parseTemplateDisplayString(value) : null,
+    });
   }
 
   function nodesSnapshot() {
@@ -252,13 +294,13 @@
   <li class="folder-node" style:margin-left={`${depth * 1.25}rem`}>
     <div class="node-grid">
       <label class="field compact">
-        <span class="field-label">Ação</span>
+        <span class="field-label">{t("folders.action")}</span>
         <select
           class="field-input"
           value={node.action}
           onchange={(e) => patchNode(path, { action: e.currentTarget.value as FolderAction })}
         >
-          {#each FOLDER_ACTION_OPTIONS as option}
+          {#each folderActionOptions() as option}
             <option value={option.value}>{option.label}</option>
           {/each}
         </select>
@@ -266,7 +308,7 @@
 
       {#if node.action === "create"}
         <label class="field">
-          <span class="field-label">Nome/template</span>
+          <span class="field-label">{t("folders.nameTemplate")}</span>
           <input
             class="field-input mono"
             value={node.name}
@@ -276,7 +318,7 @@
         </label>
       {:else if node.action === "rename"}
         <label class="field">
-          <span class="field-label">Pasta origem</span>
+          <span class="field-label">{t("folders.sourceFolder")}</span>
           <input
             class="field-input mono"
             value={node.sourcePath}
@@ -285,7 +327,7 @@
           />
         </label>
         <label class="field">
-          <span class="field-label">Novo nome/template</span>
+          <span class="field-label">{t("folders.newNameTemplate")}</span>
           <input
             class="field-input mono"
             value={node.name}
@@ -295,7 +337,7 @@
         </label>
       {:else if node.action === "move" || node.action === "copy"}
         <label class="field">
-          <span class="field-label">Pasta origem</span>
+          <span class="field-label">{t("folders.sourceFolder")}</span>
           <input
             class="field-input mono"
             value={node.sourcePath}
@@ -304,7 +346,7 @@
           />
         </label>
         <label class="field">
-          <span class="field-label">Destino/template</span>
+          <span class="field-label">{t("folders.targetTemplate")}</span>
           <input
             class="field-input mono"
             value={node.targetPath}
@@ -314,7 +356,7 @@
         </label>
       {:else}
         <label class="field">
-          <span class="field-label">Pasta a apagar</span>
+          <span class="field-label">{t("folders.folderToDelete")}</span>
           <input
             class="field-input mono"
             value={node.sourcePath}
@@ -328,7 +370,7 @@
         {#if node.action !== "delete"}
           <button type="button" class="btn ghost" onclick={() => addChildAction(path)}>
             <Plus size={12} />
-            Filha
+            {t("folders.childAction")}
           </button>
         {/if}
         <button type="button" class="btn ghost danger" onclick={() => removeNode(path)}>
@@ -357,11 +399,11 @@
     onsave?.();
   }}
 >
-  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label="Seções da estrutura de pastas">
+  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label={t("folders.nav.sectionsAria")}>
     <button
       type="button"
       class="nav-toggle btn ghost"
-      aria-label={navCollapsed ? "Expandir menu" : "Recolher menu"}
+      aria-label={navCollapsed ? t("jobs.nav.expand") : t("jobs.nav.collapse")}
       onclick={() => (navCollapsed = !navCollapsed)}
     >
       {#if navCollapsed}
@@ -371,7 +413,7 @@
       {/if}
     </button>
 
-    {#each NAV_ITEMS as item}
+    {#each navItems() as item}
       {@const Icon = item.icon}
       <button
         type="button"
@@ -391,46 +433,46 @@
   <div class="editor-content">
     {#if activePanel === "geral"}
       <div class="panel-header">
-        <h3>Geral</h3>
-        <p>Nome, raiz e estado da receita.</p>
+        <h3>{t("folders.nav.general")}</h3>
+        <p>{t("folders.generalDesc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Identificação</summary>
+        <summary>{t("jobs.general.identification")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Nome</span>
+            <span class="field-label">{t("jobs.general.name")}</span>
             <input class="field-input" bind:value={blueprint.name} maxlength="120" required />
           </label>
 
           <label class="toggle">
             <input type="checkbox" bind:checked={blueprint.enabled} />
-            <span>Estrutura ativa</span>
+            <span>{t("blueprints.activeStructure")}</span>
           </label>
         </div>
       </details>
 
       <details class="collapsible" open>
-        <summary>Pasta raiz</summary>
+        <summary>{t("folders.rootFolder")}</summary>
         <div class="collapsible-body">
           <div class="path-row">
             <label class="field">
-              <span class="field-label">Raiz da receita</span>
+              <span class="field-label">{t("folders.recipeRoot")}</span>
               <input class="field-input" bind:value={blueprint.rootPath} placeholder="C:\pasta\raiz" required />
             </label>
             <button type="button" class="btn" onclick={pickRootFolder}>
               <FolderOpen size={14} />
-              Escolher
+              {t("jobs.general.choose")}
             </button>
           </div>
         </div>
       </details>
 
       <details class="collapsible" open>
-        <summary>Conflitos</summary>
+        <summary>{t("folders.conflicts")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Quando o destino já existir</span>
+            <span class="field-label">{t("folders.whenTargetExists")}</span>
             <select
               class="field-input"
               value={blueprint.conflict}
@@ -440,61 +482,62 @@
                   conflict: e.currentTarget.value as Blueprint["conflict"],
                 })}
             >
-              <option value="skip">Ignorar</option>
-              <option value="overwrite">Sobrescrever</option>
-              <option value="rename">Renomear automaticamente</option>
+              <option value="skip">{t("folders.conflictIgnore")}</option>
+              <option value="overwrite">{t("jobs.general.conflictOverwrite")}</option>
+              <option value="rename">{t("folders.conflictAutoRename")}</option>
             </select>
           </label>
           <p class="muted">
-            Afeta ações de mover, copiar e renomear. Criar pasta existente ignora com “Ignorar” ou mantém com
-            “Sobrescrever”.
+            {t("folders.conflictHint")}
           </p>
         </div>
       </details>
     {:else if activePanel === "variaveis"}
       <div class="panel-header">
-        <h3>Variáveis</h3>
-        <p>Campos usados nos templates da árvore.</p>
+        <h3>{t("folders.nav.variables")}</h3>
+        <p>{t("folders.variablesDesc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Campos da receita</summary>
+        <summary>{t("folders.recipeFields")}</summary>
         <div class="collapsible-body">
           <button type="button" class="btn" onclick={addVariable}>
             <Plus size={14} />
-            Variável
+            {t("folders.variable")}
           </button>
 
           {#if !blueprint.folderPlan?.variables.length}
-            <p class="muted">Nenhuma variável. Você ainda pode usar data, contador e texto fixo.</p>
+            <p class="muted">{t("folders.noVariables")}</p>
           {:else}
             <ul class="variable-list">
               {#each blueprint.folderPlan.variables as variable, index}
                 <li class="variable-row">
                   <label class="field">
-                    <span class="field-label">Token</span>
+                    <span class="field-label">{t("folders.token")}</span>
                     <input
                       class="field-input mono"
                       value={variable.name}
                       placeholder="projectName"
+                      pattern="[A-Za-z_][A-Za-z0-9_]*"
+                      title={t("folders.tokenTitle")}
                       oninput={(e) => patchVariable(index, { name: e.currentTarget.value })}
                     />
                   </label>
                   <label class="field">
-                    <span class="field-label">Rótulo</span>
+                    <span class="field-label">{t("folders.label")}</span>
                     <input
                       class="field-input"
                       value={variable.label}
-                      placeholder="Nome do projeto"
+                      placeholder={t("folders.labelPlaceholder")}
                       oninput={(e) => patchVariable(index, { label: e.currentTarget.value })}
                     />
                   </label>
                   <label class="field">
-                    <span class="field-label">Valor padrão</span>
+                    <span class="field-label">{t("folders.defaultValue")}</span>
                     <input
                       class="field-input"
                       value={variable.defaultValue}
-                      placeholder="Projeto exemplo"
+                      placeholder={t("folders.defaultValuePlaceholder")}
                       oninput={(e) => patchVariable(index, { defaultValue: e.currentTarget.value })}
                     />
                   </label>
@@ -504,7 +547,7 @@
                       checked={variable.required}
                       onchange={(e) => patchVariable(index, { required: e.currentTarget.checked })}
                     />
-                    <span>Obrigatória</span>
+                    <span>{t("folders.required")}</span>
                   </label>
                   <button type="button" class="btn ghost danger" onclick={() => removeVariable(index)}>
                     <Trash size={12} />
@@ -517,27 +560,27 @@
       </details>
     {:else if activePanel === "arvore"}
       <div class="panel-header">
-        <h3>Árvore</h3>
-        <p>Ações aplicadas dentro da raiz.</p>
+        <h3>{t("folders.nav.tree")}</h3>
+        <p>{t("folders.treeDesc")}</p>
       </div>
 
       <div class="tree-layout">
         <details class="collapsible" open>
-          <summary>Ações</summary>
+          <summary>{t("folders.actions")}</summary>
           <div class="collapsible-body">
             <div class="toolbar">
               <button type="button" class="btn" onclick={() => addRootAction("create")}>
                 <Plus size={14} />
-                Criar pasta
+                {t("folders.createFolder")}
               </button>
-              <button type="button" class="btn ghost" onclick={() => addRootAction("rename")}>Renomear</button>
-              <button type="button" class="btn ghost" onclick={() => addRootAction("move")}>Mover</button>
-              <button type="button" class="btn ghost" onclick={() => addRootAction("copy")}>Copiar</button>
-              <button type="button" class="btn ghost danger" onclick={() => addRootAction("delete")}>Apagar</button>
+              <button type="button" class="btn ghost" onclick={() => addRootAction("rename")}>{t("folders.action.rename")}</button>
+              <button type="button" class="btn ghost" onclick={() => addRootAction("move")}>{t("folders.action.move")}</button>
+              <button type="button" class="btn ghost" onclick={() => addRootAction("copy")}>{t("folders.action.copy")}</button>
+              <button type="button" class="btn ghost danger" onclick={() => addRootAction("delete")}>{t("folders.action.delete")}</button>
             </div>
 
             {#if !blueprint.folderPlan?.nodes.length}
-              <p class="muted">Nenhuma ação definida.</p>
+              <p class="muted">{t("folders.noActions")}</p>
             {:else}
               <ul class="folder-tree">
                 {#each blueprint.folderPlan.nodes as node, index}
@@ -549,13 +592,15 @@
         </details>
 
         <aside class="preview-panel">
-          <h4>Preview</h4>
+          <h4>{t("folders.preview")}</h4>
           {#if planPreviewLoading}
-            <p class="muted">Calculando árvore...</p>
+            <p class="muted">{t("folders.calculating")}</p>
           {:else if planPreviewResult}
             <p class="preview-summary">
-              <strong>{planPreviewResult.folderCount}</strong>
-              ação(ões) sob <code>{planPreviewResult.rootPath || blueprint.rootPath || "-"}</code>
+              {t("folders.previewSummary", {
+                count: planPreviewResult.folderCount,
+                path: planPreviewResult.rootPath || blueprint.rootPath || "-",
+              })}
             </p>
             {#if planPreviewResult.warnings.length}
               <ul class="warning-list">
@@ -572,18 +617,18 @@
               </ul>
             {/if}
           {:else}
-            <p class="muted">Sem preview.</p>
+            <p class="muted">{t("folders.noPreview")}</p>
           {/if}
         </aside>
       </div>
     {:else if activePanel === "seguranca"}
       <div class="panel-header">
-        <h3>Segurança</h3>
-        <p>Proteções para ações destrutivas.</p>
+        <h3>{t("folders.nav.security")}</h3>
+        <p>{t("folders.securityDesc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Exclusão com conteúdo</summary>
+        <summary>{t("folders.deleteWithContent")}</summary>
         <div class="collapsible-body">
           <label class="toggle danger-text">
             <input
@@ -591,7 +636,7 @@
               checked={blueprint.folderPlan?.allowDeleteNonEmpty ?? false}
               onchange={(e) => patchFolderPlan({ allowDeleteNonEmpty: e.currentTarget.checked })}
             />
-            <span>Permitir apagar pastas com conteúdo</span>
+            <span>{t("folders.allowDeleteNonEmpty")}</span>
           </label>
 
           <label class="toggle danger-text">
@@ -600,22 +645,22 @@
               checked={blueprint.folderPlan?.confirmDeleteNonEmpty ?? false}
               onchange={(e) => patchFolderPlan({ confirmDeleteNonEmpty: e.currentTarget.checked })}
             />
-            <span>Confirmo que esta regra pode apagar arquivos e subpastas</span>
+            <span>{t("folders.confirmDeleteNonEmpty")}</span>
           </label>
 
           <p class="muted">
-            A execução bloqueia qualquer exclusão com conteúdo quando uma dessas confirmações estiver desligada.
+            {t("folders.deleteHint")}
           </p>
         </div>
       </details>
     {:else if activePanel === "automacao"}
       <div class="panel-header">
-        <h3>Automação</h3>
-        <p>Monitoramento da pasta raiz.</p>
+        <h3>{t("jobs.nav.automation")}</h3>
+        <p>{t("blueprints.automationDesc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Watch na raiz</summary>
+        <summary>{t("blueprints.watchRoot")}</summary>
         <div class="collapsible-body">
           <label class="toggle">
             <input
@@ -623,16 +668,16 @@
               checked={blueprint.watch?.enabled ?? false}
               onchange={(e) => setWatchEnabled(e.currentTarget.checked)}
             />
-            <span>Monitoramento ativo</span>
+            <span>{t("jobs.watch.enabled")}</span>
           </label>
 
           {#if blueprint.watch?.enabled}
             <p class="field-hint">
-              Monitora <code>{blueprint.rootPath || "-"}</code>.
+              {t("blueprints.watchHintPath", { path: blueprint.rootPath || "-" })}
             </p>
 
             <label class="field">
-              <span class="field-label">Estabilização (segundos)</span>
+              <span class="field-label">{t("jobs.watch.settle")}</span>
               <input
                 class="field-input"
                 type="number"
@@ -647,13 +692,13 @@
             </label>
 
             <label class="field">
-              <span class="field-label">Método de detecção</span>
+              <span class="field-label">{t("jobs.watch.detection")}</span>
               <select
                 class="field-input"
                 value={blueprint.watch.detection.kind}
                 onchange={(e) => setDetectionKind(e.currentTarget.value as JobWatchDetectionMode["kind"])}
               >
-                {#each DETECTION_OPTIONS as option}
+                {#each detectionOptions() as option}
                   <option value={option.value}>{option.label}</option>
                 {/each}
               </select>
@@ -661,7 +706,7 @@
 
             {#if blueprint.watch.detection.kind === "polling"}
               <label class="field">
-                <span class="field-label">Intervalo (segundos)</span>
+                <span class="field-label">{t("blueprints.pollIntervalSecs")}</span>
                 <input
                   class="field-input"
                   type="number"
@@ -679,7 +724,7 @@
               </label>
             {:else if blueprint.watch.detection.kind === "hybrid"}
               <label class="field">
-                <span class="field-label">Polling de backup (segundos)</span>
+                <span class="field-label">{t("jobs.watch.backupPoll")}</span>
                 <input
                   class="field-input"
                   type="number"
@@ -698,9 +743,9 @@
             {/if}
 
             <fieldset class="preset-group">
-              <legend class="field-label">Eventos</legend>
+              <legend class="field-label">{t("blueprints.events")}</legend>
               <div class="checkbox-grid">
-                {#each WATCH_EVENTS as event}
+                {#each watchEvents() as event}
                   <label class="toggle">
                     <input
                       type="checkbox"
@@ -720,31 +765,45 @@
                   checked={blueprint.watch?.autoCorrect ?? false}
                   onchange={(e) => patchWatch({ autoCorrect: e.currentTarget.checked })}
                 />
-                <span>Auto-corrigir nomenclatura</span>
+                <span>{t("folders.autoCorrect")}</span>
               </label>
               <p class="field-hint">
-                Pastas criadas fora do padrão serão renomeadas automaticamente e a estrutura interna será criada.
+                {t("folders.autoCorrectHint")}
               </p>
 
               {#if blueprint.watch?.autoCorrect}
                 <label class="field">
-                  <span class="field-label">Regex de validação (opcional)</span>
+                  <span class="field-label">{t("folders.validationRegex")}</span>
                   <input
                     class="field-input"
                     type="text"
                     placeholder="^\\d{4}\\s+.*"
                     value={blueprint.watch?.namingPattern?.regex ?? ""}
                     oninput={(e) =>
-                      patchWatch({
-                        namingPattern: {
-                          ...blueprint.watch?.namingPattern,
-                          regex: e.currentTarget.value || undefined,
-                        },
-                      })}
+                      patchNamingPattern({ regex: e.currentTarget.value || undefined })}
                   />
                 </label>
                 <p class="field-hint">
-                  Se definada, pastas cujo nome corresponder à regex serão consideradas válidas.
+                  {t("folders.validationRegexHint")}
+                </p>
+
+                <label class="field">
+                  <span class="field-label">{t("folders.renameTemplate")}</span>
+                  <input
+                    class="field-input mono"
+                    type="text"
+                    placeholder={"{year}-{month} {stem}"}
+                    value={renameTemplateText}
+                    onfocus={() => (renameTemplateFocused = true)}
+                    onblur={() => {
+                      renameTemplateFocused = false;
+                      syncRenameTemplateText();
+                    }}
+                    oninput={(e) => handleRenameTemplateInput(e.currentTarget.value)}
+                  />
+                </label>
+                <p class="field-hint">
+                  {t("folders.renameTemplateHint")}
                 </p>
               {/if}
             </div>
@@ -754,11 +813,11 @@
 
       {#if blueprint.lastRun}
         <details class="collapsible">
-          <summary>Última execução</summary>
+          <summary>{t("blueprints.lastRun")}</summary>
           <div class="collapsible-body">
             <p class="muted">
               <CalendarBlank size={14} />
-              {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium" }).format(
+              {new Intl.DateTimeFormat(currentLocale(), { dateStyle: "short", timeStyle: "medium" }).format(
                 new Date(blueprint.lastRun),
               )}
             </p>

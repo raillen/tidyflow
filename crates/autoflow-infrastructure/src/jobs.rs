@@ -1,22 +1,34 @@
 use autoflow_application::ports::JobStore;
 use autoflow_domain::{DomainError, Job, JobSummary};
+use crate::vault::{open_job_secrets, seal_job_secrets, SecretVault};
 use chrono::Utc;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
 pub struct SqliteJobStore {
     pool: SqlitePool,
+    vault: Option<SecretVault>,
 }
 
 impl SqliteJobStore {
     pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+        Self { pool, vault: None }
     }
 
-    fn deserialize(payload: &str) -> Result<Job, DomainError> {
+    pub fn with_vault(pool: SqlitePool, vault: SecretVault) -> Self {
+        Self {
+            pool,
+            vault: Some(vault),
+        }
+    }
+
+    fn deserialize(&self, payload: &str) -> Result<Job, DomainError> {
         let mut job: Job =
             serde_json::from_str(payload).map_err(|e| DomainError::Database(e.to_string()))?;
         job.normalize();
+        if let Some(vault) = &self.vault {
+            open_job_secrets(&mut job, vault);
+        }
         Ok(job)
     }
 }
@@ -32,8 +44,13 @@ impl JobStore for SqliteJobStore {
 
         Ok(rows
             .into_iter()
-            .filter_map(|(payload,)| Self::deserialize(&payload).ok())
-            .map(|job| job.summary())
+            .filter_map(|(payload,)| match self.deserialize(&payload) {
+                Ok(job) => Some(job.summary()),
+                Err(error) => {
+                    tracing::warn!(%error, "skipping invalid job payload");
+                    None
+                }
+            })
             .collect())
     }
 
@@ -45,15 +62,19 @@ impl JobStore for SqliteJobStore {
             .map_err(|e| DomainError::Database(e.to_string()))?;
 
         match row {
-            Some((payload,)) => Self::deserialize(&payload),
+            Some((payload,)) => self.deserialize(&payload),
             None => Err(DomainError::JobNotFound),
         }
     }
 
     async fn save(&self, job: &Job) -> Result<(), DomainError> {
         job.validate()?;
+        let mut stored = job.clone();
+        if let Some(vault) = &self.vault {
+            seal_job_secrets(&mut stored, vault);
+        }
         let payload =
-            serde_json::to_string(job).map_err(|e| DomainError::Database(e.to_string()))?;
+            serde_json::to_string(&stored).map_err(|e| DomainError::Database(e.to_string()))?;
         let now = Utc::now().to_rfc3339();
 
         sqlx::query(
@@ -90,7 +111,7 @@ impl JobStore for SqliteJobStore {
 
         let mut roots = Vec::new();
         for (payload,) in rows {
-            if let Ok(job) = Self::deserialize(&payload) {
+            if let Ok(job) = self.deserialize(&payload) {
                 roots.push(std::path::PathBuf::from(&job.source_path));
                 roots.push(std::path::PathBuf::from(&job.target_path));
             }

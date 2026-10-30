@@ -2,9 +2,9 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use autoflow_domain::{
-    collect_files, files_equal, file_hash, AuditStatus, ConflictStrategy, DomainError,
-    ExecutionCompleted, ExecutionProgress, Job, JobMode, NewAuditEntry,
-    NotifyEvent, SimulationReport,
+    collect_files, file_hash, files_equal, is_path_under_root, normalize_path, AuditStatus,
+    ConflictStrategy, DomainError, ExecutionCompleted, ExecutionProgress, Job, JobMode,
+    NewAuditEntry, NotifyEvent, RollbackItem, RollbackManifest, SimulationReport,
 };
 use chrono::Utc;
 use uuid::Uuid;
@@ -12,24 +12,37 @@ use uuid::Uuid;
 use crate::jobs::simulate_job_data;
 use crate::notify::fire_notify_event;
 use crate::pack::{
-    create_encrypted_package, remove_files_in_dir, resolve_encrypt_password, resolve_pack_path,
+    create_encrypted_package, remove_files_in_dir_except, resolve_encrypt_password,
+    resolve_pack_path,
 };
-use crate::ports::{AuditStore, JobStore};
+use crate::ports::{AuditStore, JobStore, RollbackStore};
 use crate::script_runner::{run_post_script, run_pre_script};
 
 pub type ProgressCallback = Box<dyn Fn(ExecutionProgress) + Send + Sync>;
 pub type CompletedCallback = Box<dyn Fn(ExecutionCompleted) + Send + Sync>;
 
+/// Storage dependencies for a job run.
+pub struct JobRunDeps<'a> {
+    pub data_dir: &'a Path,
+    pub jobs: &'a dyn JobStore,
+    pub audit: &'a dyn AuditStore,
+    pub rollback: Option<&'a dyn RollbackStore>,
+}
+
 pub async fn run_job(
-    data_dir: &Path,
-    jobs: &dyn JobStore,
-    audit: &dyn AuditStore,
+    deps: JobRunDeps<'_>,
     job_id: Uuid,
     execution_id: Uuid,
     on_progress: ProgressCallback,
     on_completed: CompletedCallback,
     cancel: tokio_util::sync::CancellationToken,
 ) -> Result<(), DomainError> {
+    let JobRunDeps {
+        data_dir,
+        jobs,
+        audit,
+        rollback,
+    } = deps;
     let mut job = jobs.get(job_id).await?;
     job.normalize();
 
@@ -42,21 +55,12 @@ pub async fn run_job(
         return Err(DomainError::SourceNotFound(job.source_path.clone()));
     }
 
-    std::fs::create_dir_all(&job.target_path)
-        .map_err(|e| DomainError::Database(e.to_string()))?;
+    std::fs::create_dir_all(&job.target_path).map_err(|e| DomainError::Database(e.to_string()))?;
 
     fire_notify_event(&job, NotifyEvent::Started, None);
 
     if let Err(error) = run_pre_script(data_dir, &job).await {
         fire_notify_event(&job, NotifyEvent::Failed, Some(&error.to_string()));
-        on_completed(ExecutionCompleted {
-            execution_id,
-            job_id,
-            success: false,
-            processed: 0,
-            failed: 0,
-            error_message: Some(error.to_string()),
-        });
         return Err(error);
     }
 
@@ -67,6 +71,7 @@ pub async fn run_job(
     let mut failed = 0u32;
     let mut skipped = 0u32;
     let mut aborted = false;
+    let mut rollback_items = Vec::new();
 
     for (index, file) in files.iter().enumerate() {
         if cancel.is_cancelled() {
@@ -91,11 +96,31 @@ pub async fn run_job(
         });
 
         let target_dir = PathBuf::from(&job.target_path);
+        if !is_path_under_root(&normalize_path(file), &normalize_path(&source)) {
+            failed += 1;
+            recent_log.insert(0, format!("FALHA {file_name}"));
+            if recent_log.len() > 10 {
+                recent_log.pop();
+            }
+            continue;
+        }
         let result = process_file(&job, file, &target_dir, &source);
 
         let duration_ms = started.elapsed().as_secs_f64() * 1000.0;
         match result {
             Ok((target_path, status)) => {
+                let target_hash = if status == AuditStatus::Copied || status == AuditStatus::Moved {
+                    file_hash(&target_path).ok()
+                } else {
+                    None
+                };
+                rollback_items.push(RollbackItem {
+                    source_path: file.display().to_string(),
+                    target_path: target_path.display().to_string(),
+                    mode: job.mode,
+                    status,
+                    target_hash,
+                });
                 if status == AuditStatus::Ignored {
                     skipped += 1;
                 } else {
@@ -189,7 +214,7 @@ pub async fn run_job(
         );
         create_encrypted_package(Path::new(&job.target_path), &pack_path, &password)?;
         if job.options.remove_files_after_pack {
-            remove_files_in_dir(Path::new(&job.target_path))?;
+            remove_files_in_dir_except(Path::new(&job.target_path), Some(&pack_path))?;
         }
     }
 
@@ -200,6 +225,13 @@ pub async fn run_job(
         }
     }
     jobs.save(&job).await?;
+
+    if let Some(store) = rollback {
+        if !rollback_items.is_empty() {
+            let manifest = RollbackManifest::new(job_id, execution_id, rollback_items);
+            let _ = store.save(&manifest).await;
+        }
+    }
 
     let success = failed == 0 && !cancel.is_cancelled() && !aborted;
     let detail = if cancel.is_cancelled() {
@@ -257,12 +289,12 @@ fn process_file(
         target_dir.join(relative)
     };
 
-    if job.options.smart_sync && target_path.exists() {
-        if files_equal(source, &target_path, job.options.strict_hash_sync)
+    if job.options.smart_sync
+        && target_path.exists()
+        && files_equal(source, &target_path, job.options.strict_hash_sync)
             .map_err(|e| e.to_string())?
-        {
-            return Ok((target_path, AuditStatus::Ignored));
-        }
+    {
+        return Ok((target_path, AuditStatus::Ignored));
     }
 
     let file_name = source
@@ -292,8 +324,27 @@ fn process_file(
             } else {
                 None
             };
-            std::fs::rename(source, &resolved_path).map_err(|e| e.to_string())?;
-            if let Some(source_hash) = source_hash {
+            if resolved_path.exists() && job.conflict == ConflictStrategy::Overwrite {
+                if resolved_path.is_dir() {
+                    std::fs::remove_dir_all(&resolved_path).map_err(|e| e.to_string())?;
+                } else {
+                    std::fs::remove_file(&resolved_path).map_err(|e| e.to_string())?;
+                }
+            }
+
+            if std::fs::rename(source, &resolved_path).is_err() {
+                std::fs::copy(source, &resolved_path).map_err(|e| e.to_string())?;
+                if let Some(source_hash) = source_hash {
+                    let target_hash = file_hash(&resolved_path).map_err(|e| e.to_string())?;
+                    if source_hash != target_hash {
+                        let _ = std::fs::remove_file(&resolved_path);
+                        return Err(format!(
+                            "integrity check failed after move: source hash {source_hash} != target hash {target_hash}"
+                        ));
+                    }
+                }
+                std::fs::remove_file(source).map_err(|e| e.to_string())?;
+            } else if let Some(source_hash) = source_hash {
                 let target_hash = file_hash(&resolved_path).map_err(|e| e.to_string())?;
                 if source_hash != target_hash {
                     return Err(format!(
@@ -370,5 +421,6 @@ fn status_label(status: AuditStatus) -> &'static str {
         AuditStatus::Ignored => "SKIPPED",
         AuditStatus::Failed => "FAILED",
         AuditStatus::Organized => "ORGANIZED",
+        AuditStatus::RolledBack => "ROLLED_BACK",
     }
 }

@@ -1,5 +1,8 @@
 ﻿# Especificacao de Contratos: AutoFlow
 
+> **LEGADO (v1).** Contratos históricos em JSON; não são a API atual do TidyFlow
+> v2. Para os contratos atuais, veja [`docs/v2/API-IPC.md`](../v2/API-IPC.md).
+
 - Status: `Draft`
 - Data: 2026-03-20
 - Tipo de contrato: `persistencia`, `interfaces publicas`

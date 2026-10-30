@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  TEMPLATE_REGEX_GROUPS,
-  TEMPLATE_TOKEN_GROUPS,
-  TEMPLATE_TRANSFORM_GROUPS,
   parseTemplateDisplayString,
   pipelineToDisplayString,
+  templateRegexGroups,
+  templateTokenGroups,
+  templateTransformGroups,
 } from "./blueprint";
 
 describe("blueprint template display parser", () => {
@@ -24,15 +24,44 @@ describe("blueprint template display parser", () => {
     ]);
     expect(pipelineToDisplayString(pipeline)).toBe(display);
   });
+
+  it("keeps ordinary path segments and unknown brackets literal", () => {
+    expect(parseTemplateDisplayString("{parent}/docs/{stem}").segments).toEqual([
+      { kind: "token", name: "parent" },
+      { kind: "literal", value: "/docs/" },
+      { kind: "token", name: "stem" },
+    ]);
+    expect(parseTemplateDisplayString("[2024] report").segments).toEqual([
+      { kind: "literal", value: "[2024] report" },
+    ]);
+  });
+
+  it("preserves windows separators while still parsing tokens", () => {
+    expect(parseTemplateDisplayString("C:\\in\\Docs\\{stem}").segments).toEqual([
+      { kind: "literal", value: "C:\\in\\Docs\\" },
+      { kind: "token", name: "stem" },
+    ]);
+  });
+
+  it("escapes literals so they round-trip", () => {
+    const pipeline = {
+      segments: [
+        { kind: "literal" as const, value: "{projectName} [final]/remove_digits/" },
+        { kind: "token" as const, name: "stem" },
+      ],
+    };
+    const display = pipelineToDisplayString(pipeline);
+    expect(parseTemplateDisplayString(display)).toEqual(pipeline);
+  });
 });
 
 describe("blueprint template toolbox groups", () => {
   it("exposes only backend-supported tokenizer entries", () => {
-    const tokenNames = TEMPLATE_TOKEN_GROUPS.flatMap((group) => group.items.map((item) => item.name));
-    const transformSyntaxes = TEMPLATE_TRANSFORM_GROUPS.flatMap((group) =>
+    const tokenNames = templateTokenGroups().flatMap((group) => group.items.map((item) => item.name));
+    const transformSyntaxes = templateTransformGroups().flatMap((group) =>
       group.items.map((item) => item.syntax),
     );
-    const regexNames = TEMPLATE_REGEX_GROUPS.flatMap((group) => group.items.map((item) => item.name));
+    const regexNames = templateRegexGroups().flatMap((group) => group.items.map((item) => item.name));
 
     expect(tokenNames).toEqual(
       expect.arrayContaining(["grandparent", "date", "year", "stem", "counter"]),

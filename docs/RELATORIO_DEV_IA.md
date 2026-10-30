@@ -1,5 +1,8 @@
 # 🚀 Como IA Acelerou o Desenvolvimento do AutoFlow: Da Ideia à Automação de Arquivos
 
+> **LEGADO (v1 / C# / Avalonia).** Texto histórico; o código atual é TidyFlow v2
+> em Tauri + Svelte + Rust.
+
 Desenvolvi o **AutoFlow** - uma solução de automação de gestão de arquivos e pastas - usando C# e Avalonia, mas foi a colaboração com LLMs (Large Language Models) que transformou uma ideia que levaria meses para sair do papel em um produto funcional em semanas.
 
 ## 💡 O Papel da IA no Desenvolvimento

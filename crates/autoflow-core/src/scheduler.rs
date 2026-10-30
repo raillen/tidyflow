@@ -56,6 +56,26 @@ async fn tick(
             missed.record(summary.id, &summary.name, next_run).await?;
         }
 
+        // Advance the schedule before enqueueing so a failed or long-running
+        // job does not get re-enqueued every minute with the same next_run.
+        let mut job = match jobs.get(summary.id).await {
+            Ok(job) => job,
+            Err(error) => {
+                tracing::warn!(job_id = %summary.id, %error, "failed to load scheduled job");
+                continue;
+            }
+        };
+        job.normalize();
+        if let Some(schedule) = &job.schedule {
+            if schedule.enabled {
+                job.next_run = schedule.compute_next_run(Utc::now());
+            }
+        }
+        if let Err(error) = jobs.save(&job).await {
+            tracing::warn!(job_id = %summary.id, %error, "failed to update scheduled job");
+            continue;
+        }
+
         if let Err(error) = queue.enqueue(summary.id) {
             if !matches!(error, DomainError::AlreadyRunning) {
                 tracing::warn!(job_id = %summary.id, %error, "failed to enqueue scheduled job");

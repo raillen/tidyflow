@@ -1,5 +1,11 @@
 ﻿# Especificação: Motor de Renomeação Inteligente (Smart Renaming Engine)
 
+> **LEGADO (v1 / C# / Avalonia).** Esta especificação não descreve o código atual.
+> A sintaxe `{FileName:Upper}`, `{Time}`, `{DateTime}` e `{JobName}` **não existe**
+> no TidyFlow v2. Para a gramática atual, veja
+> [`docs/v2/DOMAIN.md`](../v2/DOMAIN.md#6-tokenizer-blueprint) e
+> [`docs/v2/BLUEPRINT-SPEC.md`](../v2/BLUEPRINT-SPEC.md#4-tokenizer-motor-de-templates).
+
 Este documento detalha as novas funcionalidades do motor de renomeação de arquivos do AutoFlow, elevando o sistema de templates básicos para um motor de regras robusto.
 
 ## 1. Tokens Expandidos

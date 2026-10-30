@@ -1,6 +1,6 @@
 # Arquitetura — AutoFlow v2
 
-**Status:** `Planejado`
+**Status:** `Implementado (alpha)`
 
 ---
 
@@ -55,8 +55,8 @@ flowchart TB
 | `autoflow-domain` | Entidades, value objects, erros de domínio, regras puras |
 | `autoflow-application` | Use cases, ports (traits), orquestração |
 | `autoflow-infrastructure` | SQLite, filesystem, watch, scheduler, notify, crypto |
-| `autoflow-core` | Wiring DI, estado global, emissão de eventos |
-| `autoflow-tauri` | Commands, Specta bindings, plugins |
+| `autoflow-core` | Wiring DI, estado global, fila, scheduler, watch |
+| `autoflow-desktop` (`apps/desktop/src-tauri`) | Commands Tauri, plugins, shell |
 
 **Regra:** `domain` não depende de `infrastructure` nem de `tauri`.
 
@@ -153,7 +153,7 @@ Ver `BLUEPRINT-SPEC.md` para tipos File/Folder, routing e colisão.
 | `blueprint_counters` | Estado de contador por blueprint |
 | `authorized_paths_cache` | Opcional; invalidada por trigger |
 
-Migrations: `refinery` ou `sqlx migrate` em `crates/autoflow-infrastructure/migrations/`.
+Migrations: arquivos SQL em `crates/autoflow-infrastructure/migrations/`, aplicados por `sqlx` no startup.
 
 **Import v1:** script one-shot lê JSON legado → insere SQLite (fora do MVP).
 

@@ -37,17 +37,21 @@ mod tests {
     #[test]
     fn rejects_invalid_parallelism() {
         let store = MemoryStore(RwLock::new(AppSettings::default()));
-        let mut bad = AppSettings::default();
-        bad.max_parallel_files = 0;
+        let bad = AppSettings {
+            max_parallel_files: 0,
+            ..AppSettings::default()
+        };
         assert!(update_settings(&store, bad).is_err());
     }
 
     #[test]
     fn updates_theme_and_accent() {
         let store = MemoryStore(RwLock::new(AppSettings::default()));
-        let mut next = AppSettings::default();
-        next.theme = ThemeMode::Dark;
-        next.accent_color = "#7c3aed".into();
+        let next = AppSettings {
+            theme: ThemeMode::Dark,
+            accent_color: "#7c3aed".into(),
+            ..AppSettings::default()
+        };
         let saved = update_settings(&store, next).unwrap();
         assert_eq!(saved.theme, ThemeMode::Dark);
         assert_eq!(saved.accent_color, "#7c3aed");
@@ -56,8 +60,10 @@ mod tests {
     #[test]
     fn rejects_invalid_accent() {
         let store = MemoryStore(RwLock::new(AppSettings::default()));
-        let mut bad = AppSettings::default();
-        bad.accent_color = "blue".into();
+        let bad = AppSettings {
+            accent_color: "blue".into(),
+            ..AppSettings::default()
+        };
         assert!(update_settings(&store, bad).is_err());
     }
 }

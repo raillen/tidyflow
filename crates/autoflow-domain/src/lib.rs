@@ -10,6 +10,7 @@ pub mod job;
 pub mod naming;
 pub mod notify;
 pub mod path_policy;
+pub mod rollback;
 pub mod schedule;
 pub mod scripts;
 pub mod settings;
@@ -51,15 +52,25 @@ pub use execution::{
 pub use file_filter::{built_in_exclude_presets, FileFilter, SymlinkMode};
 pub use filter::{collect_files, should_process_file, FilterEngine};
 pub use job::{ConflictStrategy, Job, JobMode, JobSummary};
+pub use naming::NamingPattern;
 pub use notify::{NotifyChannel, NotifyConfig, NotifyEvent};
-pub use path_policy::{is_path_authorized, is_path_under_root, normalize_path};
+pub use path_policy::{
+    is_path_authorized, is_path_under_root, normalize_path, validate_file_name,
+    validate_relative_path,
+};
+pub use rollback::{RollbackItem, RollbackManifest, RollbackResult};
 pub use schedule::{ScheduleConfig, ScheduleRule};
 pub use scripts::ScriptsConfig;
-pub use settings::{AdminAgentMode, AdminSettings, AppSettings, HealthStatus, ThemeMode};
-pub use tokenizer::{evaluate, TemplatePipeline, TemplateSegment, TokenContext, TokenError};
+pub use settings::{
+    AdminAgentMode, AdminSettings, AppSettings, HealthStatus, NotificationSettings, SmtpSettings,
+    ThemeMode,
+};
+pub use tokenizer::{
+    evaluate, format_template, parse_template, TemplatePipeline, TemplateSegment, TokenContext,
+    TokenError,
+};
 pub use transfer::TransferOptions;
 pub use watch::{NormalizedWatchEvent, WatchConfig, WatchDetectionMode, WatchEventKind};
-pub use naming::NamingPattern;
 
 pub fn file_hash(path: &std::path::Path) -> Result<String, std::io::Error> {
     use std::io::Read;

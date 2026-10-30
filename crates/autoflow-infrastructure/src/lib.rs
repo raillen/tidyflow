@@ -3,6 +3,8 @@ pub mod audit;
 pub mod blueprints;
 pub mod database;
 pub mod jobs;
+pub mod rollback;
 pub mod secrets;
 pub mod settings;
 pub mod ui_state;
+pub mod vault;

@@ -1,11 +1,13 @@
+use std::collections::BTreeMap;
+
 use autoflow_core::AppState;
 use autoflow_domain::{
     ActiveExecution, AdminCommandQueueSummary, AdminCommandRequest, AdminCommandResult,
     AdminFleetSnapshot, AdminHeartbeatDelivery, AdminHeartbeatPayload, AdminQueuedCommand,
     AdminSignedEnvelope, AppSettings, AuditEntry, AuditExport, AuditExportFormat, AuditPage,
-    AuditQuery, Blueprint, BlueprintSimulationReport, BlueprintSummary, FolderPlan,
-    FolderPlanPreview, HealthStatus, Job, JobSummary, SimulationReport, TemplatePipeline,
-    TemplatePreview,
+    AuditQuery, Blueprint, BlueprintApplyResult, BlueprintSimulationReport, BlueprintSummary,
+    FolderPlan, FolderPlanPreview, HealthStatus, Job, JobSummary, RollbackResult, SimulationReport,
+    TemplatePipeline, TemplatePreview,
 };
 use autoflow_infrastructure::ui_state::MissedScheduleEntry;
 use serde::Serialize;
@@ -39,6 +41,27 @@ pub async fn settings_update(
         .update_settings(settings)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn security_set_pin(
+    state: State<'_, AppState>,
+    pin: String,
+) -> Result<AppSettings, String> {
+    state.security_set_pin(pin).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn security_verify_pin(state: State<'_, AppState>, pin: String) -> Result<bool, String> {
+    state
+        .security_verify_pin(pin)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn security_clear_pin(state: State<'_, AppState>) -> Result<AppSettings, String> {
+    state.security_clear_pin().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -216,6 +239,15 @@ pub fn jobs_simulate_draft(
 }
 
 #[tauri::command]
+pub async fn rollback_execute(
+    state: State<'_, AppState>,
+    job_id: String,
+) -> Result<RollbackResult, String> {
+    let job_id = Uuid::parse_str(&job_id).map_err(|e| e.to_string())?;
+    state.rollback_job(job_id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn executions_list_active(state: State<'_, AppState>) -> Vec<ActiveExecution> {
     state.list_active_executions()
 }
@@ -226,6 +258,26 @@ pub fn executions_cancel(state: State<'_, AppState>, execution_id: String) -> Re
     state
         .cancel_execution(execution_id)
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn queue_pause(state: State<'_, AppState>) {
+    state.pause_queue();
+}
+
+#[tauri::command]
+pub fn queue_resume(state: State<'_, AppState>) {
+    state.resume_queue();
+}
+
+#[tauri::command]
+pub fn queue_is_paused(state: State<'_, AppState>) -> bool {
+    state.is_queue_paused()
+}
+
+#[tauri::command]
+pub fn queue_stop_all(state: State<'_, AppState>) -> Result<(), String> {
+    state.stop_all_executions().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -257,6 +309,11 @@ pub async fn audit_export(
         .export_audit(query, format)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn audit_clear(state: State<'_, AppState>, confirm: bool) -> Result<(), String> {
+    state.clear_audit(confirm).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -349,21 +406,48 @@ pub async fn blueprints_simulate(
 }
 
 #[tauri::command]
+pub async fn blueprints_simulate_with_variables(
+    state: State<'_, AppState>,
+    id: String,
+    variables: BTreeMap<String, String>,
+) -> Result<BlueprintSimulationReport, String> {
+    let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    state
+        .simulate_blueprint_with_variables(id, variables)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn blueprints_apply(
     state: State<'_, AppState>,
     id: String,
-) -> Result<(u32, u32), String> {
+) -> Result<BlueprintApplyResult, String> {
     let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
     state.apply_blueprint(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn blueprints_apply_with_variables(
+    state: State<'_, AppState>,
+    id: String,
+    variables: BTreeMap<String, String>,
+) -> Result<BlueprintApplyResult, String> {
+    let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    state
+        .apply_blueprint_with_variables(id, variables)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn blueprints_preview_template(
     state: State<'_, AppState>,
     pipeline: TemplatePipeline,
+    rename_template: Option<TemplatePipeline>,
     sample_path: String,
 ) -> TemplatePreview {
-    state.preview_template(pipeline, sample_path)
+    state.preview_template(pipeline, rename_template, sample_path)
 }
 
 #[tauri::command]
@@ -371,6 +455,7 @@ pub fn blueprints_preview_plan(
     state: State<'_, AppState>,
     root_path: String,
     folder_plan: FolderPlan,
+    variables: BTreeMap<String, String>,
 ) -> FolderPlanPreview {
-    state.preview_folder_plan(root_path, folder_plan)
+    state.preview_folder_plan(root_path, folder_plan, variables)
 }

@@ -1,6 +1,6 @@
 # Domínio — AutoFlow v2
 
-**Status:** `Implementado (jobs)` · Blueprints: ver `BLUEPRINT-SPEC.md`
+**Status:** `Implementado` · Blueprints: ver `BLUEPRINT-SPEC.md`
 
 Regras de negócio puras. Implementação Rust em `crates/autoflow-domain`. Tipos espelhados em TS via Specta + Zod.
 
@@ -38,13 +38,20 @@ Regra de organização em uma pasta raiz.
 | Campo | Tipo | Regras |
 |-------|------|--------|
 | `id` | UUID | |
-| `name` | string | |
-| `root_path` | PathBuf | Pasta monitorada |
+| `name` | string | 1–120 caracteres |
+| `root_path` | string | Pasta raiz monitorada |
 | `kind` | `File \| Folder` | File → arquivos; Folder → pastas |
-| `rename_template` | string? | Gramática §4 |
-| `scaffolding` | Vec\<String\> | Subpastas a criar |
-| `counter` | CounterConfig | |
+| `search` | FileFilter | Filtros de arquivos (kind File) |
+| `routing` | RoutingConfig | Template de caminho + criar pastas intermediárias |
+| `operation` | `Move \| Copy` | Operação do blueprint de arquivos |
+| `recursive` | bool | Busca recursiva |
+| `conflict` | `Skip \| Overwrite \| Rename` | Estratégia de colisão |
+| `rename_template` | TemplatePipeline? | Nome final opcional, independente do conflito |
+| `folder_plan` | FolderPlan | Árvore de ações + variáveis (obrigatório no kind Folder) |
+| `watch` | WatchConfig? | Automação reativa |
+| `counter` | CounterConfig | Contador persistido |
 | `enabled` | bool | |
+| `last_run` | DateTime? | |
 
 ### AuditEntry (imutável)
 
@@ -150,20 +157,49 @@ UI traduz; core nunca envia string localizada.
 
 ## 6. Tokenizer (Blueprint)
 
-Gramática:
+Gramática real:
 
 ```
-Template := texto literal | { Token [:Modifier(...)]* }
-Token := Original | FileName | FolderName | JobName | Parent
-       | Year | Month | Day | Time | DateTime | Ext | Guid | Counter
-Modifier := upper | lower | snake | take(n) | regex(...) | clean | ...
+Template  := segmento*
+segmento  := "{token}" | "[transform]" | "/preset/" | literal
+token     := [A-Za-z_][A-Za-z0-9_]*
+transform := nome [ "(" arg ("," arg)* ")" ]
+preset    := nome de um preset conhecido
 ```
+
+**Avaliação:** da esquerda para a direita, em um acumulador.
+
+- `{token}` acrescenta o valor resolvido.
+- `[transform]` e `/preset/` reescrevem todo o trecho acumulado.
+- Literais são concatenados.
+
+**Tokens:** `original`, `stem`, `ext`, `parent`, `grandparent`, `date`, `year`,
+`month`, `day`, `hour`, `minute`, `second`, `counter`, `guid`, `index`.
+
+**Transforms:** `upper`, `lower`, `capitalized`, `title`, `snake`, `camel`,
+`pascal`, `kebab`, `trim`, `collapse_spaces`, `strip_symbols`,
+`spaces_to_underscore`, `sanitize_windows_filename`, `take`, `skip`, `slice`.
+
+**Regex presets:** `remove_digits`, `strip_special`, `extract_date`,
+`remove_parens`, `digits_only`, `letters_only`.
+
+**Variáveis:** `{projectName}` resolve contra `FolderPlan.variables`. O nome da
+variável deve ser um identificador (`[A-Za-z_][A-Za-z0-9_]*`).
+
+**Escapes e literais:**
+
+- `{{` e `}}` representam `{` e `}` literais.
+- `\[`, `\]`, `\/` e `\\` representam `[`, `]`, `/` e `\` literais.
+- `\` antes de outros caracteres é preservado (caminhos Windows).
+- `/nome/` só vira preset quando `nome` é um preset conhecido; `/docs/` é literal.
+- `[...]` só vira transform quando começa com um transform conhecido; `[2024]` é literal.
 
 **Invariantes:**
 
-- Não renomear se resultado == nome atual
-- Counter persistido por `(blueprint_id)`
-- Falha de template → audit WARNING, não panic
+- Datas e horas usam o fuso local do sistema.
+- Counter é persistido por `(blueprint_id, scope_key)` e reservado de forma atômica.
+- Todo caminho resolvido é validado como relativo e sem componentes `..`.
+- Falha de template aborta o plano antes de executar; o preview mostra o erro.
 
 ---
 

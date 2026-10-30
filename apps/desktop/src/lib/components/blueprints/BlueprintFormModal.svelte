@@ -15,12 +15,14 @@
     updateBlueprint,
   } from "$lib/core/ipc/client";
   import { Eye, FloppyDisk } from "phosphor-svelte";
+  import { t } from "$lib/i18n";
 
   type Props = {
     open: boolean;
     mode: "create" | "edit";
     blueprintId?: string | null;
     defaultKind?: BlueprintKind;
+    fixedKind?: BlueprintKind;
     onclose: () => void;
     onsaved?: () => void;
     onsimulated?: (report: BlueprintSimulationReport, blueprintName: string) => void;
@@ -31,12 +33,13 @@
     mode,
     blueprintId = null,
     defaultKind = "file",
+    fixedKind,
     onclose,
     onsaved,
     onsimulated,
   }: Props = $props();
 
-  let blueprint = $state<Blueprint>(createEmptyBlueprint(defaultKind));
+  let blueprint = $state<Blueprint>(createEmptyBlueprint());
   let loading = $state(false);
   let saving = $state(false);
   let simulating = $state(false);
@@ -44,19 +47,19 @@
   let loaded = $state(false);
 
   const title = $derived(
-    mode === "create" ? "Novo blueprint" : blueprint.name || "Editar blueprint",
+    mode === "create" ? t("blueprintForm.newBlueprint") : blueprint.name || t("blueprintForm.editBlueprint"),
   );
   const description = $derived(
     mode === "create"
-      ? "Configure busca, template de destino e automação."
-      : "Ajuste regras de organização e monitoramento.",
+      ? t("blueprintForm.createDesc")
+      : t("blueprintForm.editDesc"),
   );
 
   const filterCount = $derived(countBlueprintFilters(blueprint.search));
   const filterSummary = $derived(
     filterCount === 0
-      ? "Nenhum filtro ativo"
-      : `${filterCount} filtro${filterCount === 1 ? "" : "s"} ativo${filterCount === 1 ? "" : "s"}`,
+      ? t("jobForm.noFilters")
+      : t("jobForm.filtersActive", { count: filterCount }),
   );
 
   $effect(() => {
@@ -77,7 +80,7 @@
     }
 
     if (!blueprintId) {
-      error = "ID do blueprint inválido";
+      error = t("blueprintForm.invalidId");
       loading = false;
       return;
     }
@@ -93,7 +96,7 @@
       })
       .catch((e) => {
         if (cancelled) return;
-        error = e instanceof Error ? e.message : "Blueprint não encontrado";
+        error = e instanceof Error ? e.message : t("blueprintForm.notFound");
       })
       .finally(() => {
         if (!cancelled) loading = false;
@@ -116,7 +119,7 @@
       onsaved?.();
       onclose();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao salvar blueprint";
+      error = e instanceof Error ? e.message : t("blueprintForm.saveError");
     } finally {
       saving = false;
     }
@@ -124,7 +127,7 @@
 
   async function handleSimulate() {
     if (mode !== "edit" || !blueprint.id) {
-      error = "Salve o blueprint antes de simular.";
+      error = t("blueprintForm.saveBeforeSimulate");
       return;
     }
     simulating = true;
@@ -133,7 +136,7 @@
       const report = await simulateBlueprint(blueprint.id);
       onsimulated?.(report, blueprint.name.trim() || "Blueprint");
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha na simulação";
+      error = e instanceof Error ? e.message : t("blueprintForm.simulateError");
     } finally {
       simulating = false;
     }
@@ -142,14 +145,14 @@
 
 <Modal {open} {title} {description} size="large" persistKey="modal.blueprintForm" {onclose}>
   {#if loading}
-    <p class="state-msg muted">Carregando blueprint…</p>
+    <p class="state-msg muted">{t("blueprintForm.loading")}</p>
   {:else if error && !loaded}
     <p class="state-msg error" role="alert">{error}</p>
   {:else}
     {#if error}
       <p class="state-msg error" role="alert">{error}</p>
     {/if}
-    <BlueprintEditor bind:blueprint embedded onsave={handleSave} />
+    <BlueprintEditor bind:blueprint embedded lockedKind={fixedKind} onsave={handleSave} />
   {/if}
 
   {#snippet footer()}
@@ -162,7 +165,7 @@
         onclick={handleSimulate}
       >
         <Eye size={14} />
-        {simulating ? "Simulando…" : "Simular"}
+        {simulating ? t("jobForm.simulating") : t("common.simulate")}
       </button>
       <button
         type="submit"
@@ -171,7 +174,7 @@
         disabled={saving || !loaded || loading}
       >
         <FloppyDisk size={14} weight="bold" />
-        {saving ? "Salvando…" : "Salvar"}
+        {saving ? t("settings.saving") : t("common.save")}
       </button>
     </div>
   {/snippet}

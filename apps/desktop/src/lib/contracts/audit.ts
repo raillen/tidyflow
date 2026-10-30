@@ -1,4 +1,6 @@
+import { get } from "svelte/store";
 import { z } from "zod";
+import { localeStore, t } from "$lib/i18n";
 
 export const auditStatusSchema = z.enum([
   "COPIED",
@@ -6,6 +8,7 @@ export const auditStatusSchema = z.enum([
   "IGNORED",
   "FAILED",
   "ORGANIZED",
+  "ROLLED_BACK",
 ]);
 
 export const auditEntrySchema = z.object({
@@ -69,27 +72,32 @@ export type AuditPage = z.infer<typeof auditPageSchema>;
 export type AuditExportFormat = z.infer<typeof auditExportFormatSchema>;
 export type AuditExport = z.infer<typeof auditExportSchema>;
 
-export const AUDIT_STATUS_OPTIONS = [
-  { value: "all" as const, label: "Todos" },
-  { value: "COPIED" as const, label: "Copiados" },
-  { value: "MOVED" as const, label: "Movidos" },
-  { value: "ORGANIZED" as const, label: "Organizados" },
-  { value: "IGNORED" as const, label: "Ignorados" },
-  { value: "FAILED" as const, label: "Falhas" },
-];
+export function auditStatusOptions() {
+  return [
+    { value: "all" as const, label: t("audit.status.all") },
+    { value: "COPIED" as const, label: t("audit.status.copied") },
+    { value: "MOVED" as const, label: t("audit.status.moved") },
+    { value: "ORGANIZED" as const, label: t("audit.status.organized") },
+    { value: "IGNORED" as const, label: t("audit.status.ignored") },
+    { value: "FAILED" as const, label: t("audit.status.failed") },
+    { value: "ROLLED_BACK" as const, label: t("audit.status.rolledBack") },
+  ];
+}
 
 export function auditStatusLabel(status: AuditStatus): string {
   switch (status) {
     case "COPIED":
-      return "Copiado";
+      return t("audit.statusLabel.copied");
     case "MOVED":
-      return "Movido";
+      return t("audit.statusLabel.moved");
     case "ORGANIZED":
-      return "Organizado";
+      return t("audit.statusLabel.organized");
     case "IGNORED":
-      return "Ignorado";
+      return t("audit.statusLabel.ignored");
     case "FAILED":
-      return "Falha";
+      return t("audit.statusLabel.failed");
+    case "ROLLED_BACK":
+      return t("audit.statusLabel.rolledBack");
   }
 }
 
@@ -106,7 +114,8 @@ export function formatDuration(ms: number): string {
 }
 
 export function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat("pt-BR", {
+  const locale = get(localeStore) === "en-US" ? "en-US" : "pt-BR";
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "medium",
   }).format(new Date(iso));

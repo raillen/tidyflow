@@ -14,6 +14,7 @@
     type WatchDetectionMode,
     type WatchEventKind,
   } from "$lib/contracts/job";
+  import { t } from "$lib/i18n";
 
   type JobMode = Job["mode"];
   type ConflictStrategy = Job["conflict"];
@@ -52,49 +53,73 @@
 
   const filterCount = $derived(countActiveFilters(job.filters));
 
-  const NAV_ITEMS: { id: NavPanel; label: string; icon: typeof IdentificationCard }[] = [
-    { id: "geral", label: "Geral", icon: IdentificationCard },
-    { id: "filtros", label: "Filtros", icon: Funnel },
-    { id: "automacao", label: "Automação", icon: Calendar },
-    { id: "monitoramento", label: "Monitoramento", icon: Eye },
-    { id: "seguranca", label: "Segurança", icon: ShieldCheck },
-    { id: "avancado", label: "Avançado", icon: Code },
-  ];
+  function navItems(): { id: NavPanel; label: string; icon: typeof IdentificationCard }[] {
+    return [
+      { id: "geral", label: t("jobs.nav.general"), icon: IdentificationCard },
+      { id: "filtros", label: t("jobs.nav.filters"), icon: Funnel },
+      { id: "automacao", label: t("jobs.nav.automation"), icon: Calendar },
+      { id: "monitoramento", label: t("jobs.nav.monitoring"), icon: Eye },
+      { id: "seguranca", label: t("jobs.nav.security"), icon: ShieldCheck },
+      { id: "avancado", label: t("jobs.nav.advanced"), icon: Code },
+    ];
+  }
 
-  const WEEKDAYS = [
-    { value: 0, label: "Dom", fullLabel: "Domingo" },
-    { value: 1, label: "Seg", fullLabel: "Segunda-feira" },
-    { value: 2, label: "Ter", fullLabel: "Terça-feira" },
-    { value: 3, label: "Qua", fullLabel: "Quarta-feira" },
-    { value: 4, label: "Qui", fullLabel: "Quinta-feira" },
-    { value: 5, label: "Sex", fullLabel: "Sexta-feira" },
-    { value: 6, label: "Sáb", fullLabel: "Sábado" },
-  ] as const;
+  function weekdays() {
+    return [
+      { value: 0, label: t("jobs.weekday.sun"), fullLabel: t("jobs.weekday.sunFull") },
+      { value: 1, label: t("jobs.weekday.mon"), fullLabel: t("jobs.weekday.monFull") },
+      { value: 2, label: t("jobs.weekday.tue"), fullLabel: t("jobs.weekday.tueFull") },
+      { value: 3, label: t("jobs.weekday.wed"), fullLabel: t("jobs.weekday.wedFull") },
+      { value: 4, label: t("jobs.weekday.thu"), fullLabel: t("jobs.weekday.thuFull") },
+      { value: 5, label: t("jobs.weekday.fri"), fullLabel: t("jobs.weekday.friFull") },
+      { value: 6, label: t("jobs.weekday.sat"), fullLabel: t("jobs.weekday.satFull") },
+    ];
+  }
 
-  const WATCH_EVENTS: { id: WatchEventKind; label: string }[] = [
-    { id: "create", label: "Criação" },
-    { id: "modify", label: "Modificação" },
-    { id: "remove", label: "Remoção" },
-    { id: "rename", label: "Renomeação" },
-  ];
+  function watchEvents(): { id: WatchEventKind; label: string }[] {
+    return [
+      { id: "create", label: t("jobs.event.create") },
+      { id: "modify", label: t("jobs.event.modify") },
+      { id: "remove", label: t("jobs.event.remove") },
+      { id: "rename", label: t("jobs.event.rename") },
+    ];
+  }
 
-  const DETECTION_OPTIONS: { value: WatchDetectionMode["kind"]; label: string; hint: string }[] = [
-    { value: "realtime", label: "Tempo real", hint: "Eventos nativos do SO — ideal para disco local." },
-    { value: "polling", label: "Polling", hint: "Varredura periódica — ideal para rede/USB." },
-    { value: "hybrid", label: "Híbrido", hint: "Tempo real + polling de backup — máxima confiabilidade." },
-  ];
+  function detectionOptions(): { value: WatchDetectionMode["kind"]; label: string; hint: string }[] {
+    return [
+      {
+        value: "realtime",
+        label: t("jobs.detection.realtime"),
+        hint: t("jobs.detection.realtimeHint"),
+      },
+      {
+        value: "polling",
+        label: t("jobs.detection.polling"),
+        hint: t("jobs.detection.pollingHint"),
+      },
+      {
+        value: "hybrid",
+        label: t("jobs.detection.hybrid"),
+        hint: t("jobs.detection.hybridHint"),
+      },
+    ];
+  }
 
-  const RULE_KIND_OPTIONS: { value: ScheduleRule["kind"]; label: string }[] = [
-    { value: "interval", label: "Intervalo" },
-    { value: "daily", label: "Diário" },
-    { value: "weekly", label: "Dias da Semana" },
-  ];
+  function ruleKindOptions(): { value: ScheduleRule["kind"]; label: string }[] {
+    return [
+      { value: "interval", label: t("jobs.rule.interval") },
+      { value: "daily", label: t("jobs.rule.daily") },
+      { value: "weekly", label: t("jobs.rule.weekly") },
+    ];
+  }
 
-  const NOTIFY_EVENTS: { id: NotifyEvent; label: string }[] = [
-    { id: "started", label: "Início" },
-    { id: "completed", label: "Concluído" },
-    { id: "failed", label: "Falha" },
-  ];
+  function notifyEvents(): { id: NotifyEvent; label: string }[] {
+    return [
+      { id: "started", label: t("jobs.notifyEvent.started") },
+      { id: "completed", label: t("jobs.notifyEvent.completed") },
+      { id: "failed", label: t("jobs.notifyEvent.failed") },
+    ];
+  }
 
   let extensionsText = $state(job.filters.includeExtensions.join(", "));
   let contentExtensionsText = $state(job.filters.contentExtensions.join(", "));
@@ -301,7 +326,7 @@
   }
 
   function selectedWeekdayLabels(days: number[]): string {
-    return WEEKDAYS.filter((d) => days.includes(d.value))
+    return weekdays().filter((d) => days.includes(d.value))
       .map((d) => d.fullLabel)
       .join(", ");
   }
@@ -369,11 +394,11 @@
     onsave?.();
   }}
 >
-  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label="Seções da transferência">
+  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label={t("jobs.nav.sectionsAria")}>
     <button
       type="button"
       class="nav-toggle btn ghost"
-      aria-label={navCollapsed ? "Expandir menu" : "Recolher menu"}
+      aria-label={navCollapsed ? t("jobs.nav.expand") : t("jobs.nav.collapse")}
       onclick={() => (navCollapsed = !navCollapsed)}
     >
       {#if navCollapsed}
@@ -383,7 +408,7 @@
       {/if}
     </button>
 
-    {#each NAV_ITEMS as item}
+    {#each navItems() as item}
       {@const Icon = item.icon}
       <button
         type="button"
@@ -399,7 +424,7 @@
             <span class="badge">{filterCount}</span>
           {/if}
         {:else if item.id === "filtros" && filterCount > 0}
-          <span class="nav-dot" aria-label="{filterCount} filtros ativos"></span>
+          <span class="nav-dot" aria-label={t("jobs.nav.activeFilters", { count: filterCount })}></span>
         {/if}
       </button>
     {/each}
@@ -408,31 +433,31 @@
   <div class="editor-content">
     {#if activePanel === "geral"}
       <div class="panel-header">
-        <h3>Geral</h3>
-        <p>Nome, pastas e operação básica.</p>
+        <h3>{t("jobs.nav.general")}</h3>
+        <p>{t("jobs.general.desc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Identificação</summary>
+        <summary>{t("jobs.general.identification")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Nome</span>
+            <span class="field-label">{t("jobs.general.name")}</span>
             <input class="field-input" bind:value={job.name} maxlength="120" required />
           </label>
 
           <label class="toggle">
             <input type="checkbox" bind:checked={job.enabled} />
-            <span>Transferência ativa</span>
+            <span>{t("jobs.general.active")}</span>
           </label>
         </div>
       </details>
 
       <details class="collapsible" open>
-        <summary>Pastas</summary>
+        <summary>{t("jobs.general.folders")}</summary>
         <div class="collapsible-body">
           <div class="path-row">
             <label class="field">
-              <span class="field-label">Origem</span>
+              <span class="field-label">{t("jobs.general.source")}</span>
               <input
                 class="field-input"
                 bind:value={job.sourcePath}
@@ -442,13 +467,13 @@
             </label>
             <button type="button" class="btn" onclick={() => pickFolder("sourcePath")}>
               <FolderOpen size={14} />
-              Escolher
+              {t("jobs.general.choose")}
             </button>
           </div>
 
           <div class="path-row">
             <label class="field">
-              <span class="field-label">Destino</span>
+              <span class="field-label">{t("jobs.general.target")}</span>
               <input
                 class="field-input"
                 bind:value={job.targetPath}
@@ -465,10 +490,10 @@
       </details>
 
       <details class="collapsible" open>
-        <summary>Operação</summary>
+        <summary>{t("jobs.general.operation")}</summary>
         <div class="collapsible-body">
           <div class="subsection">
-            <span class="field-label">Modo</span>
+            <span class="field-label">{t("jobs.general.mode")}</span>
             <div class="option-grid">
               <button
                 type="button"
@@ -478,7 +503,7 @@
                 onclick={() => setMode("copy")}
               >
                 <Copy size={16} weight={job.mode === "copy" ? "fill" : "regular"} />
-                Cópia
+                {t("jobs.general.copy")}
               </button>
               <button
                 type="button"
@@ -491,41 +516,41 @@
                   size={16}
                   weight={job.mode === "move" ? "fill" : "regular"}
                 />
-                Mover
+                {t("jobs.general.move")}
               </button>
             </div>
           </div>
 
           <label class="field">
-            <span class="field-label">Conflito</span>
+            <span class="field-label">{t("jobs.general.conflict")}</span>
             <select
               class="field-input"
               value={job.conflict}
               onchange={(e) => setConflict(e.currentTarget.value as ConflictStrategy)}
             >
-              <option value="skip">Ignorar existentes</option>
-              <option value="overwrite">Sobrescrever</option>
-              <option value="rename">Renomear</option>
+              <option value="skip">{t("jobs.general.conflictSkip")}</option>
+              <option value="overwrite">{t("jobs.general.conflictOverwrite")}</option>
+              <option value="rename">{t("jobs.general.conflictRename")}</option>
             </select>
           </label>
         </div>
       </details>
     {:else if activePanel === "filtros"}
       <div class="panel-header">
-        <h3>Filtros</h3>
+        <h3>{t("jobs.nav.filters")}</h3>
         <p>
-          Escopo de arquivos processados.
+          {t("jobs.filters.desc")}
           {#if filterCount > 0}
-            <span class="badge">{filterCount} ativo{filterCount === 1 ? "" : "s"}</span>
+            <span class="badge">{t("jobs.filters.activeBadge", { count: filterCount })}</span>
           {/if}
         </p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Extensões e exclusões</summary>
+        <summary>{t("jobs.filters.extensions")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Extensões incluídas (vazio = todas)</span>
+            <span class="field-label">{t("jobs.filters.includeExtensions")}</span>
             <input
               class="field-input"
               value={extensionsText}
@@ -535,7 +560,7 @@
           </label>
 
           <fieldset class="preset-group">
-            <legend class="field-label">Presets de exclusão</legend>
+            <legend class="field-label">{t("jobs.filters.excludePresets")}</legend>
             <div class="checkbox-grid">
               {#each EXCLUDE_PRESETS as preset}
                 <label class="toggle">
@@ -551,7 +576,7 @@
           </fieldset>
 
           <label class="field">
-            <span class="field-label">Padrões de exclusão (um por linha)</span>
+            <span class="field-label">{t("jobs.filters.excludePatterns")}</span>
             <textarea
               class="field-input textarea"
               rows="4"
@@ -564,10 +589,10 @@
       </details>
 
       <details class="collapsible">
-        <summary>Regex e tamanho</summary>
+        <summary>{t("jobs.filters.regexSize")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Regex do nome</span>
+            <span class="field-label">{t("jobs.filters.nameRegex")}</span>
             <input
               class="field-input"
               value={job.filters.nameRegex ?? ""}
@@ -578,7 +603,7 @@
           </label>
 
           <label class="field">
-            <span class="field-label">Regex do caminho</span>
+            <span class="field-label">{t("jobs.filters.pathRegex")}</span>
             <input
               class="field-input"
               value={job.filters.pathRegex ?? ""}
@@ -590,7 +615,7 @@
 
           <div class="field-row">
             <label class="field">
-              <span class="field-label">Tamanho mínimo (bytes)</span>
+              <span class="field-label">{t("jobs.filters.minSize")}</span>
               <input
                 class="field-input"
                 type="number"
@@ -603,7 +628,7 @@
               />
             </label>
             <label class="field">
-              <span class="field-label">Tamanho máximo (bytes)</span>
+              <span class="field-label">{t("jobs.filters.maxSize")}</span>
               <input
                 class="field-input"
                 type="number"
@@ -618,7 +643,7 @@
           </div>
 
           <label class="field">
-            <span class="field-label">Profundidade máxima</span>
+            <span class="field-label">{t("jobs.filters.maxDepth")}</span>
             <input
               class="field-input"
               type="number"
@@ -634,11 +659,11 @@
       </details>
 
       <details class="collapsible">
-        <summary>Datas</summary>
+        <summary>{t("jobs.filters.dates")}</summary>
         <div class="collapsible-body">
           <div class="field-row">
             <label class="field">
-              <span class="field-label">Modificado após</span>
+              <span class="field-label">{t("jobs.filters.modifiedAfter")}</span>
               <input
                 class="field-input"
                 type="datetime-local"
@@ -648,7 +673,7 @@
               />
             </label>
             <label class="field">
-              <span class="field-label">Modificado antes</span>
+              <span class="field-label">{t("jobs.filters.modifiedBefore")}</span>
               <input
                 class="field-input"
                 type="datetime-local"
@@ -661,7 +686,7 @@
 
           <div class="field-row">
             <label class="field">
-              <span class="field-label">Criado após</span>
+              <span class="field-label">{t("jobs.filters.createdAfter")}</span>
               <input
                 class="field-input"
                 type="datetime-local"
@@ -671,7 +696,7 @@
               />
             </label>
             <label class="field">
-              <span class="field-label">Criado antes</span>
+              <span class="field-label">{t("jobs.filters.createdBefore")}</span>
               <input
                 class="field-input"
                 type="datetime-local"
@@ -683,7 +708,7 @@
           </div>
 
           <label class="field">
-            <span class="field-label">Mais antigo que (dias)</span>
+            <span class="field-label">{t("jobs.filters.olderThan")}</span>
             <input
               class="field-input"
               type="number"
@@ -699,10 +724,10 @@
       </details>
 
       <details class="collapsible">
-        <summary>Conteúdo</summary>
+        <summary>{t("jobs.filters.content")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Contém texto</span>
+            <span class="field-label">{t("jobs.filters.containsText")}</span>
             <input
               class="field-input"
               value={job.filters.contentContains ?? ""}
@@ -713,7 +738,7 @@
           </label>
 
           <label class="field">
-            <span class="field-label">Extensões para busca de conteúdo</span>
+            <span class="field-label">{t("jobs.filters.contentExtensions")}</span>
             <input
               class="field-input"
               value={contentExtensionsText}
@@ -725,7 +750,7 @@
       </details>
 
       <details class="collapsible">
-        <summary>Comportamento</summary>
+        <summary>{t("jobs.filters.behavior")}</summary>
         <div class="collapsible-body">
           <label class="toggle">
             <input
@@ -733,7 +758,7 @@
               checked={job.filters.recursive}
               onchange={(e) => patchFilters({ recursive: e.currentTarget.checked })}
             />
-            <span>Incluir subpastas</span>
+            <span>{t("jobs.filters.recursive")}</span>
           </label>
 
           <label class="toggle">
@@ -742,7 +767,7 @@
               checked={job.filters.includeHidden}
               onchange={(e) => patchFilters({ includeHidden: e.currentTarget.checked })}
             />
-            <span>Incluir ocultos</span>
+            <span>{t("jobs.filters.hidden")}</span>
           </label>
 
           <label class="toggle">
@@ -751,32 +776,32 @@
               checked={job.filters.skipEmptyFiles}
               onchange={(e) => patchFilters({ skipEmptyFiles: e.currentTarget.checked })}
             />
-            <span>Ignorar arquivos vazios</span>
+            <span>{t("jobs.filters.skipEmpty")}</span>
           </label>
 
           <label class="field">
-            <span class="field-label">Links simbólicos</span>
+            <span class="field-label">{t("jobs.filters.symlinks")}</span>
             <select
               class="field-input"
               value={job.filters.symlinkMode}
               onchange={(e) =>
                 patchFilters({ symlinkMode: e.currentTarget.value as SymlinkMode })}
             >
-              <option value="follow">Seguir destino</option>
-              <option value="copyLink">Copiar link</option>
-              <option value="skip">Ignorar</option>
+              <option value="follow">{t("jobs.filters.symlinkFollow")}</option>
+              <option value="copyLink">{t("jobs.filters.symlinkCopy")}</option>
+              <option value="skip">{t("jobs.filters.symlinkSkip")}</option>
             </select>
           </label>
         </div>
       </details>
     {:else if activePanel === "automacao"}
       <div class="panel-header">
-        <h3>Automação</h3>
-        <p>Agendamento periódico. Mutuamente exclusivo com monitoramento.</p>
+        <h3>{t("jobs.nav.automation")}</h3>
+        <p>{t("jobs.auto.desc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Agendamento</summary>
+        <summary>{t("jobs.auto.schedule")}</summary>
         <div class="collapsible-body">
           <label class="toggle">
             <input
@@ -784,19 +809,19 @@
               checked={job.schedule?.enabled ?? false}
               onchange={(e) => setScheduleEnabled(e.currentTarget.checked)}
             />
-            <span>Agendamento ativo</span>
+            <span>{t("jobs.auto.enabled")}</span>
           </label>
 
           {#if job.schedule?.enabled}
-            <p class="field-hint">Incompatível com monitoramento ativo — um desativa o outro ao salvar.</p>
+            <p class="field-hint">{t("jobs.auto.exclusiveHint")}</p>
             <label class="field">
-              <span class="field-label">Fuso horário</span>
+              <span class="field-label">{t("jobs.auto.timezone")}</span>
               <select
                 class="field-input"
                 value={job.schedule.timezone}
                 onchange={(e) => patchSchedule({ timezone: e.currentTarget.value })}
               >
-                <option value="local">Local do sistema</option>
+                <option value="local">{t("jobs.auto.tzLocal")}</option>
                 <option value="UTC">UTC</option>
                 <option value="America/Sao_Paulo">America/Sao_Paulo</option>
                 <option value="Europe/Lisbon">Europe/Lisbon</option>
@@ -804,14 +829,14 @@
             </label>
 
             <label class="field">
-              <span class="field-label">Tipo de regra</span>
+              <span class="field-label">{t("jobs.auto.ruleKind")}</span>
               <select
                 class="field-input"
                 value={job.schedule.rule.kind}
                 onchange={(e) =>
                   setRuleKind(e.currentTarget.value as ScheduleRule["kind"])}
               >
-                {#each RULE_KIND_OPTIONS as option}
+                {#each ruleKindOptions() as option}
                   <option value={option.value}>{option.label}</option>
                 {/each}
               </select>
@@ -819,13 +844,13 @@
 
             {#if job.schedule.rule.kind === "weekly"}
               <p class="field-hint">
-                Escolha em quais dias a transferência deve rodar automaticamente, no horário definido abaixo.
+                {t("jobs.auto.weeklyHint")}
               </p>
             {/if}
 
             {#if job.schedule.rule.kind === "interval"}
               <label class="field">
-                <span class="field-label">Intervalo (minutos)</span>
+                <span class="field-label">{t("jobs.auto.intervalMinutes")}</span>
                 <input
                   class="field-input"
                   type="number"
@@ -841,7 +866,7 @@
             {:else if job.schedule.rule.kind === "daily"}
               <div class="field-row">
                 <label class="field">
-                  <span class="field-label">Hora</span>
+                  <span class="field-label">{t("jobs.auto.hour")}</span>
                   <input
                     class="field-input"
                     type="number"
@@ -857,7 +882,7 @@
                   />
                 </label>
                 <label class="field">
-                  <span class="field-label">Minuto</span>
+                  <span class="field-label">{t("jobs.auto.minute")}</span>
                   <input
                     class="field-input"
                     type="number"
@@ -875,9 +900,9 @@
               </div>
             {:else if job.schedule.rule.kind === "weekly"}
               <fieldset class="preset-group">
-                <legend class="field-label">Dias selecionados</legend>
-                <div class="weekday-grid" role="group" aria-label="Dias da semana">
-                  {#each WEEKDAYS as day}
+                <legend class="field-label">{t("jobs.auto.selectedDays")}</legend>
+                <div class="weekday-grid" role="group" aria-label={t("jobs.auto.weekdaysAria")}>
+                  {#each weekdays() as day}
                     <button
                       type="button"
                       class="weekday-btn"
@@ -896,7 +921,7 @@
               </fieldset>
               <div class="field-row">
                 <label class="field">
-                  <span class="field-label">Hora</span>
+                  <span class="field-label">{t("jobs.auto.hour")}</span>
                   <input
                     class="field-input"
                     type="number"
@@ -912,7 +937,7 @@
                   />
                 </label>
                 <label class="field">
-                  <span class="field-label">Minuto</span>
+                  <span class="field-label">{t("jobs.auto.minute")}</span>
                   <input
                     class="field-input"
                     type="number"
@@ -934,12 +959,12 @@
       </details>
     {:else if activePanel === "monitoramento"}
       <div class="panel-header">
-        <h3>Monitoramento</h3>
-        <p>Dispara a transferência quando a pasta de origem muda. Exclusivo com agendamento.</p>
+        <h3>{t("jobs.nav.monitoring")}</h3>
+        <p>{t("jobs.watch.desc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Watch na origem</summary>
+        <summary>{t("jobs.watch.section")}</summary>
         <div class="collapsible-body">
           <label class="toggle">
             <input
@@ -947,17 +972,16 @@
               checked={job.watch?.enabled ?? false}
               onchange={(e) => setWatchEnabled(e.currentTarget.checked)}
             />
-            <span>Monitoramento ativo</span>
+            <span>{t("jobs.watch.enabled")}</span>
           </label>
 
           {#if job.watch?.enabled}
             <p class="field-hint">
-              Monitora <code>{job.sourcePath || "—"}</code>. Profundidade segue o filtro
-              &quot;Incluir subpastas&quot;.
+              {t("jobs.watch.hint", { path: job.sourcePath || "—" })}
             </p>
 
             <label class="field">
-              <span class="field-label">Estabilização (segundos)</span>
+              <span class="field-label">{t("jobs.watch.settle")}</span>
               <input
                 class="field-input"
                 type="number"
@@ -975,25 +999,25 @@
             </label>
 
             <label class="field">
-              <span class="field-label">Método de detecção</span>
+              <span class="field-label">{t("jobs.watch.detection")}</span>
               <select
                 class="field-input"
                 value={job.watch.detection.kind}
                 onchange={(e) =>
                   setDetectionKind(e.currentTarget.value as WatchDetectionMode["kind"])}
               >
-                {#each DETECTION_OPTIONS as option}
+                {#each detectionOptions() as option}
                   <option value={option.value}>{option.label}</option>
                 {/each}
               </select>
             </label>
             <p class="field-hint">
-              {DETECTION_OPTIONS.find((o) => o.value === job.watch?.detection.kind)?.hint}
+              {detectionOptions().find((o) => o.value === job.watch?.detection.kind)?.hint}
             </p>
 
             {#if job.watch.detection.kind === "polling"}
               <label class="field">
-                <span class="field-label">Intervalo de polling (segundos)</span>
+                <span class="field-label">{t("jobs.watch.pollInterval")}</span>
                 <input
                   class="field-input"
                   type="number"
@@ -1011,7 +1035,7 @@
               </label>
             {:else if job.watch.detection.kind === "hybrid"}
               <label class="field">
-                <span class="field-label">Polling de backup (segundos)</span>
+                <span class="field-label">{t("jobs.watch.backupPoll")}</span>
                 <input
                   class="field-input"
                   type="number"
@@ -1030,9 +1054,9 @@
             {/if}
 
             <fieldset class="preset-group">
-              <legend class="field-label">Eventos que disparam a transferência</legend>
+              <legend class="field-label">{t("jobs.watch.events")}</legend>
               <div class="checkbox-grid">
-                {#each WATCH_EVENTS as event}
+                {#each watchEvents() as event}
                   <label class="toggle">
                     <input
                       type="checkbox"
@@ -1049,12 +1073,12 @@
       </details>
     {:else if activePanel === "seguranca"}
       <div class="panel-header">
-        <h3>Segurança</h3>
-        <p>Sincronização, verificação e criptografia.</p>
+        <h3>{t("jobs.nav.security")}</h3>
+        <p>{t("jobs.security.desc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Sincronização</summary>
+        <summary>{t("jobs.security.sync")}</summary>
         <div class="collapsible-body">
           <label class="toggle">
             <input
@@ -1062,7 +1086,7 @@
               checked={job.options.smartSync}
               onchange={(e) => patchOptions({ smartSync: e.currentTarget.checked })}
             />
-            <span>Smart sync (copiar apenas alterados)</span>
+            <span>{t("jobs.security.smartSync")}</span>
           </label>
 
           <label class="toggle">
@@ -1071,13 +1095,13 @@
               checked={job.options.strictHashSync}
               onchange={(e) => patchOptions({ strictHashSync: e.currentTarget.checked })}
             />
-            <span>Hash estrito na comparação</span>
+            <span>{t("jobs.security.strictHash")}</span>
           </label>
         </div>
       </details>
 
       <details class="collapsible" open>
-        <summary>Integridade</summary>
+        <summary>{t("jobs.security.integrity")}</summary>
         <div class="collapsible-body">
           <label class="toggle">
             <input
@@ -1085,7 +1109,7 @@
               checked={job.options.verifyAfterCopy}
               onchange={(e) => patchOptions({ verifyAfterCopy: e.currentTarget.checked })}
             />
-            <span>Verificar após cópia</span>
+            <span>{t("jobs.security.verify")}</span>
           </label>
 
           <label class="toggle">
@@ -1095,13 +1119,13 @@
               onchange={(e) =>
                 patchOptions({ stopOnIntegrityError: e.currentTarget.checked })}
             />
-            <span>Parar em erro de integridade</span>
+            <span>{t("jobs.security.stopOnError")}</span>
           </label>
         </div>
       </details>
 
       <details class="collapsible">
-        <summary>Criptografia do pacote</summary>
+        <summary>{t("jobs.security.packEncryption")}</summary>
         <div class="collapsible-body">
           <label class="toggle">
             <input
@@ -1109,12 +1133,12 @@
               checked={job.options.encryptOutput}
               onchange={(e) => patchOptions({ encryptOutput: e.currentTarget.checked })}
             />
-            <span>Criptografar saída</span>
+            <span>{t("jobs.security.encrypt")}</span>
           </label>
 
           {#if job.options.encryptOutput}
             <label class="field">
-              <span class="field-label">Senha</span>
+              <span class="field-label">{t("jobs.security.password")}</span>
               <input
                 class="field-input"
                 type="password"
@@ -1132,11 +1156,11 @@
                 onchange={(e) =>
                   patchOptions({ rememberEncryptPassword: e.currentTarget.checked })}
               />
-              <span>Lembrar senha</span>
+              <span>{t("jobs.security.rememberPassword")}</span>
             </label>
 
             <label class="field">
-              <span class="field-label">Nome do pacote</span>
+              <span class="field-label">{t("jobs.security.packName")}</span>
               <input
                 class="field-input"
                 value={job.options.packFilename ?? ""}
@@ -1153,22 +1177,22 @@
                 onchange={(e) =>
                   patchOptions({ removeFilesAfterPack: e.currentTarget.checked })}
               />
-              <span>Remover arquivos após empacotar</span>
+              <span>{t("jobs.security.removeAfterPack")}</span>
             </label>
           {/if}
         </div>
       </details>
     {:else if activePanel === "avancado"}
       <div class="panel-header">
-        <h3>Avançado</h3>
-        <p>Scripts e notificações.</p>
+        <h3>{t("jobs.nav.advanced")}</h3>
+        <p>{t("jobs.advanced.desc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Scripts</summary>
+        <summary>{t("jobs.advanced.scripts")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Script pré-execução</span>
+            <span class="field-label">{t("jobs.advanced.preScript")}</span>
             <input
               class="field-input"
               value={job.scripts.preScript ?? ""}
@@ -1179,7 +1203,7 @@
           </label>
 
           <label class="field">
-            <span class="field-label">Script pós-execução</span>
+            <span class="field-label">{t("jobs.advanced.postScript")}</span>
             <input
               class="field-input"
               value={job.scripts.postScript ?? ""}
@@ -1190,7 +1214,7 @@
           </label>
 
           <label class="field">
-            <span class="field-label">Timeout (segundos)</span>
+            <span class="field-label">{t("jobs.advanced.timeout")}</span>
             <input
               class="field-input"
               type="number"
@@ -1209,7 +1233,7 @@
       <details class="collapsible" open>
         <summary>
           <Bell size={14} weight="duotone" />
-          Notificações
+          {t("jobs.advanced.notifications")}
         </summary>
         <div class="collapsible-body">
           <label class="toggle">
@@ -1218,14 +1242,14 @@
               checked={job.notify.enabled}
               onchange={(e) => patchNotify({ enabled: e.currentTarget.checked })}
             />
-            <span>Notificações ativas</span>
+            <span>{t("jobs.advanced.notifyEnabled")}</span>
           </label>
 
           {#if job.notify.enabled}
             <fieldset class="preset-group">
-              <legend class="field-label">Eventos</legend>
+              <legend class="field-label">{t("jobs.advanced.events")}</legend>
               <div class="checkbox-grid">
-                {#each NOTIFY_EVENTS as ev}
+                {#each notifyEvents() as ev}
                   <label class="toggle">
                     <input
                       type="checkbox"
@@ -1246,7 +1270,7 @@
                     <button
                       type="button"
                       class="btn ghost danger"
-                      aria-label="Remover canal"
+                      aria-label={t("jobs.advanced.removeChannel")}
                       onclick={() => removeChannel(i)}
                     >
                       <Trash size={14} />
@@ -1255,7 +1279,7 @@
 
                   {#if channel.type === "discord"}
                     <label class="field">
-                      <span class="field-label">Webhook URL</span>
+                      <span class="field-label">{t("jobs.advanced.webhookUrl")}</span>
                       <input
                         class="field-input"
                         value={channel.webhookUrl}
@@ -1268,7 +1292,7 @@
                     </label>
                   {:else if channel.type === "telegram"}
                     <label class="field">
-                      <span class="field-label">Bot token</span>
+                      <span class="field-label">{t("jobs.advanced.botToken")}</span>
                       <input
                         class="field-input"
                         value={channel.botToken}
@@ -1280,7 +1304,7 @@
                       />
                     </label>
                     <label class="field">
-                      <span class="field-label">Chat ID</span>
+                      <span class="field-label">{t("jobs.advanced.chatId")}</span>
                       <input
                         class="field-input"
                         value={channel.chatId}
@@ -1301,11 +1325,11 @@
                             rememberToken: e.currentTarget.checked,
                           })}
                       />
-                      <span>Lembrar token</span>
+                      <span>{t("jobs.advanced.rememberToken")}</span>
                     </label>
                   {:else if channel.type === "generic"}
                     <label class="field">
-                      <span class="field-label">URL</span>
+                      <span class="field-label">{t("jobs.advanced.url")}</span>
                       <input
                         class="field-input"
                         value={channel.url}
@@ -1318,7 +1342,7 @@
                       />
                     </label>
                     <label class="field">
-                      <span class="field-label">Headers (um por linha: Nome: valor)</span>
+                      <span class="field-label">{t("jobs.advanced.headers")}</span>
                       <textarea
                         class="field-input textarea"
                         rows="3"
@@ -1347,7 +1371,7 @@
               </button>
               <button type="button" class="btn" onclick={() => addChannel("generic")}>
                 <Plus size={14} />
-                Genérico
+                {t("jobs.advanced.generic")}
               </button>
             </div>
           {/if}

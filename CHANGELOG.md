@@ -1,6 +1,61 @@
-# Changelog - AutoFlow Pro
+# Changelog - TidyFlow
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
+
+## [Unreleased] - 2026-10-30
+
+### Adicionado
+- **i18n completo da UI**: dicionários `pt-BR`/`en-US` (882 chaves), `localeStore`,
+  `t(key, params)`, `currentLocale()`; listas de opções/constantes convertidas em
+  funções reativas ao locale.
+- **Segredos de notificação criptografados em repouso** (AES-256-GCM via `ring`),
+  chave mestre no OS keyring ou arquivo `0600`.
+- **Single-instance lock** por data dir via `try_lock()`.
+- **PIN ao ir para a bandeja** (close-to-tray e menu tray `hide`).
+- **Campo de template de renomeação** (`template_override`) no editor de
+  estruturas de pastas, com regex de validação.
+- **`DomainError::FolderOutOfPattern`** em `handle_folder_auto_correct`.
+- **`SecretVault`**, `seal_job_secrets`/`open_job_secrets`.
+
+### Corrigido
+- Clippy limpo no workspace (large enum variant, too many args, assign op, etc.).
+- `namingPatternSchema` aceita `null` do backend.
+- `naming_pattern` não perde `templateOverride` ao editar a regex.
+
+### Documentação
+- `STATUS.md` com o estado atual e pendências funcionais restantes.
+
+## [v0.2.1-alpha] - 2026-06-20
+
+### Adicionado
+- **Blueprints de arquivos e pastas** com routing por template, contadores,
+  variáveis, ações de pasta (`create`, `rename`, `move`, `copy`, `delete`),
+  preview, simulação e auto-correct por watch.
+- **Tokenizer de templates** com tokens, transforms, regex presets, parser de
+  texto com escapes e round-trip (`parse_template`/`format_template`).
+- **Variáveis de pasta** resolvidas em templates (`{projectName}`), com
+  validação de identificador e modal de execução.
+- **Auto-correct seguro**: mesmo resolvedor e preflight do apply manual,
+  validação de caminhos, confirmação de exclusão e proteção contra symlinks.
+- **Watch de blueprints** com recursão realtime, auto-correct no polling,
+  serialização por blueprint e supressão de eventos próprios.
+
+### Corrigido
+- Workspace Rust voltou a compilar: tipos de domínio de folder plan e
+  `BlueprintApplyResult` restaurados.
+- Contratos Tauri/IPC alinhados (`apply` retorna `processed/failed/skipped`,
+  preview de plano recebe variáveis).
+- Ordenação determinística de arquivos para `{index}` e contadores.
+- Datas/horas dos templates usam o fuso local; counter usa data local.
+- `create_intermediate_dirs` agora é respeitado.
+- `sanitize_windows_filename` cobre nomes reservados e caracteres de controle.
+
+### Documentação
+- Gramática real do tokenizer documentada em `docs/v2/DOMAIN.md`.
+- `docs/v2/README.md`, `BLUEPRINT-SPEC.md` e `API-IPC.md` alinhados ao código.
+- Documentos C#/Avalonia marcados como legado.
+
+---
 
 ## [v1.4.1] - 2026-04-06
 ### Adicionado

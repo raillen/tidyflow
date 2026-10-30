@@ -4,13 +4,16 @@ use std::hash::{Hash, Hasher};
 use std::net::ToSocketAddrs;
 use std::path::Path;
 
+use autoflow_domain::AdminEnvelopeKind;
 use autoflow_domain::{
-    ActiveExecution, AdminCommandCapability, AdminCommandKind, AdminCommandRequest,
-    AdminCommandResult, AdminCommandSupport, AdminCommandTargetResult, AdminCommandTargetStatus,
+    ActiveExecution, AdminCommandCapability, AdminCommandCompletionRequest,
+    AdminCommandCompletionStatus, AdminCommandKind, AdminCommandPollRequest,
+    AdminCommandPollResponse, AdminCommandRequest, AdminCommandResult, AdminCommandSupport,
+    AdminCommandTargetResult, AdminCommandTargetStatus, AdminEnrollmentTokenRequest,
     AdminFleetSnapshot, AdminFleetSummary, AdminHardwareProfile, AdminInstanceSnapshot,
     AdminInstanceStatus, AdminJobPayload, AdminJobRuntimeStatus, AdminManagedJob,
-    AdminManagementProfile, AdminNetworkInterface, AdminNetworkProfile, AdminSettings, DomainError,
-    Job, JobSummary,
+    AdminManagementProfile, AdminNetworkInterface, AdminNetworkProfile, AdminSettings,
+    AdminSignedEnvelope, DomainError, Job, JobSummary,
 };
 use chrono::Utc;
 
@@ -60,19 +63,54 @@ pub async fn dispatch_command(
     request: AdminCommandRequest,
 ) -> AdminCommandResult {
     let instance_id = state.instance_id().to_string();
+    let settings = state.get_settings().await.unwrap_or_default();
+    let admin = settings.admin.clone();
+
     let targets = if request.target_instance_ids.is_empty() {
         vec![instance_id.clone()]
     } else {
         request.target_instance_ids.clone()
     };
 
+    let is_batch = request.target_instance_ids.len() > 1
+        || request.job_ids.len() > 1
+        || request.execution_ids.len() > 1
+        || request.job_payloads.len() > 1;
+
     let mut results = Vec::new();
     for target in targets {
+        if !admin.enabled {
+            results.push(AdminCommandTargetResult {
+                target_instance_id: target,
+                status: AdminCommandTargetStatus::Skipped,
+                message: "Monitoramento admin desabilitado".into(),
+            });
+            continue;
+        }
+
+        if target != instance_id && !admin.allow_remote_commands {
+            results.push(AdminCommandTargetResult {
+                target_instance_id: target,
+                status: AdminCommandTargetStatus::Skipped,
+                message: "Comandos remotos desativados".into(),
+            });
+            continue;
+        }
+
         if target != instance_id {
             results.push(AdminCommandTargetResult {
                 target_instance_id: target,
                 status: AdminCommandTargetStatus::Skipped,
                 message: "Instancia remota aguardando servidor admin".into(),
+            });
+            continue;
+        }
+
+        if is_batch && !admin.allow_batch_commands {
+            results.push(AdminCommandTargetResult {
+                target_instance_id: target,
+                status: AdminCommandTargetStatus::Skipped,
+                message: "Ações em lote desativadas".into(),
             });
             continue;
         }
@@ -544,4 +582,128 @@ fn host_name() -> String {
     env::var("COMPUTERNAME")
         .or_else(|_| env::var("HOSTNAME"))
         .unwrap_or_else(|_| "local-machine".into())
+}
+
+pub fn start_remote_agent(state: crate::AppState) {
+    tokio::spawn(async move {
+        let mut enrolled = false;
+        loop {
+            let settings = match state.get_settings().await {
+                Ok(settings) => settings,
+                Err(_) => {
+                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                    continue;
+                }
+            };
+            let admin = settings.admin.clone();
+            if !admin.enabled || admin.mode != autoflow_domain::AdminAgentMode::ManagedAgent {
+                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                continue;
+            }
+            if admin.server_url.trim().is_empty() || admin.enrollment_token.trim().is_empty() {
+                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                continue;
+            }
+            let secret = match state.inner.admin_secrets.get_agent_secret() {
+                Ok(Some(secret)) => secret,
+                _ => {
+                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                    continue;
+                }
+            };
+
+            let base = admin.server_url.trim().trim_end_matches('/').to_string();
+            let instance_id = state.instance_id().to_string();
+            let client = reqwest::Client::new();
+
+            if !enrolled {
+                let snapshot = state.admin_fleet_snapshot().await.ok();
+                if let Some(snapshot) = snapshot {
+                    if let Some(instance) = snapshot.instances.into_iter().next() {
+                        let request = AdminEnrollmentTokenRequest {
+                            token: admin.enrollment_token.clone(),
+                            instance,
+                            agent_secret: secret.clone(),
+                            requested_at: Utc::now(),
+                        };
+                        let url = format!("{base}/api/enrollments");
+                        if let Ok(response) = client.post(&url).json(&request).send().await {
+                            if response.status().is_success() {
+                                enrolled = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if enrolled {
+                let _ = state.admin_send_signed_heartbeat_once().await;
+
+                if admin.allow_remote_commands {
+                    let poll_request = AdminCommandPollRequest {
+                        requested_at: Utc::now(),
+                    };
+                    if let Ok(envelope) = AdminSignedEnvelope::sign(
+                        AdminEnvelopeKind::Command,
+                        instance_id.clone(),
+                        poll_request,
+                        &secret,
+                        300,
+                    ) {
+                        let url = format!("{base}/api/agents/{}/commands/next", instance_id);
+                        if let Ok(response) = client.post(&url).json(&envelope).send().await {
+                            if let Ok(poll) = response.json::<AdminCommandPollResponse>().await {
+                                if let Some(assignment_envelope) = poll.assignment {
+                                    if assignment_envelope.verify(&secret).unwrap_or(false) {
+                                        let assignment = assignment_envelope.payload;
+                                        let result =
+                                            dispatch_command(&state, assignment.request.clone())
+                                                .await;
+                                        let status = if result.accepted {
+                                            AdminCommandCompletionStatus::Completed
+                                        } else {
+                                            AdminCommandCompletionStatus::Failed
+                                        };
+                                        let message = result
+                                            .results
+                                            .iter()
+                                            .map(|entry| entry.message.clone())
+                                            .collect::<Vec<_>>()
+                                            .join("; ");
+                                        let completion = AdminCommandCompletionRequest {
+                                            command_id: assignment.command_id,
+                                            target_instance_id: instance_id.clone(),
+                                            status,
+                                            message,
+                                            completed_at: Utc::now(),
+                                        };
+                                        if let Ok(completion_envelope) = AdminSignedEnvelope::sign(
+                                            AdminEnvelopeKind::Command,
+                                            instance_id.clone(),
+                                            completion,
+                                            &secret,
+                                            300,
+                                        ) {
+                                            let url = format!(
+                                                "{base}/api/agents/{}/commands/{}/completion",
+                                                instance_id, assignment.command_id
+                                            );
+                                            let _ = client
+                                                .post(&url)
+                                                .json(&completion_envelope)
+                                                .send()
+                                                .await;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            let wait = admin.heartbeat_interval_secs.clamp(10, 3600) as u64;
+            tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
+        }
+    });
 }

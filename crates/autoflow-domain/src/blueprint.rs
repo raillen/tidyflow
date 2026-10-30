@@ -1,8 +1,11 @@
+use std::collections::BTreeSet;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::counter::CounterConfig;
+use crate::path_policy::validate_relative_path;
 use crate::tokenizer::TemplatePipeline;
 use crate::{ConflictStrategy, DomainError, FileFilter, WatchConfig};
 
@@ -76,6 +79,10 @@ impl Default for RoutingConfig {
 pub struct FolderPlanPreviewNode {
     pub name: String,
     pub relative_path: String,
+    #[serde(default)]
+    pub action: FolderAction,
+    #[serde(default)]
+    pub source_path: String,
     pub children: Vec<FolderPlanPreviewNode>,
 }
 
@@ -92,15 +99,164 @@ pub struct FolderPlanPreview {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct FolderPlan {
-    pub nodes: Vec<FolderNode>,
+    #[serde(default = "default_folder_plan_version")]
+    pub version: u32,
+    #[serde(default)]
+    pub variables: Vec<FolderPlanVariable>,
+    #[serde(default)]
+    pub allow_delete_non_empty: bool,
+    #[serde(default)]
+    pub confirm_delete_non_empty: bool,
+    #[serde(default)]
+    pub nodes: Vec<FolderActionNode>,
+}
+
+fn default_folder_plan_version() -> u32 {
+    1
+}
+
+impl Default for FolderPlan {
+    fn default() -> Self {
+        Self {
+            version: default_folder_plan_version(),
+            variables: Vec::new(),
+            allow_delete_non_empty: false,
+            confirm_delete_non_empty: false,
+            nodes: Vec::new(),
+        }
+    }
+}
+
+impl FolderPlan {
+    pub fn validate(&self) -> Result<(), DomainError> {
+        if self.version == 0 {
+            return Err(DomainError::Validation(
+                "folder plan version must be at least 1".into(),
+            ));
+        }
+
+        let mut seen = BTreeSet::new();
+        for variable in &self.variables {
+            let name = variable.name.trim();
+            if name.is_empty() {
+                return Err(DomainError::Validation(
+                    "folder variable name cannot be empty".into(),
+                ));
+            }
+            let mut chars = name.chars();
+            let first = chars.next().expect("non-empty name");
+            if !(first.is_ascii_alphabetic() || first == '_')
+                || !chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+            {
+                return Err(DomainError::Validation(format!(
+                    "folder variable name must be an identifier: {name}"
+                )));
+            }
+            let key: String = name
+                .chars()
+                .filter(|ch| ch.is_ascii_alphanumeric())
+                .map(|ch| ch.to_ascii_lowercase())
+                .collect();
+            if !seen.insert(key) {
+                return Err(DomainError::Validation(format!(
+                    "duplicate folder variable name: {name}"
+                )));
+            }
+        }
+
+        for node in &self.nodes {
+            validate_folder_action_node(node)?;
+        }
+
+        Ok(())
+    }
+}
+
+fn validate_folder_action_node(node: &FolderActionNode) -> Result<(), DomainError> {
+    if !node.source_path.trim().is_empty() {
+        validate_relative_path(&node.source_path).map_err(DomainError::Validation)?;
+    }
+    if !node.target_path.trim().is_empty() {
+        validate_relative_path(&node.target_path).map_err(DomainError::Validation)?;
+    }
+    for child in &node.children {
+        validate_folder_action_node(child)?;
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum FolderAction {
+    #[default]
+    Create,
+    Rename,
+    Move,
+    Copy,
+    Delete,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct FolderNode {
+pub struct FolderActionNode {
+    #[serde(default)]
+    pub action: FolderAction,
+    #[serde(default)]
     pub name: String,
     #[serde(default)]
-    pub children: Vec<FolderNode>,
+    pub source_path: String,
+    #[serde(default)]
+    pub target_path: String,
+    #[serde(default)]
+    pub children: Vec<FolderActionNode>,
+}
+
+impl FolderActionNode {
+    pub fn create(name: impl Into<String>) -> Self {
+        Self {
+            action: FolderAction::Create,
+            name: name.into(),
+            source_path: String::new(),
+            target_path: String::new(),
+            children: Vec::new(),
+        }
+    }
+}
+
+impl Default for FolderActionNode {
+    fn default() -> Self {
+        Self::create("")
+    }
+}
+
+/// Backwards-compatible alias for the pre-folder-action model.
+pub type FolderNode = FolderActionNode;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FolderPlanVariable {
+    pub name: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub default_value: String,
+    #[serde(default = "default_variable_required")]
+    pub required: bool,
+}
+
+fn default_variable_required() -> bool {
+    true
+}
+
+impl Default for FolderPlanVariable {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            label: String::new(),
+            default_value: String::new(),
+            required: default_variable_required(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -139,6 +295,14 @@ pub struct BlueprintPlanSample {
 pub struct BlueprintCollision {
     pub source: String,
     pub target: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BlueprintApplyResult {
+    pub processed: u32,
+    pub failed: u32,
+    pub skipped: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,9 +356,29 @@ impl Blueprint {
         if self.root_path.trim().is_empty() {
             return Err(DomainError::Validation("root_path is required".into()));
         }
-        if self.kind == BlueprintKind::Folder && self.folder_plan.is_none() {
-            // folder_plan is optional scaffolding; routing still required via path_template
+        if self.kind == BlueprintKind::File && self.routing.path_template.segments.is_empty() {
+            return Err(DomainError::Validation(
+                "file blueprints require a routing template".into(),
+            ));
         }
+        if self.kind == BlueprintKind::Folder && self.folder_plan.is_none() {
+            return Err(DomainError::Validation(
+                "folder blueprints require a folder plan".into(),
+            ));
+        }
+        if self
+            .rename_template
+            .as_ref()
+            .is_some_and(|template| template.segments.is_empty())
+        {
+            return Err(DomainError::Validation(
+                "rename template cannot be empty".into(),
+            ));
+        }
+        if let Some(folder_plan) = &self.folder_plan {
+            folder_plan.validate()?;
+        }
+        self.counter.validate()?;
         if let Some(watch) = &self.watch {
             watch.validate()?;
         }

@@ -38,6 +38,7 @@
     processNextAdminCommand,
     sendAdminSignedHeartbeatOnce,
   } from "$lib/core/ipc/client";
+  import { t } from "$lib/i18n";
 
   let snapshot = $state<AdminFleetSnapshot | null>(null);
   let heartbeat = $state<AdminHeartbeatPayload | null>(null);
@@ -95,7 +96,7 @@
           ? selectedJobId
           : nextSelectedInstance?.jobs[0]?.id ?? null;
     } catch (error) {
-      message = error instanceof Error ? error.message : "Falha ao carregar painel admin";
+      message = error instanceof Error ? error.message : t("admin.loadError");
     } finally {
       loading = false;
     }
@@ -144,7 +145,7 @@
       createAdminCommandRequest(kind, instance.instanceId, job.id),
       "local-ui",
     );
-    message = `Comando enfileirado: ${commandKindLabel(queued.request.kind)}`;
+    message = t("admin.queued", { command: commandKindLabel(queued.request.kind) });
     [queuedCommands, queueSummary] = await Promise.all([
       listAdminCommands(30),
       fetchAdminCommandQueueSummary(),
@@ -155,17 +156,17 @@
     message = null;
     const processed = await processNextAdminCommand();
     message = processed
-      ? `Comando processado: ${commandKindLabel(processed.request.kind)}`
-      : "Nenhum comando pendente.";
+      ? t("admin.processed", { command: commandKindLabel(processed.request.kind) })
+      : t("admin.nonePending");
     await refresh();
   }
 
   async function dispatchBatchCommand(instance: AdminInstanceSnapshot, kind: AdminCommandKind) {
     if (!instance.management.allowBatchCommands) {
-      message = "Ações em lote estão desativadas nesta instância.";
+      message = t("admin.batchDisabled");
       return;
     }
-    if ((kind === "deleteJob" || kind === "stopJob") && !confirmCommand(kind, "todos os fluxos")) {
+    if ((kind === "deleteJob" || kind === "stopJob") && !confirmCommand(kind, t("admin.allJobs"))) {
       return;
     }
 
@@ -184,7 +185,7 @@
 
   function confirmCommand(kind: AdminCommandKind, targetName: string): boolean {
     const label = commandKindLabel(kind).toLowerCase();
-    return window.confirm(`Confirmar ${label} para ${targetName}?`);
+    return window.confirm(t("admin.confirmCommand", { command: label, target: targetName }));
   }
 
   function statusClass(status: AdminJobRuntimeStatus | "online" | "warning" | "offline"): string {
@@ -224,7 +225,7 @@
   }
 
   function managementModeLabel(mode: "localOnly" | "managedAgent"): string {
-    return mode === "managedAgent" ? "Agent gerenciado" : "Somente local";
+    return mode === "managedAgent" ? t("settings.adminMode.managedAgent") : t("settings.adminMode.localOnly");
   }
 
   async function copyHeartbeatPayload() {
@@ -233,9 +234,9 @@
     }
     try {
       await navigator.clipboard.writeText(JSON.stringify(heartbeat, null, 2));
-      message = "Heartbeat copiado para a area de transferencia.";
+      message = t("admin.heartbeatCopied");
     } catch {
-      message = "Nao foi possivel copiar o heartbeat neste ambiente.";
+      message = t("admin.heartbeatCopyError");
     }
   }
 
@@ -244,12 +245,12 @@
     try {
       const signedHeartbeat = await fetchAdminSignedHeartbeatPayload();
       await navigator.clipboard.writeText(JSON.stringify(signedHeartbeat, null, 2));
-      message = "Heartbeat assinado copiado para a area de transferencia.";
+      message = t("admin.signedCopied");
     } catch (error) {
       message =
         error instanceof Error
           ? error.message
-          : "Configure o segredo do agent antes de copiar o heartbeat assinado.";
+          : t("admin.signedCopyError");
     }
   }
 
@@ -257,14 +258,15 @@
     message = null;
     try {
       const delivery = await sendAdminSignedHeartbeatOnce();
+      const status = delivery.statusCode ?? t("admin.noStatus");
       message = delivery.accepted
-        ? `Heartbeat enviado: ${delivery.statusCode ?? "sem status"}`
-        : `Heartbeat recusado: ${delivery.statusCode ?? "sem status"} · ${delivery.message}`;
+        ? t("admin.heartbeatSent", { status })
+        : t("admin.heartbeatRejected", { status, message: delivery.message });
     } catch (error) {
       message =
         error instanceof Error
           ? error.message
-          : "Configure servidor e segredo antes de enviar heartbeat.";
+          : t("admin.heartbeatSendConfigError");
     }
   }
 </script>
@@ -272,49 +274,49 @@
 <section class="page admin-page">
   <header class="page-header">
     <div>
-      <h1 class="page-title">Painel administrativo</h1>
-      <p class="page-desc">Instâncias, hardware, rede, fluxos, execuções e comandos de operação.</p>
+      <h1 class="page-title">{t("admin.pageTitle")}</h1>
+      <p class="page-desc">{t("admin.subtitle")}</p>
     </div>
     <button class="btn" type="button" onclick={refresh} disabled={loading}>
       <ArrowClockwise size={14} />
-      Atualizar
+      {t("admin.refresh")}
     </button>
   </header>
 
   {#if snapshot}
-    <section class="summary-grid" aria-label="Resumo da frota">
+    <section class="summary-grid" aria-label={t("admin.fleetSummaryAria")}>
       <article class="metric-card">
         <DesktopTower size={18} weight="duotone" aria-hidden="true" />
         <div>
-          <span>Instâncias</span>
+          <span>{t("admin.instances")}</span>
           <strong>{snapshot.summary.totalInstances}</strong>
         </div>
       </article>
       <article class="metric-card success">
-        <span>Online</span>
+        <span>{t("admin.online")}</span>
         <strong>{snapshot.summary.onlineInstances}</strong>
       </article>
       <article class="metric-card warning">
-        <span>Atenção</span>
+        <span>{t("admin.warning")}</span>
         <strong>{snapshot.summary.warningInstances}</strong>
       </article>
       <article class="metric-card">
         <ChartBar size={18} weight="duotone" aria-hidden="true" />
         <div>
-          <span>Fluxos</span>
+          <span>{t("admin.jobs")}</span>
           <strong>{snapshot.summary.totalJobs}</strong>
         </div>
       </article>
       <article class="metric-card success">
-        <span>Rodando</span>
+        <span>{t("admin.running")}</span>
         <strong>{snapshot.summary.runningJobs}</strong>
       </article>
       <article class="metric-card warning">
-        <span>Fila pendente</span>
+        <span>{t("admin.queuePending")}</span>
         <strong>{queueSummary?.pending ?? 0}</strong>
       </article>
       <article class="metric-card">
-        <span>Fila finalizada</span>
+        <span>{t("admin.queueDone")}</span>
         <strong>{(queueSummary?.completed ?? 0) + (queueSummary?.skipped ?? 0)}</strong>
       </article>
     </section>
@@ -325,12 +327,12 @@
   {/if}
 
   {#if loading && !snapshot}
-    <p class="muted" aria-live="polite">Carregando painel administrativo...</p>
+    <p class="muted" aria-live="polite">{t("admin.loading")}</p>
   {:else if snapshot && selectedInstance}
     <div class="admin-layout">
-      <section class="panel instance-list" aria-label="Instâncias gerenciadas">
+      <section class="panel instance-list" aria-label={t("admin.managedInstancesAria")}>
         <div class="section-head">
-          <h2>Máquinas</h2>
+          <h2>{t("admin.machines")}</h2>
           <span>{formatDateTime(snapshot.generatedAt)}</span>
         </div>
 
@@ -352,7 +354,7 @@
         </div>
       </section>
 
-      <section class="panel instance-detail" aria-label="Detalhes da instância">
+      <section class="panel instance-detail" aria-label={t("admin.instanceDetailsAria")}>
         <div class="detail-header">
           <div>
             <h2>{selectedInstance.displayName}</h2>
@@ -365,11 +367,11 @@
 
         <div class="profile-grid">
           <div>
-            <span>Sistema</span>
+            <span>{t("admin.system")}</span>
             <strong>{selectedInstance.hardware.operatingSystem}</strong>
           </div>
           <div>
-            <span>Arquitetura</span>
+            <span>{t("admin.architecture")}</span>
             <strong>{selectedInstance.hardware.architecture}</strong>
           </div>
           <div>
@@ -377,96 +379,96 @@
             <strong>{selectedInstance.hardware.cpuThreads} threads</strong>
           </div>
           <div>
-            <span>Versão</span>
+            <span>{t("admin.version")}</span>
             <strong>{selectedInstance.hardware.appVersion}</strong>
           </div>
         </div>
 
-        <section class="subsection" aria-label="Gerenciamento">
-          <h3>Gerenciamento</h3>
+        <section class="subsection" aria-label={t("admin.management")}>
+          <h3>{t("admin.management")}</h3>
           <div class="profile-grid management-grid">
             <div>
-              <span>Modo</span>
+              <span>{t("admin.mode")}</span>
               <strong>{managementModeLabel(selectedInstance.management.mode)}</strong>
             </div>
             <div>
-              <span>Servidor</span>
-              <strong>{selectedInstance.management.serverUrl ?? "não configurado"}</strong>
+              <span>{t("admin.server")}</span>
+              <strong>{selectedInstance.management.serverUrl ?? t("admin.notConfigured")}</strong>
             </div>
             <div>
-              <span>Comandos remotos</span>
-              <strong>{selectedInstance.management.allowRemoteCommands ? "permitidos" : "bloqueados"}</strong>
+              <span>{t("admin.remoteCommands")}</span>
+              <strong>{selectedInstance.management.allowRemoteCommands ? t("admin.allowed") : t("admin.blocked")}</strong>
             </div>
             <div>
-              <span>Ações em lote</span>
-              <strong>{selectedInstance.management.allowBatchCommands ? "permitidas" : "bloqueadas"}</strong>
+              <span>{t("admin.batchActions")}</span>
+              <strong>{selectedInstance.management.allowBatchCommands ? t("admin.allowedFem") : t("admin.blockedFem")}</strong>
             </div>
           </div>
         </section>
 
-        <section class="subsection" aria-label="Rede">
-          <h3>Rede</h3>
+        <section class="subsection" aria-label={t("admin.network")}>
+          <h3>{t("admin.network")}</h3>
           <div class="network-list">
             {#each selectedInstance.network.interfaces as network}
-              <span>{network.name}: {network.address ?? "sem endereço"}</span>
+              <span>{network.name}: {network.address ?? t("admin.noAddress")}</span>
             {/each}
           </div>
         </section>
 
-        <section class="subsection" aria-label="Fluxos da instância">
+        <section class="subsection" aria-label={t("admin.jobsAria")}>
           <div class="section-head">
-            <h3>Fluxos</h3>
+            <h3>{t("admin.jobs")}</h3>
             <div class="job-actions">
               {#if selectedJob && isCommandAvailable(selectedInstance, "startJob")}
                 <button class="btn primary" type="button" onclick={() => startJob(selectedInstance, selectedJob)}>
                   <Play size={14} weight="fill" />
-                  Iniciar
+                  {t("admin.start")}
                 </button>
                 <button class="btn" type="button" onclick={() => enqueueJobCommand(selectedInstance, selectedJob, "startJob")}>
-                  Enfileirar
+                  {t("admin.enqueue")}
                 </button>
               {/if}
               {#if selectedJob && isCommandAvailable(selectedInstance, "pauseJob")}
                 <button class="btn" type="button" onclick={() => dispatchJobCommand(selectedInstance, selectedJob, "pauseJob")}>
                   <Pause size={14} weight="fill" />
-                  Pausar
+                  {t("admin.pause")}
                 </button>
               {/if}
               {#if selectedJob && isCommandAvailable(selectedInstance, "resumeJob")}
                 <button class="btn" type="button" onclick={() => dispatchJobCommand(selectedInstance, selectedJob, "resumeJob")}>
                   <Play size={14} />
-                  Continuar
+                  {t("admin.resume")}
                 </button>
               {/if}
               {#if selectedJob && isCommandAvailable(selectedInstance, "stopJob")}
                 <button class="btn danger" type="button" onclick={() => dispatchJobCommand(selectedInstance, selectedJob, "stopJob")}>
                   <Stop size={14} weight="fill" />
-                  Parar
+                  {t("admin.stop")}
                 </button>
               {/if}
               {#if selectedJob && isCommandAvailable(selectedInstance, "deleteJob")}
                 <button class="btn danger" type="button" onclick={() => dispatchJobCommand(selectedInstance, selectedJob, "deleteJob")}>
                   <Trash size={14} />
-                  Deletar
+                  {t("admin.delete")}
                 </button>
               {/if}
             </div>
           </div>
 
-          <div class="batch-actions" aria-label="Ações em lote locais">
-            <button class="btn" type="button" onclick={() => dispatchBatchCommand(selectedInstance, "pauseJob")}>Pausar todos</button>
-            <button class="btn" type="button" onclick={() => dispatchBatchCommand(selectedInstance, "resumeJob")}>Continuar todos</button>
-            <button class="btn danger" type="button" onclick={() => dispatchBatchCommand(selectedInstance, "stopJob")}>Parar execuções</button>
+          <div class="batch-actions" aria-label={t("admin.batchAria")}>
+            <button class="btn" type="button" onclick={() => dispatchBatchCommand(selectedInstance, "pauseJob")}>{t("admin.pauseAll")}</button>
+            <button class="btn" type="button" onclick={() => dispatchBatchCommand(selectedInstance, "resumeJob")}>{t("admin.resumeAll")}</button>
+            <button class="btn danger" type="button" onclick={() => dispatchBatchCommand(selectedInstance, "stopJob")}>{t("admin.stopExecutions")}</button>
           </div>
 
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Fluxo</th>
-                  <th>Status</th>
-                  <th>Origem</th>
-                  <th>Destino</th>
+                  <th>{t("history.flow")}</th>
+                  <th>{t("common.status")}</th>
+                  <th>{t("history.source")}</th>
+                  <th>{t("history.target")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -484,7 +486,7 @@
                   </tr>
                 {:else}
                   <tr>
-                    <td colspan="4" class="muted">Nenhum fluxo cadastrado nesta instância.</td>
+                    <td colspan="4" class="muted">{t("admin.noJobs")}</td>
                   </tr>
                 {/each}
               </tbody>
@@ -492,8 +494,8 @@
           </div>
         </section>
 
-        <section class="subsection" aria-label="Execuções ativas">
-          <h3>Execuções ativas</h3>
+        <section class="subsection" aria-label={t("admin.activeExecutionsAria")}>
+          <h3>{t("admin.activeExecutionsAria")}</h3>
           <div class="execution-list">
             {#each selectedInstance.activeExecutions as execution}
               <article>
@@ -501,7 +503,7 @@
                   <strong>{execution.jobName}</strong>
                   <span>{execution.percent.toFixed(1)}%</span>
                 </div>
-                <p class="muted">{execution.currentFile || "Aguardando arquivo"}</p>
+                <p class="muted">{execution.currentFile || t("admin.waitingFile")}</p>
                 {#if isCommandAvailable(selectedInstance, "cancelExecution")}
                   <button
                     class="btn danger"
@@ -509,36 +511,36 @@
                     onclick={() => cancelExecution(selectedInstance, execution.executionId)}
                   >
                     <Stop size={14} weight="fill" />
-                    Cancelar
+                    {t("common.cancel")}
                   </button>
                 {/if}
               </article>
             {:else}
-              <p class="muted">Nenhuma execução ativa.</p>
+              <p class="muted">{t("admin.noActive")}</p>
             {/each}
           </div>
         </section>
       </section>
 
-      <aside class="panel command-panel" aria-label="Capacidades administrativas">
+      <aside class="panel command-panel" aria-label={t("admin.capabilitiesAria")}>
         <div class="section-head">
-          <h2>Comandos</h2>
+          <h2>{t("admin.commands")}</h2>
           <WarningCircle size={18} weight="duotone" aria-hidden="true" />
         </div>
 
         <section>
-          <h3>Disponíveis agora</h3>
+          <h3>{t("admin.availableNow")}</h3>
           <div class="capability-list">
             {#each availableCapabilities as capability}
               <span>{commandKindLabel(capability.kind)} · {capability.scope}</span>
             {:else}
-              <span class="muted">Nenhum comando local disponível.</span>
+              <span class="muted">{t("admin.noCommands")}</span>
             {/each}
           </div>
         </section>
 
         <section>
-          <h3>Planejados para web/agente</h3>
+          <h3>{t("admin.planned")}</h3>
           <div class="capability-list planned">
             {#each plannedCapabilities as capability}
               <span>{commandKindLabel(capability.kind)} · {capability.scope}</span>
@@ -546,55 +548,55 @@
           </div>
         </section>
 
-        <section class="heartbeat-panel" aria-label="Heartbeat local">
+        <section class="heartbeat-panel" aria-label={t("admin.heartbeatAria")}>
           <div class="section-head">
-            <h3>Heartbeat</h3>
+            <h3>{t("admin.heartbeat")}</h3>
             <div class="heartbeat-actions">
               <button class="btn" type="button" onclick={copyHeartbeatPayload} disabled={!heartbeat}>
-                Copiar JSON
+                {t("admin.copyJson")}
               </button>
               <button class="btn" type="button" onclick={copySignedHeartbeatPayload} disabled={!heartbeat}>
-                Copiar assinado
+                {t("admin.copySigned")}
               </button>
               <button class="btn primary" type="button" onclick={sendSignedHeartbeat} disabled={!heartbeat}>
-                Enviar
+                {t("admin.send")}
               </button>
             </div>
           </div>
           {#if heartbeat}
             <dl>
               <div>
-                <dt>Gerado</dt>
+                <dt>{t("admin.generated")}</dt>
                 <dd>{formatDateTime(heartbeat.generatedAt)}</dd>
               </div>
               <div>
-                <dt>Ultimo sinal</dt>
+                <dt>{t("admin.lastSignal")}</dt>
                 <dd>{formatDateTime(heartbeat.instance.lastSeenAt)}</dd>
               </div>
               <div>
-                <dt>Pendentes</dt>
+                <dt>{t("admin.pending")}</dt>
                 <dd>{heartbeat.pendingCommandCount}</dd>
               </div>
               <div>
-                <dt>Modo</dt>
+                <dt>{t("admin.mode")}</dt>
                 <dd>{managementModeLabel(heartbeat.instance.management.mode)}</dd>
               </div>
             </dl>
           {:else}
-            <p class="muted">Heartbeat indisponivel.</p>
+            <p class="muted">{t("admin.heartbeatUnavailable")}</p>
           {/if}
         </section>
 
         <section>
           <div class="section-head">
-            <h3>Fila local</h3>
-            <button class="btn" type="button" onclick={processNextCommand}>Processar próximo</button>
+            <h3>{t("admin.localQueue")}</h3>
+            <button class="btn" type="button" onclick={processNextCommand}>{t("admin.processNext")}</button>
           </div>
           {#if queueSummary}
-            <div class="queue-summary" aria-label="Resumo da fila local">
-              <span>Pendentes: {queueSummary.pending}</span>
-              <span>Executando: {queueSummary.running}</span>
-              <span>Falhas: {queueSummary.failed}</span>
+            <div class="queue-summary" aria-label={t("admin.queueSummaryAria")}>
+              <span>{t("admin.pendingLabel", { count: queueSummary.pending })}</span>
+              <span>{t("admin.runningLabel", { count: queueSummary.running })}</span>
+              <span>{t("admin.failedLabel", { count: queueSummary.failed })}</span>
             </div>
           {/if}
           <div class="queue-list">
@@ -610,7 +612,7 @@
                 {/if}
               </article>
             {:else}
-              <span class="muted">Nenhum comando na fila.</span>
+              <span class="muted">{t("admin.noCommandsQueued")}</span>
             {/each}
           </div>
         </section>

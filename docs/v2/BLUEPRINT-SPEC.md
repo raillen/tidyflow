@@ -1,6 +1,6 @@
 # Spec — Blueprints (organização)
 
-**Status:** `Aprovado — pronto para implementação`  
+**Status:** `Implementado — pendências de testes golden e revisão de UX`  
 **Módulo:** separado de Fluxos (`/blueprints`), infra compartilhada (Watch, PathPolicy, Audit).
 
 ---
@@ -60,6 +60,11 @@ Organiza **pastas** sob `root_path`.
 
 **Fluxo de apply:** identificar pastas candidatas → simular movimentos/rename → aplicar.
 
+Nota: na implementação atual, o blueprint de pastas usa `folder_plan` como árvore de
+ações explícitas. Os campos `search`, `routing`, `recursive` e `operation` do
+blueprint não são usados pelo `kind=folder`; a spec antiga os descrevia, mas o
+código atual não os honra.
+
 ---
 
 ## 3. Entidade `Blueprint`
@@ -106,10 +111,13 @@ Domínio puro: `crates/autoflow-domain/src/tokenizer/`.
 
 ```
 TemplatePipeline = Vec<Segment>
-Segment = Token | Transform
+Segment = Literal | Token | Transform | RegexPreset
 ```
 
-Avaliação: `evaluate(pipeline, &TokenContext) -> Result<String, TokenError>`
+Avaliação: `evaluate(pipeline, &TokenContext) -> Result<String, TokenError>`.
+
+Parse/formatação: `parse_template(&str) -> TemplatePipeline` e
+`format_template(&TemplatePipeline) -> String`, no domínio.
 
 ### 4.2 Toolbox
 
@@ -119,21 +127,37 @@ Avaliação: `evaluate(pipeline, &TokenContext) -> Result<String, TokenError>`
 
 **Substring:** `take(n, from)`, `skip(n, from)`, `slice(from, to)`
 
-**Regex:** custom + presets:
+**Regex (somente presets):**
 - `remove_digits`, `strip_special`, `extract_date`, `remove_parens`, `digits_only`, `letters_only`
 
 **Limpeza:** `trim`, `collapse_spaces`, `strip_symbols`, `spaces_to_underscore`, `sanitize_windows_filename`
+
+**Sintaxe de texto:** `{token}`, `[transform]`, `/preset/` e literais.
+`{{`/`}}` escapam chaves; `\[`, `\]`, `\/`, `\\` escapam colchetes,
+barra e contrabarra. `/docs/` e `[2024]` permanecem literais.
+
+**Variáveis:** `{nome}` resolve contra `FolderPlan.variables`.
 
 ### 4.3 Counter
 
 `CounterConfig`: escopo `global` | `per_day` | `per_folder` | `per_parent`  
 Persistência: tabela `blueprint_counters(blueprint_id, scope_key, value)`.
 
+- `per_day` usa a data local do sistema.
+- `per_folder` usa a pasta **de origem** do arquivo.
+- A reserva do próximo valor é atômica no SQLite.
+- `start >= 1` e `padding <= 12` são validados.
+
 ### 4.4 Preview
 
-`blueprints_preview_template` — entrada: pipeline JSON + `sample_path` → `{ resultPath, resultName, valid, warnings[] }`.
+`blueprints_preview_template` — entrada: pipeline JSON, `rename_template?`,
+`sample_path` → `{ resultPath, resultName, valid, warnings[] }`.
 
-Testes golden obrigatórios por transform (fase implementação; suite completa depois).
+`blueprints_preview_plan` — entrada: `root_path`, `folder_plan`, `variables` →
+árvore com `action`, `sourcePath`, `relativePath`, `warnings[]`.
+
+Testes golden por transform ainda são pendência; a suíte atual cobre tokens,
+transforms, presets, parser, round-trip e caminhos.
 
 ---
 
@@ -160,12 +184,18 @@ Mesma struct `WatchConfig` de `docs/v2/WATCH-SPEC.md`:
 - Detecção: `realtime` | `polling` | `hybrid`
 - Eventos selecionáveis pelo usuário
 - `settle_seconds` debounce
-- Recursividade alinhada a `blueprint.recursive`
+- Recursividade alinhada a `blueprint.recursive` no modo realtime
+- Auto-correct no polling detecta pastas filhas diretas
+- Execuções são serializadas por blueprint; eventos gerados pela própria
+  execução são suprimidos por 2 s para evitar loop
 
-**Engine:** estender `WatchService` com `WatchTarget::Blueprint(Uuid)`.
+**Engine:** `WatchService` com `WatchTarget::Blueprint(Uuid)`.
 
 - Evento → debounce → `ApplyBlueprint` (não enfileira job de transferência)
 - Blueprint desabilitado ou sem watch → unregister
+
+Limitação conhecida: auto-correct cobre criação de pastas filhas diretas;
+pastas aninhadas caem no apply normal do blueprint.
 
 Schedule em blueprint: **fora do MVP** (watch + manual).
 
@@ -201,10 +231,14 @@ Mesmo padrão mental que `jobs_simulate`.
 
 ## 8. Segurança
 
-- Todo destino resolvido deve estar **sob** `canonicalize(root_path)`
-- Rejeitar `..`, paths absolutos no template, caracteres proibidos Windows
-- `PathPolicy` inclui raízes de blueprints para browse seguro futuro
-- Watch só registra se `root_path` existe e blueprint `enabled`
+- Todo destino resolvido deve estar **sob** `canonicalize(root_path)`.
+- O mesmo resolvedor e o mesmo preflight são usados no apply manual e no
+  auto-correct; não há caminho alternativo sem validação.
+- Rejeitar `..`, paths absolutos, caracteres proibidos no Windows, nomes
+  reservados (`CON`, `NUL`, `COM1`…) e componentes com ponto/espaço no fim.
+- Symlinks que apontam para fora da raiz são recusados em cópia.
+- `PathPolicy` inclui raízes de blueprints para browse seguro futuro.
+- Watch só registra se `root_path` existe e blueprint `enabled`.
 
 ---
 

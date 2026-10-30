@@ -1,5 +1,9 @@
 # Plano de Refinamento: Blueprint Ultimate (Contadores e Ajuda Avançada)
 
+> **LEGADO (v1 / C# / Avalonia).** `{Counter:N}`, `{001}` e `:clean` não existem
+> no TidyFlow v2. O counter atual usa `CounterConfig` com `start` e `padding`.
+> Veja [`docs/v2/BLUEPRINT-SPEC.md`](../v2/BLUEPRINT-SPEC.md#43-counter).
+
 Este plano descreve os ajustes finais para tornar o módulo de Blueprint impecável, focando na flexibilidade dos contadores e na educação do usuário através de dicas avançadas.
 
 ## 1. Motor de Contagem Profissional

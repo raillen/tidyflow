@@ -13,6 +13,7 @@
     type AuditEntry,
   } from "$lib/contracts/audit";
   import { fetchHealth, listRecentAudit } from "$lib/core/ipc/client";
+  import { t } from "$lib/i18n";
   import type { HealthStatus } from "$lib/contracts/settings";
 
   let health = $state<HealthStatus | null>(null);
@@ -23,7 +24,7 @@
     try {
       health = await fetchHealth();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao contactar o core Rust";
+      error = e instanceof Error ? e.message : t("dashboard.errorConnect");
     }
 
     try {
@@ -37,8 +38,8 @@
 <section class="page">
   <header class="page-header">
     <div>
-      <h1 class="page-title">Dashboard</h1>
-      <p class="page-desc">Visão geral do TidyFlow v2.</p>
+      <h1 class="page-title">{t("dashboard.title")}</h1>
+      <p class="page-desc">{t("dashboard.subtitle")}</p>
     </div>
   </header>
 
@@ -46,29 +47,29 @@
     <article class="card">
       <div class="card-head">
         <Pulse size={15} weight="duotone" aria-hidden="true" />
-        <h2>Core Rust</h2>
+        <h2>{t("dashboard.coreRust")}</h2>
       </div>
       {#if health}
         <p class="stat ok">{health.status.toUpperCase()}</p>
         <dl>
-          <div><dt>Versão</dt><dd>{health.version}</dd></div>
-          <div><dt>Módulo</dt><dd>{health.core}</dd></div>
+          <div><dt>{t("dashboard.version")}</dt><dd>{health.version}</dd></div>
+          <div><dt>{t("dashboard.module")}</dt><dd>{health.core}</dd></div>
         </dl>
       {:else if error}
         <p class="stat error" role="alert">{error}</p>
-        <p class="muted">Execute via <code>pnpm dev</code> na raiz do monorepo.</p>
+        <p class="muted">{t("dashboard.devHint")}</p>
       {:else}
-        <p class="muted" aria-live="polite">A contactar o agente…</p>
+        <p class="muted" aria-live="polite">{t("dashboard.connecting")}</p>
       {/if}
     </article>
 
     <article class="card">
       <div class="card-head">
         <ClockCounterClockwise size={15} weight="duotone" aria-hidden="true" />
-        <h2>Atividade recente</h2>
+        <h2>{t("dashboard.recentActivity")}</h2>
       </div>
       {#if recentAudit.length === 0}
-        <p class="muted">Nenhuma execução registrada ainda.</p>
+        <p class="muted">{t("dashboard.noActivity")}</p>
       {:else}
         <ul class="activity">
           {#each recentAudit as entry}
@@ -80,7 +81,7 @@
           {/each}
         </ul>
         <a class="link" href="/history">
-          Ver histórico completo
+          {t("dashboard.viewHistory")}
           <ArrowRight size={12} />
         </a>
       {/if}
@@ -89,22 +90,22 @@
     <article class="card">
       <div class="card-head">
         <ListChecks size={15} weight="duotone" aria-hidden="true" />
-        <h2>Próximas entregas</h2>
+        <h2>{t("dashboard.features")}</h2>
       </div>
       <ul class="roadmap">
-        <li>Watch folder + agendamento</li>
-        <li>Blueprints e templates</li>
-        <li>Rollback de operações</li>
+        <li>{t("dashboard.featureWatch")}</li>
+        <li>{t("dashboard.featureBlueprints")}</li>
+        <li>{t("dashboard.featureNotifications")}</li>
       </ul>
     </article>
 
     <article class="card">
       <div class="card-head">
         <BookOpen size={15} weight="duotone" aria-hidden="true" />
-        <h2>Documentação</h2>
+        <h2>{t("dashboard.docs")}</h2>
       </div>
       <p class="muted">
-        Spec em <code>docs/v2/</code> — arquitetura, IPC e roadmap.
+        {t("dashboard.docsDesc")}
       </p>
     </article>
   </div>
@@ -212,14 +213,6 @@
     font-size: var(--text-xs);
     font-weight: 600;
     color: var(--accent);
-  }
-
-  code {
-    font-family: var(--font-mono);
-    font-size: 0.92em;
-    background: var(--surface-muted);
-    padding: 0.08rem 0.3rem;
-    border-radius: 4px;
   }
 
   @media (max-width: 900px) {

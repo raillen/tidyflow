@@ -2,8 +2,10 @@ use autoflow_domain::{AppSettings, AuditPage, AuditQuery, DomainError, Job, JobS
 use uuid::Uuid;
 
 pub mod blueprint_store;
+pub mod rollback_store;
 
 pub use blueprint_store::BlueprintStore;
+pub use rollback_store::RollbackStore;
 
 pub trait SettingsStore: Send + Sync {
     fn get(&self) -> AppSettings;
@@ -27,4 +29,6 @@ pub trait AuditStore: Send + Sync {
         limit: i64,
     ) -> Result<Vec<autoflow_domain::AuditEntry>, DomainError>;
     async fn query(&self, query: AuditQuery) -> Result<AuditPage, DomainError>;
+    async fn clear(&self) -> Result<(), DomainError>;
+    async fn purge_older_than(&self, days: u32) -> Result<u64, DomainError>;
 }

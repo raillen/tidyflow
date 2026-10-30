@@ -62,6 +62,27 @@ impl AuditStore for SqliteAuditStore {
             summary,
         })
     }
+
+    async fn clear(&self) -> Result<(), DomainError> {
+        sqlx::query("DELETE FROM audit_entries")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DomainError::Database(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn purge_older_than(&self, days: u32) -> Result<u64, DomainError> {
+        if days == 0 {
+            return Ok(0);
+        }
+        let cutoff = Utc::now() - chrono::Duration::days(days as i64);
+        let result = sqlx::query("DELETE FROM audit_entries WHERE created_at < ?")
+            .bind(cutoff.to_rfc3339())
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DomainError::Database(e.to_string()))?;
+        Ok(result.rows_affected())
+    }
 }
 
 impl SqliteAuditStore {
@@ -234,6 +255,7 @@ fn status_to_db(status: AuditStatus) -> &'static str {
         AuditStatus::Ignored => "IGNORED",
         AuditStatus::Failed => "FAILED",
         AuditStatus::Organized => "ORGANIZED",
+        AuditStatus::RolledBack => "ROLLED_BACK",
     }
 }
 
@@ -244,6 +266,7 @@ fn parse_status(raw: &str) -> Result<AuditStatus, DomainError> {
         "IGNORED" => Ok(AuditStatus::Ignored),
         "FAILED" => Ok(AuditStatus::Failed),
         "ORGANIZED" => Ok(AuditStatus::Organized),
+        "ROLLED_BACK" => Ok(AuditStatus::RolledBack),
         other => Err(DomainError::Database(format!(
             "unknown audit status: {other}"
         ))),

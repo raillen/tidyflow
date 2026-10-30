@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::{Duration, Instant, UNIX_EPOCH};
 
 use autoflow_application::naming;
 use autoflow_application::ports::JobStore;
@@ -44,6 +44,8 @@ struct WatchServiceInner {
     blueprints: Arc<SqliteBlueprintStore>,
     handles: Mutex<HashMap<WatchTarget, WatchHandle>>,
     trigger_tx: mpsc::UnboundedSender<NormalizedWatchEvent>,
+    blueprint_busy: Mutex<HashSet<Uuid>>,
+    blueprint_suppressed_until: Mutex<HashMap<Uuid, Instant>>,
 }
 
 impl WatchService {
@@ -54,9 +56,20 @@ impl WatchService {
         queue: JobQueue,
     ) -> Self {
         let (trigger_tx, mut trigger_rx) = mpsc::unbounded_channel();
-        let queue_worker = queue.clone();
-        let blueprints_worker = blueprints.clone();
-        let audit_worker = audit.clone();
+        let service = Self {
+            inner: Arc::new(WatchServiceInner {
+                jobs,
+                blueprints,
+                handles: Mutex::new(HashMap::new()),
+                trigger_tx,
+                blueprint_busy: Mutex::new(HashSet::new()),
+                blueprint_suppressed_until: Mutex::new(HashMap::new()),
+            }),
+        };
+
+        let worker = service.clone();
+        let queue_worker = queue;
+        let audit_worker = audit;
 
         tokio::spawn(async move {
             while let Some(event) = trigger_rx.recv().await {
@@ -69,29 +82,35 @@ impl WatchService {
                         }
                     }
                     NormalizedWatchEvent::BlueprintTriggered { blueprint_id } => {
-                        let store = blueprints_worker.clone();
+                        if worker.is_blueprint_suppressed(blueprint_id)
+                            || !worker.begin_blueprint_run(blueprint_id)
+                        {
+                            tracing::debug!(%blueprint_id, "watch skipped a concurrent or self-triggered blueprint run");
+                            continue;
+                        }
+                        let store = worker.inner.blueprints.clone();
                         let audit = audit_worker.clone();
+                        let worker = worker.clone();
                         tokio::spawn(async move {
-                            let blueprint = match store.get(blueprint_id).await {
-                                Ok(blueprint) => blueprint,
-                                Err(error) => {
-                                    tracing::warn!(%blueprint_id, %error, "watch failed to load blueprint");
-                                    return;
-                                }
-                            };
-                            let variables = autoflow_application::blueprints::folder_plan_default_variables(
-                                blueprint.folder_plan.as_ref(),
-                            );
-                            if let Err(error) = autoflow_application::blueprints::apply_blueprint_with_variables(
-                                store.as_ref(),
-                                audit.as_ref(),
-                                blueprint_id,
-                                variables,
-                            )
-                            .await
-                            {
+                            let result = async {
+                                let blueprint = store.get(blueprint_id).await?;
+                                let variables =
+                                    autoflow_application::blueprints::folder_plan_default_variables(
+                                        blueprint.folder_plan.as_ref(),
+                                    );
+                                autoflow_application::blueprints::apply_blueprint_with_variables(
+                                    store.as_ref(),
+                                    audit.as_ref(),
+                                    blueprint_id,
+                                    variables,
+                                )
+                                .await
+                            }
+                            .await;
+                            if let Err(error) = result {
                                 tracing::warn!(%blueprint_id, %error, "watch failed to apply blueprint");
                             }
+                            worker.end_blueprint_run(blueprint_id);
                         });
                     }
                     NormalizedWatchEvent::FolderCreated {
@@ -100,62 +119,33 @@ impl WatchService {
                         folder_name,
                     } => {
                         tracing::info!(%blueprint_id, path = %path, %folder_name, "received FolderCreated event");
-                        let store = blueprints_worker.clone();
+                        if worker.is_blueprint_suppressed(blueprint_id)
+                            || !worker.begin_blueprint_run(blueprint_id)
+                        {
+                            tracing::debug!(%blueprint_id, "watch skipped a concurrent or self-triggered auto-correct run");
+                            continue;
+                        }
+                        let store = worker.inner.blueprints.clone();
                         let audit = audit_worker.clone();
+                        let worker = worker.clone();
                         tokio::spawn(async move {
-                            if let Err(error) = naming::handle_folder_auto_correct(
+                            let result = naming::handle_folder_auto_correct(
                                 store.as_ref(),
                                 audit.as_ref(),
                                 blueprint_id,
                                 &path,
                                 &folder_name,
                             )
-                            .await
-                            {
+                            .await;
+                            if let Err(error) = result {
                                 tracing::warn!(%blueprint_id, %error, "auto-correct failed for folder");
                             }
-                        });
-                    }
-                    NormalizedWatchEvent::FolderOutOfPattern {
-                        blueprint_id,
-                        path,
-                        folder_name,
-                        expected_name,
-                    } => {
-                        let store = blueprints_worker.clone();
-                        let audit = audit_worker.clone();
-                        tokio::spawn(async move {
-                            if let Err(error) = naming::handle_folder_auto_correct(
-                                store.as_ref(),
-                                audit.as_ref(),
-                                blueprint_id,
-                                &path,
-                                &folder_name,
-                            )
-                            .await
-                            {
-                                tracing::warn!(
-                                    %blueprint_id,
-                                    %folder_name,
-                                    %expected_name,
-                                    %error,
-                                    "auto-rename failed for out-of-pattern folder"
-                                );
-                            }
+                            worker.end_blueprint_run(blueprint_id);
                         });
                     }
                 }
             }
         });
-
-        let service = Self {
-            inner: Arc::new(WatchServiceInner {
-                jobs: jobs.clone(),
-                blueprints: blueprints.clone(),
-                handles: Mutex::new(HashMap::new()),
-                trigger_tx,
-            }),
-        };
 
         let boot = service.clone();
         tokio::spawn(async move {
@@ -221,6 +211,39 @@ impl WatchService {
         self.unregister(WatchTarget::Blueprint(blueprint_id));
     }
 
+    fn begin_blueprint_run(&self, blueprint_id: Uuid) -> bool {
+        let mut busy = self.inner.blueprint_busy.lock().unwrap();
+        if !busy.insert(blueprint_id) {
+            return false;
+        }
+        true
+    }
+
+    fn end_blueprint_run(&self, blueprint_id: Uuid) {
+        self.inner
+            .blueprint_busy
+            .lock()
+            .unwrap()
+            .remove(&blueprint_id);
+        self.inner
+            .blueprint_suppressed_until
+            .lock()
+            .unwrap()
+            .insert(blueprint_id, Instant::now() + Duration::from_secs(2));
+    }
+
+    fn is_blueprint_suppressed(&self, blueprint_id: Uuid) -> bool {
+        let mut suppressed = self.inner.blueprint_suppressed_until.lock().unwrap();
+        match suppressed.get(&blueprint_id).copied() {
+            Some(until) if until > Instant::now() => true,
+            Some(_) => {
+                suppressed.remove(&blueprint_id);
+                false
+            }
+            None => false,
+        }
+    }
+
     fn register_job(
         &self,
         target: WatchTarget,
@@ -244,7 +267,7 @@ impl WatchService {
             let interval_secs = watch
                 .poll_interval_secs()
                 .expect("polling interval required");
-            poll_task = Some(self.start_polling(target, &source, interval_secs));
+            poll_task = Some(self.start_polling(target, &source, interval_secs, false));
         }
 
         self.inner.handles.lock().unwrap().insert(
@@ -273,15 +296,15 @@ impl WatchService {
         let mut poll_task = None;
 
         if watch.uses_realtime() {
-            debouncer =
-                Some(self.start_realtime_blueprint(target, watch, blueprint, &source)?);
+            debouncer = Some(self.start_realtime_blueprint(target, watch, blueprint, &source)?);
         }
 
         if watch.uses_polling() {
             let interval_secs = watch
                 .poll_interval_secs()
                 .expect("polling interval required");
-            poll_task = Some(self.start_polling(target, &source, interval_secs));
+            poll_task =
+                Some(self.start_polling(target, &source, interval_secs, watch.auto_correct));
         }
 
         self.inner.handles.lock().unwrap().insert(
@@ -341,13 +364,14 @@ impl WatchService {
         &self,
         target: WatchTarget,
         watch: &WatchConfig,
-        _blueprint: &Blueprint,
+        blueprint: &Blueprint,
         source: &Path,
     ) -> Result<FullDebouncer, DomainError> {
         let allowed = watch.events.clone();
         let tx = self.inner.trigger_tx.clone();
         let settle = Duration::from_secs(watch.settle_seconds as u64);
         let auto_correct = watch.auto_correct;
+        let recursive = blueprint.recursive;
         let blueprint_id = match target {
             WatchTarget::Blueprint(id) => id,
             WatchTarget::Job(id) => id,
@@ -369,37 +393,28 @@ impl WatchService {
                     if auto_correct {
                         if let EventKind::Create(CreateKind::Folder) = &debounced.event.kind {
                             for path in &debounced.event.paths {
-                                let parent_matches = path.parent().map(|p| p == root_path).unwrap_or(false);
-                                tracing::info!(
-                                    path = %path.display(),
-                                    %parent_matches,
-                                    root = %root_path.display(),
-                                    "checking folder create event"
-                                );
-                                if parent_matches {
-                                    let folder_name = path
-                                        .file_name()
-                                        .and_then(|n| n.to_str())
-                                        .unwrap_or("")
-                                        .to_string();
-                                    tracing::info!(%folder_name, "emitting FolderCreated event");
-                                    let _ = tx.send(NormalizedWatchEvent::FolderCreated {
-                                        blueprint_id,
-                                        path: path.display().to_string(),
-                                        folder_name,
-                                    });
-                                    break;
+                                if !path.starts_with(&root_path) {
+                                    continue;
                                 }
+                                let folder_name = path
+                                    .file_name()
+                                    .and_then(|n| n.to_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                tracing::info!(%folder_name, "emitting FolderCreated event");
+                                let _ = tx.send(NormalizedWatchEvent::FolderCreated {
+                                    blueprint_id,
+                                    path: path.display().to_string(),
+                                    folder_name,
+                                });
+                                break;
                             }
                         } else {
-                            let _ = tx.send(NormalizedWatchEvent::BlueprintTriggered {
-                                blueprint_id,
-                            });
+                            let _ =
+                                tx.send(NormalizedWatchEvent::BlueprintTriggered { blueprint_id });
                         }
                     } else {
-                        let _ = tx.send(NormalizedWatchEvent::BlueprintTriggered {
-                            blueprint_id,
-                        });
+                        let _ = tx.send(NormalizedWatchEvent::BlueprintTriggered { blueprint_id });
                     }
                     break;
                 }
@@ -407,9 +422,14 @@ impl WatchService {
         })
         .map_err(|e| DomainError::Database(format!("watch debouncer: {e}")))?;
 
+        let mode = if recursive {
+            RecursiveMode::Recursive
+        } else {
+            RecursiveMode::NonRecursive
+        };
         debouncer
             .watcher()
-            .watch(source, RecursiveMode::NonRecursive)
+            .watch(source, mode)
             .map_err(|e| DomainError::Database(format!("watch path: {e}")))?;
 
         Ok(debouncer)
@@ -420,28 +440,58 @@ impl WatchService {
         target: WatchTarget,
         source: &Path,
         interval_secs: u32,
+        auto_correct: bool,
     ) -> JoinHandle<()> {
-        let source = source.to_path_buf();
+        let root = source.to_path_buf();
         let tx = self.inner.trigger_tx.clone();
         let interval = Duration::from_secs(interval_secs as u64);
 
         tokio::spawn(async move {
             let mut ticker = tokio::time::interval(interval);
-            let mut snapshot = directory_snapshot(&source);
+            let mut snapshot = directory_snapshot(&root);
             ticker.tick().await;
             loop {
                 ticker.tick().await;
-                let current = directory_snapshot(&source);
+                let current = directory_snapshot(&root);
                 if snapshot != current {
+                    let changed: Vec<(PathBuf, bool)> = current
+                        .iter()
+                        .filter(|(path, signature)| snapshot.get(*path) != Some(*signature))
+                        .map(|(path, (_, _, is_dir))| (path.clone(), *is_dir))
+                        .collect();
                     snapshot = current;
+
                     match target {
                         WatchTarget::Job(job_id) => {
                             let _ = tx.send(NormalizedWatchEvent::JobTriggered { job_id });
                         }
                         WatchTarget::Blueprint(blueprint_id) => {
-                            let _ = tx.send(NormalizedWatchEvent::BlueprintTriggered {
-                                blueprint_id,
-                            });
+                            let mut sent_folder_event = false;
+                            let mut other_change = false;
+                            if auto_correct {
+                                for (path, is_dir) in &changed {
+                                    if *is_dir && path.parent() == Some(root.as_path()) {
+                                        let folder_name = path
+                                            .file_name()
+                                            .and_then(|name| name.to_str())
+                                            .unwrap_or("")
+                                            .to_string();
+                                        let _ = tx.send(NormalizedWatchEvent::FolderCreated {
+                                            blueprint_id,
+                                            path: path.display().to_string(),
+                                            folder_name,
+                                        });
+                                        sent_folder_event = true;
+                                    } else {
+                                        other_change = true;
+                                    }
+                                }
+                            }
+                            if !sent_folder_event || other_change {
+                                let _ = tx.send(NormalizedWatchEvent::BlueprintTriggered {
+                                    blueprint_id,
+                                });
+                            }
                         }
                     }
                 }
@@ -474,7 +524,7 @@ fn matches_watch_event(kind: &EventKind, allowed: &[WatchEventKind]) -> bool {
     mapped.is_some_and(|event| allowed.contains(&event))
 }
 
-type DirSnapshot = HashMap<PathBuf, (u64, u64)>;
+type DirSnapshot = HashMap<PathBuf, (u64, u64, bool)>;
 
 fn directory_snapshot(root: &Path) -> DirSnapshot {
     let mut snapshot = HashMap::new();
@@ -493,7 +543,8 @@ fn directory_snapshot(root: &Path) -> DirSnapshot {
         .follow_links(false)
         .into_iter()
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_type().is_file());
+        .filter(|entry| entry.path() != root)
+        .filter(|entry| entry.file_type().is_file() || entry.file_type().is_dir());
 
     for entry in walker {
         if let Some(sig) = file_signature(entry.path()) {
@@ -504,13 +555,13 @@ fn directory_snapshot(root: &Path) -> DirSnapshot {
     snapshot
 }
 
-fn file_signature(path: &Path) -> Option<(u64, u64)> {
-    let meta = std::fs::metadata(path).ok()?;
+fn file_signature(path: &Path) -> Option<(u64, u64, bool)> {
+    let meta = std::fs::symlink_metadata(path).ok()?;
     let modified = meta
         .modified()
         .ok()
         .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
         .map(|duration| duration.as_secs())
         .unwrap_or(0);
-    Some((meta.len(), modified))
+    Some((meta.len(), modified, meta.is_dir()))
 }

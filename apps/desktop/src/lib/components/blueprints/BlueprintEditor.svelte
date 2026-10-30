@@ -18,6 +18,7 @@
     type WatchEventKind as JobWatchEventKind,
   } from "$lib/contracts/job";
   import { previewBlueprintTemplate } from "$lib/core/ipc/client";
+  import { currentLocale, t } from "$lib/i18n";
   import { open } from "@tauri-apps/plugin-dialog";
   import {
     ArrowsLeftRight,
@@ -50,32 +51,58 @@
   let renameTemplateText = $state(
     blueprint.renameTemplate ? pipelineToDisplayString(blueprint.renameTemplate) : "",
   );
-  let samplePath = $state("C:\\exemplo\\Docs\\relatorio.PDF");
+  let samplePath = $state("exemplo/Docs/relatorio.PDF");
   let previewLoading = $state(false);
   let previewResult = $state<Awaited<ReturnType<typeof previewBlueprintTemplate>> | null>(null);
 
   const filterCount = $derived(countBlueprintFilters(blueprint.search));
-  const activeLabel = $derived((lockedKind ?? blueprint.kind) === "folder" ? "Estrutura ativa" : "Regra ativa");
+  const activeLabel = $derived(
+    (lockedKind ?? blueprint.kind) === "folder"
+      ? t("blueprints.activeStructure")
+      : t("blueprints.activeRule"),
+  );
 
-  const NAV_ITEMS: { id: NavPanel; label: string; icon: typeof IdentificationCard }[] = [
-    { id: "geral", label: "Geral", icon: IdentificationCard },
-    { id: "busca", label: "Busca", icon: Funnel },
-    { id: "template", label: "Template", icon: TextAa },
-    { id: "automacao", label: "Automação", icon: Eye },
-  ];
+  function navItems(): { id: NavPanel; label: string; icon: typeof IdentificationCard }[] {
+    return [
+      { id: "geral", label: t("blueprints.nav.general"), icon: IdentificationCard },
+      { id: "busca", label: t("blueprints.nav.search"), icon: Funnel },
+      { id: "template", label: t("blueprints.nav.template"), icon: TextAa },
+      { id: "automacao", label: t("jobs.nav.automation"), icon: Eye },
+    ];
+  }
 
-  const WATCH_EVENTS: { id: JobWatchEventKind; label: string }[] = [
-    { id: "create", label: "Criação" },
-    { id: "modify", label: "Modificação" },
-    { id: "remove", label: "Remoção" },
-    { id: "rename", label: "Renomeação" },
-  ];
+  function watchEvents(): { id: JobWatchEventKind; label: string }[] {
+    return [
+      { id: "create", label: t("jobs.event.create") },
+      { id: "modify", label: t("jobs.event.modify") },
+      { id: "remove", label: t("jobs.event.remove") },
+      { id: "rename", label: t("jobs.event.rename") },
+    ];
+  }
 
-  const DETECTION_OPTIONS: { value: JobWatchDetectionMode["kind"]; label: string; hint: string }[] = [
-    { value: "realtime", label: "Tempo real", hint: "Eventos nativos do SO — ideal para disco local." },
-    { value: "polling", label: "Polling", hint: "Varredura periódica — ideal para rede/USB." },
-    { value: "hybrid", label: "Híbrido", hint: "Tempo real + polling de backup — máxima confiabilidade." },
-  ];
+  function detectionOptions(): {
+    value: JobWatchDetectionMode["kind"];
+    label: string;
+    hint: string;
+  }[] {
+    return [
+      {
+        value: "realtime",
+        label: t("jobs.detection.realtime"),
+        hint: t("jobs.detection.realtimeHint"),
+      },
+      {
+        value: "polling",
+        label: t("jobs.detection.polling"),
+        hint: t("jobs.detection.pollingHint"),
+      },
+      {
+        value: "hybrid",
+        label: t("jobs.detection.hybrid"),
+        hint: t("jobs.detection.hybridHint"),
+      },
+    ];
+  }
 
   let extensionsText = $state(blueprint.search.includeExtensions.join(", "));
   let excludePatternsText = $state(blueprint.search.excludePatterns.join("\n"));
@@ -101,10 +128,16 @@
   $effect(() => {
     if (activePanel !== "template") return;
     const pipeline = parseTemplateDisplayString(templateText);
+    const currentSamplePath = samplePath;
+    const renameTemplate = blueprint.renameTemplate;
     const timer = setTimeout(async () => {
       previewLoading = true;
       try {
-        previewResult = await previewBlueprintTemplate(pipeline, samplePath);
+        previewResult = await previewBlueprintTemplate(
+          pipeline,
+          currentSamplePath,
+          renameTemplate,
+        );
       } catch {
         previewResult = null;
       } finally {
@@ -156,10 +189,6 @@
   function handleTemplateInput(value: string) {
     templateText = value;
     patchRouting({ pathTemplate: parseTemplateDisplayString(value) });
-  }
-
-  function appendTemplateSegment(suffix: string) {
-    handleTemplateInput(templateText + suffix);
   }
 
   function handleRenameTemplateInput(value: string) {
@@ -268,11 +297,11 @@
     onsave?.();
   }}
 >
-  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label="Seções da regra de organização">
+  <nav class="editor-nav" class:collapsed={navCollapsed} aria-label={t("blueprints.nav.sectionsAria")}>
     <button
       type="button"
       class="nav-toggle btn ghost"
-      aria-label={navCollapsed ? "Expandir menu" : "Recolher menu"}
+      aria-label={navCollapsed ? t("jobs.nav.expand") : t("jobs.nav.collapse")}
       onclick={() => (navCollapsed = !navCollapsed)}
     >
       {#if navCollapsed}
@@ -282,7 +311,7 @@
       {/if}
     </button>
 
-    {#each NAV_ITEMS as item}
+    {#each navItems() as item}
       {@const Icon = item.icon}
       <button
         type="button"
@@ -298,7 +327,7 @@
             <span class="badge">{filterCount}</span>
           {/if}
         {:else if item.id === "busca" && filterCount > 0}
-          <span class="nav-dot" aria-label="{filterCount} filtros ativos"></span>
+          <span class="nav-dot" aria-label={t("jobs.nav.activeFilters", { count: filterCount })}></span>
         {/if}
       </button>
     {/each}
@@ -307,15 +336,15 @@
   <div class="editor-content" class:template-mode={activePanel === "template"}>
     {#if activePanel === "geral"}
       <div class="panel-header">
-        <h3>Geral</h3>
-        <p>Nome, pasta raiz e operação.</p>
+        <h3>{t("blueprints.nav.general")}</h3>
+        <p>{t("blueprints.generalDesc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Identificação</summary>
+        <summary>{t("jobs.general.identification")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Nome</span>
+            <span class="field-label">{t("jobs.general.name")}</span>
             <input class="field-input" bind:value={blueprint.name} maxlength="120" required />
           </label>
 
@@ -326,7 +355,7 @@
 
           {#if !lockedKind}
             <div class="subsection">
-              <span class="field-label">Tipo</span>
+              <span class="field-label">{t("blueprints.typeLabel")}</span>
               <div class="option-grid">
                 <button
                   type="button"
@@ -334,7 +363,7 @@
                   class:selected={blueprint.kind === "file"}
                   onclick={() => setKind("file")}
                 >
-                  Arquivos
+                  {t("blueprints.files")}
                 </button>
                 <button
                   type="button"
@@ -342,7 +371,7 @@
                   class:selected={blueprint.kind === "folder"}
                   onclick={() => setKind("folder")}
                 >
-                  Pastas
+                  {t("blueprints.folders")}
                 </button>
               </div>
             </div>
@@ -351,11 +380,11 @@
       </details>
 
       <details class="collapsible" open>
-        <summary>Pasta raiz</summary>
+        <summary>{t("blueprints.rootFolder")}</summary>
         <div class="collapsible-body">
           <div class="path-row">
             <label class="field">
-              <span class="field-label">Raiz de busca</span>
+              <span class="field-label">{t("blueprints.searchRoot")}</span>
               <input
                 class="field-input"
                 bind:value={blueprint.rootPath}
@@ -365,7 +394,7 @@
             </label>
             <button type="button" class="btn" onclick={pickRootFolder}>
               <FolderOpen size={14} />
-              Escolher
+              {t("jobs.general.choose")}
             </button>
           </div>
 
@@ -378,13 +407,13 @@
                 blueprint = { ...blueprint, recursive, search: { ...blueprint.search, recursive } };
               }}
             />
-            <span>Busca recursiva em subpastas</span>
+            <span>{t("blueprints.recursive")}</span>
           </label>
         </div>
       </details>
 
       <details class="collapsible" open>
-        <summary>Operação</summary>
+        <summary>{t("blueprints.operation")}</summary>
         <div class="collapsible-body">
           <div class="option-grid">
             <button
@@ -394,7 +423,7 @@
               onclick={() => setOperation("copy")}
             >
               <Copy size={16} />
-              Cópia
+              {t("jobs.general.copy")}
             </button>
             <button
               type="button"
@@ -403,47 +432,48 @@
               onclick={() => setOperation("move")}
             >
               <ArrowsLeftRight size={16} />
-              Mover
+              {t("jobs.general.move")}
             </button>
           </div>
 
           <label class="field">
-            <span class="field-label">Conflito</span>
+            <span class="field-label">{t("jobs.general.conflict")}</span>
             <select
               class="field-input"
               value={blueprint.conflict}
               onchange={(e) => setConflict(e.currentTarget.value as ConflictStrategy)}
             >
-              <option value="skip">Ignorar existentes</option>
-              <option value="overwrite">Sobrescrever</option>
-              <option value="rename">Renomear</option>
+              <option value="skip">{t("jobs.general.conflictSkip")}</option>
+              <option value="overwrite">{t("jobs.general.conflictOverwrite")}</option>
+              <option value="rename">{t("jobs.general.conflictRename")}</option>
             </select>
           </label>
 
-          {#if blueprint.conflict === "rename"}
-            <label class="field">
-              <span class="field-label">Template de renomeação (opcional)</span>
-              <input
-                class="field-input mono"
-                value={renameTemplateText}
-                oninput={(e) => handleRenameTemplateInput(e.currentTarget.value)}
-                placeholder={renamePlaceholder}
-              />
-            </label>
-          {/if}
+          <label class="field">
+            <span class="field-label">{t("blueprints.renameTemplate")}</span>
+            <input
+              class="field-input mono"
+              value={renameTemplateText}
+              oninput={(e) => handleRenameTemplateInput(e.currentTarget.value)}
+              placeholder={renamePlaceholder}
+            />
+            <p class="field-hint">
+              {t("blueprints.renameHint")}
+            </p>
+          </label>
         </div>
       </details>
     {:else if activePanel === "busca"}
       <div class="panel-header">
-        <h3>Busca</h3>
-        <p>Filtros aplicados na varredura recursiva.</p>
+        <h3>{t("blueprints.nav.search")}</h3>
+        <p>{t("blueprints.searchDesc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Extensões e exclusões</summary>
+        <summary>{t("jobs.filters.extensions")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Extensões incluídas (vazio = todas)</span>
+            <span class="field-label">{t("jobs.filters.includeExtensions")}</span>
             <input
               class="field-input"
               value={extensionsText}
@@ -453,7 +483,7 @@
           </label>
 
           <fieldset class="preset-group">
-            <legend class="field-label">Presets de exclusão</legend>
+            <legend class="field-label">{t("jobs.filters.excludePresets")}</legend>
             <div class="checkbox-grid">
               {#each EXCLUDE_PRESETS as preset}
                 <label class="toggle">
@@ -469,7 +499,7 @@
           </fieldset>
 
           <label class="field">
-            <span class="field-label">Padrões de exclusão (um por linha)</span>
+            <span class="field-label">{t("jobs.filters.excludePatterns")}</span>
             <textarea
               class="field-input textarea"
               rows="4"
@@ -481,10 +511,10 @@
       </details>
 
       <details class="collapsible">
-        <summary>Regex e tamanho</summary>
+        <summary>{t("jobs.filters.regexSize")}</summary>
         <div class="collapsible-body">
           <label class="field">
-            <span class="field-label">Regex do nome</span>
+            <span class="field-label">{t("jobs.filters.nameRegex")}</span>
             <input
               class="field-input"
               value={blueprint.search.nameRegex ?? ""}
@@ -493,7 +523,7 @@
           </label>
 
           <label class="field">
-            <span class="field-label">Regex do caminho</span>
+            <span class="field-label">{t("jobs.filters.pathRegex")}</span>
             <input
               class="field-input"
               value={blueprint.search.pathRegex ?? ""}
@@ -503,7 +533,7 @@
 
           <div class="field-row">
             <label class="field">
-              <span class="field-label">Tamanho mínimo (bytes)</span>
+              <span class="field-label">{t("jobs.filters.minSize")}</span>
               <input
                 class="field-input"
                 type="number"
@@ -516,7 +546,7 @@
               />
             </label>
             <label class="field">
-              <span class="field-label">Tamanho máximo (bytes)</span>
+              <span class="field-label">{t("jobs.filters.maxSize")}</span>
               <input
                 class="field-input"
                 type="number"
@@ -533,8 +563,8 @@
       </details>
     {:else if activePanel === "template"}
       <div class="panel-header template-header">
-        <h3>Template de destino</h3>
-        <p>Monte o caminho relativo com tokens — preview ao vivo à direita.</p>
+        <h3>{t("blueprints.templateTitle")}</h3>
+        <p>{t("blueprints.templateDesc")}</p>
       </div>
 
       <BlueprintTemplatePanel
@@ -547,16 +577,15 @@
         onSamplePathChange={(value) => (samplePath = value)}
         onPatchRouting={patchRouting}
         onPatchCounter={patchCounter}
-        onAppendSegment={appendTemplateSegment}
       />
     {:else if activePanel === "automacao"}
       <div class="panel-header">
-        <h3>Automação</h3>
-        <p>Monitoramento da pasta raiz.</p>
+        <h3>{t("jobs.nav.automation")}</h3>
+        <p>{t("blueprints.automationDesc")}</p>
       </div>
 
       <details class="collapsible" open>
-        <summary>Watch na raiz</summary>
+        <summary>{t("blueprints.watchRoot")}</summary>
         <div class="collapsible-body">
           <label class="toggle">
             <input
@@ -564,16 +593,16 @@
               checked={blueprint.watch?.enabled ?? false}
               onchange={(e) => setWatchEnabled(e.currentTarget.checked)}
             />
-            <span>Monitoramento ativo</span>
+            <span>{t("jobs.watch.enabled")}</span>
           </label>
 
           {#if blueprint.watch?.enabled}
             <p class="field-hint">
-              Monitora <code>{blueprint.rootPath || "—"}</code>.
+              {t("blueprints.watchHintPath", { path: blueprint.rootPath || "—" })}
             </p>
 
             <label class="field">
-              <span class="field-label">Estabilização (segundos)</span>
+              <span class="field-label">{t("jobs.watch.settle")}</span>
               <input
                 class="field-input"
                 type="number"
@@ -588,14 +617,14 @@
             </label>
 
             <label class="field">
-              <span class="field-label">Método de detecção</span>
+              <span class="field-label">{t("jobs.watch.detection")}</span>
               <select
                 class="field-input"
                 value={blueprint.watch.detection.kind}
                 onchange={(e) =>
                   setDetectionKind(e.currentTarget.value as JobWatchDetectionMode["kind"])}
               >
-                {#each DETECTION_OPTIONS as option}
+                {#each detectionOptions() as option}
                   <option value={option.value}>{option.label}</option>
                 {/each}
               </select>
@@ -603,7 +632,7 @@
 
             {#if blueprint.watch.detection.kind === "polling"}
               <label class="field">
-                <span class="field-label">Intervalo (segundos)</span>
+                <span class="field-label">{t("blueprints.pollIntervalSecs")}</span>
                 <input
                   class="field-input"
                   type="number"
@@ -621,7 +650,7 @@
               </label>
             {:else if blueprint.watch.detection.kind === "hybrid"}
               <label class="field">
-                <span class="field-label">Polling de backup (segundos)</span>
+                <span class="field-label">{t("jobs.watch.backupPoll")}</span>
                 <input
                   class="field-input"
                   type="number"
@@ -640,9 +669,9 @@
             {/if}
 
             <fieldset class="preset-group">
-              <legend class="field-label">Eventos</legend>
+              <legend class="field-label">{t("blueprints.events")}</legend>
               <div class="checkbox-grid">
-                {#each WATCH_EVENTS as event}
+                {#each watchEvents() as event}
                   <label class="toggle">
                     <input
                       type="checkbox"
@@ -660,11 +689,11 @@
 
       {#if blueprint.lastRun}
         <details class="collapsible">
-          <summary>Última execução</summary>
+          <summary>{t("blueprints.lastRun")}</summary>
           <div class="collapsible-body">
             <p class="muted">
               <CalendarBlank size={14} />
-              {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium" }).format(
+              {new Intl.DateTimeFormat(currentLocale(), { dateStyle: "short", timeStyle: "medium" }).format(
                 new Date(blueprint.lastRun),
               )}
             </p>
@@ -869,8 +898,4 @@
     font-size: var(--text-sm);
   }
 
-  code {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-  }
 </style>

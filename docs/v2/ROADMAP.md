@@ -84,12 +84,14 @@ Watch, schedule, blueprints, rollback.
 
 ### Entregas
 
-- [ ] Tokenizer completo + testes golden
-- [ ] Blueprint CRUD + watch
-- [ ] Scaffolding + rename file/folder
-- [ ] Counter persistido SQLite
-- [ ] UI blueprints + editor template com preview
-- [ ] Audit status ORGANIZED
+- [x] Tokenizer (tokens, transforms, presets, parser com escapes)
+- [ ] Testes golden completos por transform
+- [x] Blueprint CRUD + watch
+- [x] Scaffolding + rename file/folder + ações de pasta
+- [x] Variáveis de pasta + auto-correct de nomenclatura
+- [x] Counter persistido SQLite (reserva atômica)
+- [x] UI blueprints + editor template com preview
+- [x] Audit status ORGANIZED
 
 ---
 

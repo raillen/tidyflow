@@ -1,13 +1,19 @@
 <script lang="ts">
   import BlueprintFormModal from "$lib/components/blueprints/BlueprintFormModal.svelte";
+  import BlueprintRunVariablesModal from "$lib/components/blueprints/BlueprintRunVariablesModal.svelte";
   import BlueprintSimulationModal from "$lib/components/blueprints/BlueprintSimulationModal.svelte";
   import {
     applyBlueprint,
+    applyBlueprintWithVariables,
     deleteBlueprint,
+    getBlueprint,
     listBlueprints,
     simulateBlueprint,
+    simulateBlueprintWithVariables,
   } from "$lib/core/ipc/client";
   import type {
+    Blueprint,
+    BlueprintApplyResult,
     BlueprintKind,
     BlueprintSimulationReport,
     BlueprintSummary,
@@ -15,12 +21,18 @@
   import { blueprintKindLabel, blueprintOperationLabel } from "$lib/contracts/blueprint";
   import { onMount } from "svelte";
   import { Eye, FolderSimple, PencilSimple, Play, Plus, Trash } from "phosphor-svelte";
+  import { t } from "$lib/i18n";
 
   let blueprints = $state<BlueprintSummary[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
   let busyId = $state<string | null>(null);
-  let applyResult = $state<{ processed: number; failed: number } | null>(null);
+  let applyResult = $state<BlueprintApplyResult | null>(null);
+  let runModalOpen = $state(false);
+  let runAction = $state<"apply" | "simulate">("apply");
+  let runBlueprint = $state<Blueprint | null>(null);
+  let runLoading = $state(false);
+  let watchActiveMessage = $state<string | null>(null);
   let kindTab = $state<BlueprintKind | "all">("all");
 
   let modalOpen = $state(false);
@@ -42,7 +54,7 @@
     try {
       blueprints = await listBlueprints();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao carregar blueprints";
+      error = e instanceof Error ? e.message : t("blueprints.loadError");
     } finally {
       loading = false;
     }
@@ -75,11 +87,27 @@
     busyId = id;
     error = null;
     applyResult = null;
+    watchActiveMessage = null;
     try {
+      const blueprint = await getBlueprint(id);
+      if (blueprint.kind === "folder" && blueprint.watch?.enabled) {
+        watchActiveMessage = t("blueprints.watchActive");
+        return;
+      }
+      if (blueprint.kind === "folder" && !blueprint.folderPlan?.variables.length) {
+        await executeFolderRun(blueprint, "apply", {});
+        return;
+      }
+      if (blueprint.kind === "folder") {
+        runBlueprint = blueprint;
+        runAction = "apply";
+        runModalOpen = true;
+        return;
+      }
       applyResult = await applyBlueprint(id);
       await refresh();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao aplicar blueprint";
+      error = e instanceof Error ? e.message : t("blueprints.applyError");
     } finally {
       busyId = null;
     }
@@ -89,24 +117,71 @@
     busyId = bp.id;
     error = null;
     simulationReport = null;
+    watchActiveMessage = null;
     try {
+      const blueprint = await getBlueprint(bp.id);
+      if (blueprint.kind === "folder" && !blueprint.folderPlan?.variables.length) {
+        await executeFolderRun(blueprint, "simulate", {});
+        return;
+      }
+      if (blueprint.kind === "folder") {
+        runBlueprint = blueprint;
+        runAction = "simulate";
+        runModalOpen = true;
+        return;
+      }
       simulationReport = await simulateBlueprint(bp.id);
       simulationName = bp.name;
       simulationModalOpen = true;
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha na simulação";
+      error = e instanceof Error ? e.message : t("blueprints.simulateError");
     } finally {
       busyId = null;
     }
   }
 
+  async function executeFolderRun(
+    blueprint: Blueprint,
+    action: "apply" | "simulate",
+    variables: Record<string, string>,
+  ) {
+    runLoading = true;
+    busyId = blueprint.id;
+    error = null;
+    try {
+      if (action === "apply") {
+        applyResult = await applyBlueprintWithVariables(blueprint.id, variables);
+        runModalOpen = false;
+        runBlueprint = null;
+        await refresh();
+      } else {
+        simulationReport = await simulateBlueprintWithVariables(blueprint.id, variables);
+        simulationName = blueprint.name;
+        simulationModalOpen = true;
+        runModalOpen = false;
+        runBlueprint = null;
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : t("blueprints.executeError");
+    } finally {
+      runLoading = false;
+      busyId = null;
+    }
+  }
+
+  function closeRunModal() {
+    if (runLoading) return;
+    runModalOpen = false;
+    runBlueprint = null;
+  }
+
   async function handleDelete(id: string) {
-    if (!confirm("Excluir este blueprint?")) return;
+    if (!confirm(t("blueprints.deleteConfirm"))) return;
     try {
       await deleteBlueprint(id);
       await refresh();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Falha ao excluir";
+      error = e instanceof Error ? e.message : t("blueprints.deleteError");
     }
   }
 </script>
@@ -114,16 +189,16 @@
 <section class="page">
   <header class="page-header">
     <div>
-      <h1 class="page-title">Blueprints</h1>
-      <p class="page-desc">Organização e renomeação automática por template.</p>
+      <h1 class="page-title">{t("blueprints.title")}</h1>
+      <p class="page-desc">{t("blueprints.subtitle")}</p>
     </div>
     <button type="button" class="btn primary" onclick={() => openCreateModal(kindTab === "folder" ? "folder" : "file")}>
       <Plus size={15} weight="bold" />
-      Novo blueprint
+      {t("blueprints.newBlueprint")}
     </button>
   </header>
 
-  <div class="tabs" role="tablist" aria-label="Tipo de blueprint">
+  <div class="tabs" role="tablist" aria-label={t("blueprints.typeAria")}>
     <button
       type="button"
       class="tab"
@@ -132,7 +207,7 @@
       aria-selected={kindTab === "all"}
       onclick={() => (kindTab = "all")}
     >
-      Todos
+      {t("blueprints.all")}
     </button>
     <button
       type="button"
@@ -142,7 +217,7 @@
       aria-selected={kindTab === "file"}
       onclick={() => (kindTab = "file")}
     >
-      Arquivos
+      {t("blueprints.files")}
     </button>
     <button
       type="button"
@@ -152,7 +227,7 @@
       aria-selected={kindTab === "folder"}
       onclick={() => (kindTab = "folder")}
     >
-      Pastas
+      {t("blueprints.folders")}
     </button>
   </div>
 
@@ -160,25 +235,29 @@
     <p class="banner error" role="alert">{error}</p>
   {/if}
 
+  {#if watchActiveMessage}
+    <p class="banner info">{watchActiveMessage}</p>
+  {/if}
+
   {#if applyResult}
     <p class="banner success">
-      Organização concluída — {applyResult.processed} ok, {applyResult.failed} falhas
+      {t("blueprints.resultSummary", { processed: applyResult.processed, skipped: applyResult.skipped, failed: applyResult.failed })}
     </p>
   {/if}
 
   {#if loading}
-    <p class="muted">Carregando…</p>
+    <p class="muted">{t("common.loading")}</p>
   {:else if filteredBlueprints.length === 0}
     <div class="empty panel">
       <FolderSimple size={28} weight="duotone" aria-hidden="true" />
-      <p>Nenhum blueprint {kindTab === "all" ? "" : kindTab === "file" ? "de arquivos" : "de pastas"}.</p>
+      <p>{kindTab === "all" ? t("blueprints.noBlueprints") : kindTab === "file" ? t("blueprints.noFiles") : t("blueprints.noFolders")}</p>
       <button
         type="button"
         class="btn primary"
         onclick={() => openCreateModal(kindTab === "folder" ? "folder" : "file")}
       >
         <Plus size={14} weight="bold" />
-        Criar blueprint
+        {t("blueprints.createFirst")}
       </button>
     </div>
   {:else}
@@ -192,18 +271,18 @@
             <span class="badge">{blueprintKindLabel(bp.kind)}</span>
             <span class="badge">{blueprintOperationLabel(bp.operation)}</span>
             {#if !bp.enabled}
-              <span class="badge muted">Desativado</span>
+              <span class="badge muted">{t("common.disabled")}</span>
             {/if}
             {#if bp.watchEnabled}
-              <span class="badge muted">Watch</span>
+              <span class="badge muted">{t("blueprints.watch")}</span>
             {/if}
             <p class="paths muted">{bp.rootPath || "—"}</p>
           </div>
           <div class="actions">
             <button
               class="btn ghost"
-              title="Editar"
-              aria-label="Editar blueprint"
+              title={t("common.edit")}
+              aria-label={t("blueprints.edit")}
               onclick={() => openEditModal(bp.id)}
             >
               <PencilSimple size={14} />
@@ -214,15 +293,15 @@
               onclick={() => handleApply(bp.id)}
             >
               <Play size={14} weight="fill" />
-              Aplicar
+              {t("blueprints.apply")}
             </button>
             <button class="btn ghost" disabled={busyId === bp.id} onclick={() => handleSimulate(bp)}>
               <Eye size={14} />
-              Simular
+              {t("blueprints.simulate")}
             </button>
             <button class="btn ghost danger" onclick={() => handleDelete(bp.id)}>
               <Trash size={14} />
-              Excluir
+              {t("common.delete")}
             </button>
           </div>
         </li>
@@ -251,6 +330,18 @@
   blueprintName={simulationName}
   onclose={() => {
     simulationModalOpen = false;
+  }}
+/>
+
+<BlueprintRunVariablesModal
+  open={runModalOpen}
+  blueprint={runBlueprint}
+  action={runAction}
+  loading={runLoading}
+  onclose={closeRunModal}
+  onrun={(variables) => {
+    if (!runBlueprint) return;
+    void executeFolderRun(runBlueprint, runAction, variables);
   }}
 />
 
@@ -294,6 +385,11 @@
 
   .banner.success {
     border-color: var(--success);
+  }
+
+  .banner.info {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   .empty {

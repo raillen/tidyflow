@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::TemplatePipeline;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct NamingPattern {
     #[serde(default)]
@@ -12,21 +12,11 @@ pub struct NamingPattern {
     pub template_override: Option<TemplatePipeline>,
 }
 
-impl Default for NamingPattern {
-    fn default() -> Self {
-        Self {
-            regex: None,
-            template_override: None,
-        }
-    }
-}
-
 impl NamingPattern {
     pub fn compiled_regex(&self) -> Result<Option<Regex>, String> {
         match &self.regex {
             Some(pattern) => {
-                let re =
-                    Regex::new(pattern).map_err(|e| format!("invalid naming regex: {e}"))?;
+                let re = Regex::new(pattern).map_err(|e| format!("invalid naming regex: {e}"))?;
                 Ok(Some(re))
             }
             None => Ok(None),

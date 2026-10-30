@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { t } from "$lib/i18n";
 
 export const jobModeSchema = z.enum(["copy", "move"]);
 export const conflictStrategySchema = z.enum(["skip", "overwrite", "rename"]);
@@ -81,10 +82,13 @@ export const templatePipelineSchema = z.object({
   segments: z.array(templateSegmentSchema).default([]),
 });
 
-export const namingPatternSchema = z.object({
-  regex: z.string().nullish(),
-  templateOverride: templatePipelineSchema.nullish(),
-}).default({});
+export const namingPatternSchema = z
+  .object({
+    regex: z.string().nullish(),
+    templateOverride: templatePipelineSchema.nullish(),
+  })
+  .nullish()
+  .transform((value) => value ?? {});
 
 export const watchDetectionModeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("realtime") }),
@@ -188,6 +192,12 @@ export const executionCompletedSchema = z.object({
   errorMessage: z.string().nullable(),
 });
 
+export const rollbackResultSchema = z.object({
+  success: z.boolean(),
+  revertedCount: z.number().int(),
+  skippedCount: z.number().int(),
+});
+
 export const simulationSampleSchema = z.object({
   source: z.string(),
   target: z.string(),
@@ -216,6 +226,7 @@ export type NotifyChannel = z.infer<typeof notifyChannelSchema>;
 export type SimulationReport = z.infer<typeof simulationReportSchema>;
 export type ActiveExecution = z.infer<typeof activeExecutionSchema>;
 export type ExecutionCompleted = z.infer<typeof executionCompletedSchema>;
+export type RollbackResult = z.infer<typeof rollbackResultSchema>;
 export type NamingPattern = z.infer<typeof namingPatternSchema>;
 export type TemplateSegment = z.infer<typeof templateSegmentSchema>;
 export type TemplatePipeline = z.infer<typeof templatePipelineSchema>;
@@ -223,7 +234,7 @@ export type TemplatePipeline = z.infer<typeof templatePipelineSchema>;
 export function createEmptyJob(): Job {
   return {
     id: crypto.randomUUID(),
-    name: "Nova transferência",
+    name: t("jobs.defaultName"),
     sourcePath: "",
     targetPath: "",
     mode: "copy",
