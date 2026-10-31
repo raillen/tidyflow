@@ -16,6 +16,8 @@ Esta pasta descreve a arquitetura e os contratos do TidyFlow v2.
 | [DOMAIN.md](./DOMAIN.md) | Dev core | Entidades, regras, invariantes |
 | [API-IPC.md](./API-IPC.md) | Full-stack | Commands, events, tipos |
 | [UI-DESIGN-SYSTEM.md](./UI-DESIGN-SYSTEM.md) | Dev UI / design | Tokens, componentes, a11y, motion |
+| [FRONTEND.md](./FRONTEND.md) | Dev frontend | Estrutura de `src/`, painéis, erros, i18n, a11y |
+| [TESTING-E2E.md](./TESTING-E2E.md) | Dev / QA | Playwright headless, mock de IPC, cobertura |
 | [PROJECT-STRUCTURE.md](./PROJECT-STRUCTURE.md) | Todos | Pastas, scripts, CI |
 | [ROADMAP.md](./ROADMAP.md) | PM / dev | Fases 0–5, Definition of Done |
 

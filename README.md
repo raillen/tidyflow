@@ -179,6 +179,7 @@ The root `dev` script starts the Tauri desktop app through the `@tidyflow/deskto
 | `pnpm build` | Build the desktop application bundle. |
 | `pnpm check` | Run Svelte and TypeScript checks for the desktop package. |
 | `pnpm test` | Run frontend unit tests. |
+| `pnpm test:e2e` | Run the Playwright end-to-end suite (headless). |
 | `pnpm test:rust` | Run `cargo test --workspace`. |
 | `pnpm --filter @tidyflow/desktop check` | Check only the desktop workspace package. |
 | `cargo test --workspace` | Run all Rust tests directly. |
@@ -188,6 +189,8 @@ The root `dev` script starts the Tauri desktop app through the `@tidyflow/deskto
 | Document | Use it for |
 | --- | --- |
 | [`docs/v2/ARCHITECTURE.md`](./docs/v2/ARCHITECTURE.md) | Runtime architecture, layers, and flows. |
+| [`docs/v2/FRONTEND.md`](./docs/v2/FRONTEND.md) | Frontend structure, editor panels, error handling, i18n. |
+| [`docs/v2/TESTING-E2E.md`](./docs/v2/TESTING-E2E.md) | Playwright end-to-end suite and the IPC mock. |
 | [`docs/v2/API-IPC.md`](./docs/v2/API-IPC.md) | Tauri command and event contracts. |
 | [`docs/v2/DOMAIN.md`](./docs/v2/DOMAIN.md) | Domain entities, invariants, and rules. |
 | [`docs/v2/ROADMAP.md`](./docs/v2/ROADMAP.md) | Planned phases and delivery criteria. |
