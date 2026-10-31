@@ -78,10 +78,14 @@ impl AppState {
             .unwrap_or_else(|| derived_instance_id.clone());
         if current_settings.admin.instance_id.as_deref() != Some(instance_id.as_str()) {
             current_settings.admin.instance_id = Some(instance_id.clone());
-            settings.update_async(current_settings).await?;
+            settings.update_async(current_settings.clone()).await?;
         }
 
-        let jobs = Arc::new(SqliteJobStore::with_vault(pool.clone(), vault));
+        let jobs = Arc::new(SqliteJobStore::with_vault_enabled(
+            pool.clone(),
+            vault,
+            current_settings.security.encryption_enabled,
+        ));
         let blueprints = Arc::new(SqliteBlueprintStore::new(pool.clone()));
         let audit = Arc::new(SqliteAuditStore::new(pool.clone()));
         let rollback = Arc::new(SqliteRollbackStore::new(pool.clone()));
@@ -536,6 +540,18 @@ impl AppState {
         .await
     }
 
+    pub async fn rollback_blueprint(
+        &self,
+        blueprint_id: Uuid,
+    ) -> Result<RollbackResult, DomainError> {
+        autoflow_application::rollback::rollback_blueprint(
+            self.inner.rollback.as_ref(),
+            self.inner.audit.as_ref(),
+            blueprint_id,
+        )
+        .await
+    }
+
     pub async fn list_blueprints(&self) -> Result<Vec<BlueprintSummary>, DomainError> {
         blueprints::list_blueprints(self.inner.blueprints.as_ref()).await
     }
@@ -581,9 +597,10 @@ impl AppState {
     }
 
     pub async fn apply_blueprint(&self, id: Uuid) -> Result<BlueprintApplyResult, DomainError> {
-        blueprints::apply_blueprint(
+        blueprints::apply_blueprint_with_rollback(
             self.inner.blueprints.as_ref(),
             self.inner.audit.as_ref(),
+            Some(self.inner.rollback.as_ref()),
             id,
         )
         .await
@@ -594,9 +611,10 @@ impl AppState {
         id: Uuid,
         variables: BTreeMap<String, String>,
     ) -> Result<BlueprintApplyResult, DomainError> {
-        blueprints::apply_blueprint_with_variables(
+        blueprints::apply_blueprint_with_variables_with_rollback(
             self.inner.blueprints.as_ref(),
             self.inner.audit.as_ref(),
+            Some(self.inner.rollback.as_ref()),
             id,
             variables,
         )

@@ -4,16 +4,18 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use autoflow_domain::{
-    evaluate, is_path_under_root, normalize_path, parse_template, validate_relative_path,
-    AuditStatus, Blueprint, BlueprintApplyResult, BlueprintCollision, BlueprintKind,
-    BlueprintOperation, BlueprintPlanSample, BlueprintSimulationReport, ConflictStrategy,
-    DomainError, FolderAction, FolderActionNode, FolderPlan, FolderPlanPreview,
-    FolderPlanPreviewNode, Job, NewAuditEntry, TemplatePipeline, TemplatePreview, TokenContext,
+    evaluate, file_hash, is_path_under_root, normalize_path, parse_template,
+    validate_relative_path, AuditStatus, Blueprint, BlueprintApplyResult, BlueprintCollision,
+    BlueprintKind, BlueprintOperation, BlueprintPlanSample, BlueprintSimulationReport,
+    ConflictStrategy, DomainError, FolderAction, FolderActionNode, FolderPlan, FolderPlanPreview,
+    FolderPlanPreviewNode, Job, JobMode, NewAuditEntry, RollbackItem, RollbackManifest,
+    TemplatePipeline, TemplatePreview, TokenContext,
 };
 use chrono::Local;
 use uuid::Uuid;
 
 use crate::ports::AuditStore;
+use crate::ports::RollbackStore;
 use crate::BlueprintStore;
 
 pub async fn list_blueprints(
@@ -136,14 +138,33 @@ pub async fn apply_blueprint(
     audit: &dyn AuditStore,
     id: Uuid,
 ) -> Result<BlueprintApplyResult, DomainError> {
-    let blueprint = store.get(id).await?;
-    let variables = folder_plan_default_variables(blueprint.folder_plan.as_ref());
-    apply_blueprint_with_variables(store, audit, id, variables).await
+    apply_blueprint_with_rollback(store, audit, None, id).await
 }
 
 pub async fn apply_blueprint_with_variables(
     store: &dyn BlueprintStore,
     audit: &dyn AuditStore,
+    id: Uuid,
+    variables: BTreeMap<String, String>,
+) -> Result<BlueprintApplyResult, DomainError> {
+    apply_blueprint_with_variables_with_rollback(store, audit, None, id, variables).await
+}
+
+pub async fn apply_blueprint_with_rollback(
+    store: &dyn BlueprintStore,
+    audit: &dyn AuditStore,
+    rollback: Option<&dyn RollbackStore>,
+    id: Uuid,
+) -> Result<BlueprintApplyResult, DomainError> {
+    let blueprint = store.get(id).await?;
+    let variables = folder_plan_default_variables(blueprint.folder_plan.as_ref());
+    apply_blueprint_with_variables_with_rollback(store, audit, rollback, id, variables).await
+}
+
+pub async fn apply_blueprint_with_variables_with_rollback(
+    store: &dyn BlueprintStore,
+    audit: &dyn AuditStore,
+    rollback: Option<&dyn RollbackStore>,
     id: Uuid,
     variables: BTreeMap<String, String>,
 ) -> Result<BlueprintApplyResult, DomainError> {
@@ -159,8 +180,21 @@ pub async fn apply_blueprint_with_variables(
         return Err(DomainError::SourceNotFound(blueprint.root_path.clone()));
     }
 
+    let execution_id = Uuid::new_v4();
+    let mode = match blueprint.operation {
+        BlueprintOperation::Move => JobMode::Move,
+        BlueprintOperation::Copy => JobMode::Copy,
+    };
+
     if blueprint.kind == BlueprintKind::Folder {
-        let result = apply_folder_blueprint(audit, &blueprint, &variables).await?;
+        let result = apply_folder_blueprint_with_rollback(
+            audit,
+            &blueprint,
+            &variables,
+            rollback,
+            execution_id,
+        )
+        .await?;
         store.update_last_run(blueprint.id).await?;
         return Ok(result);
     }
@@ -169,6 +203,7 @@ pub async fn apply_blueprint_with_variables(
     let mut processed = 0u32;
     let mut failed = 0u32;
     let mut skipped = 0u32;
+    let mut rollback_items = Vec::new();
 
     for item in plan {
         let started = Instant::now();
@@ -178,6 +213,18 @@ pub async fn apply_blueprint_with_variables(
         match result {
             Ok(Some(target)) => {
                 processed += 1;
+                rollback_items.push(RollbackItem {
+                    source_path: item.source.display().to_string(),
+                    target_path: target.display().to_string(),
+                    mode,
+                    status: if matches!(blueprint.operation, BlueprintOperation::Move) {
+                        AuditStatus::Moved
+                    } else {
+                        AuditStatus::Copied
+                    },
+                    target_hash: file_hash(&target).ok(),
+                    is_directory: item.source.is_dir(),
+                });
                 audit
                     .append(NewAuditEntry {
                         job_id: None,
@@ -224,6 +271,14 @@ pub async fn apply_blueprint_with_variables(
                     })
                     .await?;
             }
+        }
+    }
+
+    if let Some(store) = rollback {
+        if !rollback_items.is_empty() {
+            let manifest =
+                RollbackManifest::new_for_blueprint(blueprint.id, execution_id, rollback_items);
+            let _ = store.save(&manifest).await;
         }
     }
 
@@ -833,15 +888,18 @@ fn preflight_folder_action_plan(
     Ok(())
 }
 
-async fn apply_folder_blueprint(
+async fn apply_folder_blueprint_with_rollback(
     audit: &dyn AuditStore,
     blueprint: &Blueprint,
     variables: &BTreeMap<String, String>,
+    rollback: Option<&dyn RollbackStore>,
+    execution_id: Uuid,
 ) -> Result<BlueprintApplyResult, DomainError> {
     let plan = build_folder_action_plan(blueprint, variables, false)?;
     let mut processed = 0u32;
     let mut failed = 0u32;
     let mut skipped = 0u32;
+    let mut rollback_items = Vec::new();
 
     for item in plan.items {
         let started = Instant::now();
@@ -861,6 +919,32 @@ async fn apply_folder_blueprint(
         match result {
             Ok(Some(target)) => {
                 processed += 1;
+                let status = match item.action {
+                    FolderAction::Move | FolderAction::Rename => AuditStatus::Moved,
+                    FolderAction::Copy => AuditStatus::Copied,
+                    FolderAction::Create => AuditStatus::Copied,
+                    FolderAction::Delete => AuditStatus::Moved,
+                };
+                if matches!(
+                    item.action,
+                    FolderAction::Move | FolderAction::Rename | FolderAction::Copy
+                ) {
+                    rollback_items.push(RollbackItem {
+                        source_path: item
+                            .source
+                            .as_ref()
+                            .map(|p| p.display().to_string())
+                            .unwrap_or_default(),
+                        target_path: target.display().to_string(),
+                        mode: match blueprint.operation {
+                            BlueprintOperation::Move => JobMode::Move,
+                            BlueprintOperation::Copy => JobMode::Copy,
+                        },
+                        status,
+                        target_hash: None,
+                        is_directory: true,
+                    });
+                }
                 audit
                     .append(NewAuditEntry {
                         job_id: None,
@@ -907,6 +991,14 @@ async fn apply_folder_blueprint(
                     })
                     .await?;
             }
+        }
+    }
+
+    if let Some(store) = rollback {
+        if !rollback_items.is_empty() {
+            let manifest =
+                RollbackManifest::new_for_blueprint(blueprint.id, execution_id, rollback_items);
+            let _ = store.save(&manifest).await;
         }
     }
 

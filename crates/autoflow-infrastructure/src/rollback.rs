@@ -23,12 +23,13 @@ impl RollbackStore for SqliteRollbackStore {
             serde_json::to_string(manifest).map_err(|e| DomainError::Database(e.to_string()))?;
         let now = Utc::now().to_rfc3339();
         sqlx::query(
-            "INSERT INTO rollback_manifests (id, job_id, execution_id, payload, rolled_back_at, created_at)
-             VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO rollback_manifests (id, job_id, execution_id, blueprint_id, payload, rolled_back_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(manifest.id.to_string())
         .bind(manifest.job_id.to_string())
         .bind(manifest.execution_id.to_string())
+        .bind(manifest.blueprint_id.map(|value| value.to_string()))
         .bind(payload)
         .bind(manifest.rolled_back_at.map(|value| value.to_rfc3339()))
         .bind(now)
@@ -40,9 +41,33 @@ impl RollbackStore for SqliteRollbackStore {
 
     async fn latest_for_job(&self, job_id: Uuid) -> Result<Option<RollbackManifest>, DomainError> {
         let row: Option<(String,)> = sqlx::query_as(
-            "SELECT payload FROM rollback_manifests WHERE job_id = ? AND rolled_back_at IS NULL ORDER BY created_at DESC LIMIT 1",
+            "SELECT payload FROM rollback_manifests WHERE (job_id = ? OR blueprint_id = ?) AND rolled_back_at IS NULL ORDER BY created_at DESC LIMIT 1",
         )
         .bind(job_id.to_string())
+        .bind(job_id.to_string())
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DomainError::Database(e.to_string()))?;
+
+        match row {
+            Some((payload,)) => {
+                let manifest: RollbackManifest = serde_json::from_str(&payload)
+                    .map_err(|e| DomainError::Database(e.to_string()))?;
+                Ok(Some(manifest))
+            }
+            None => Ok(None),
+        }
+    }
+
+    async fn latest_for_blueprint(
+        &self,
+        blueprint_id: Uuid,
+    ) -> Result<Option<RollbackManifest>, DomainError> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT payload FROM rollback_manifests WHERE (blueprint_id = ? OR job_id = ?) AND rolled_back_at IS NULL ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(blueprint_id.to_string())
+        .bind(blueprint_id.to_string())
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| DomainError::Database(e.to_string()))?;
@@ -90,6 +115,7 @@ mod tests {
                 mode: autoflow_domain::JobMode::Move,
                 status: autoflow_domain::AuditStatus::Moved,
                 target_hash: None,
+                is_directory: false,
             }],
         );
 

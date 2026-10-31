@@ -120,6 +120,7 @@ pub async fn run_job(
                     mode: job.mode,
                     status,
                     target_hash,
+                    is_directory: file.is_dir(),
                 });
                 if status == AuditStatus::Ignored {
                     skipped += 1;

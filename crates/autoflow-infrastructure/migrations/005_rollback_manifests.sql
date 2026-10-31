@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS rollback_manifests (
     id TEXT PRIMARY KEY NOT NULL,
     job_id TEXT NOT NULL,
     execution_id TEXT NOT NULL,
+    blueprint_id TEXT,
     payload TEXT NOT NULL,
     rolled_back_at TEXT,
     created_at TEXT NOT NULL

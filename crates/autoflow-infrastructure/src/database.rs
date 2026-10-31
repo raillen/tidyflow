@@ -29,6 +29,7 @@ pub async fn init_pool(data_dir: &Path) -> Result<SqlitePool, DomainError> {
 
     run_migrations(&pool).await?;
     ensure_audit_blueprint_column(&pool).await?;
+    ensure_rollback_blueprint_column(&pool).await?;
     Ok(pool)
 }
 
@@ -58,6 +59,41 @@ async fn ensure_audit_blueprint_column(pool: &SqlitePool) -> Result<(), DomainEr
         .execute(pool)
         .await
         .map_err(|e| DomainError::Database(e.to_string()))?;
+    Ok(())
+}
+
+async fn ensure_rollback_blueprint_column(pool: &SqlitePool) -> Result<(), DomainError> {
+    let columns: Vec<(i64, String, String, i64, Option<String>, i64)> =
+        sqlx::query_as("PRAGMA table_info(rollback_manifests)")
+            .fetch_all(pool)
+            .await
+            .map_err(|e| DomainError::Database(e.to_string()))?;
+
+    if columns.is_empty() {
+        return Ok(());
+    }
+
+    if columns.iter().any(|col| col.1 == "blueprint_id") {
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_rollback_blueprint_id ON rollback_manifests(blueprint_id)",
+        )
+        .execute(pool)
+        .await
+        .map_err(|e| DomainError::Database(e.to_string()))?;
+        return Ok(());
+    }
+
+    sqlx::query("ALTER TABLE rollback_manifests ADD COLUMN blueprint_id TEXT")
+        .execute(pool)
+        .await
+        .map_err(|e| DomainError::Database(e.to_string()))?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_rollback_blueprint_id ON rollback_manifests(blueprint_id)",
+    )
+    .execute(pool)
+    .await
+    .map_err(|e| DomainError::Database(e.to_string()))?;
     Ok(())
 }
 
