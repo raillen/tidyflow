@@ -45,35 +45,38 @@
 </script>
 
 <Modal {open} {title} description={blueprint?.name} size="md" {onclose}>
-  {#if variables.length === 0}
-    <p class="muted">{t("run.variablesEmpty")}</p>
-  {:else}
-    <p class="intro">{t("run.variablesIntro")}</p>
-    <div class="fields">
-      {#each variables as variable}
-        <label class="field">
-          <span class="field-label">
-            {variable.label || variable.name}
-            {#if variable.required}<span class="required" aria-hidden="true">*</span>{/if}
-          </span>
-          <input
-            class="field-input mono"
-            value={values[variable.name] ?? ""}
-            placeholder={variable.defaultValue || variable.name}
-            aria-required={variable.required}
-            oninput={(event) => setValue(variable.name, event.currentTarget.value)}
-          />
-          <span class="field-hint">{t("run.tokenLabel")} <code>{`{${variable.name}}`}</code></span>
-        </label>
-      {/each}
-    </div>
+  <div class="run-body">
+    {#if variables.length === 0}
+      <p class="muted">{t("run.variablesEmpty")}</p>
+    {:else}
+      <p class="intro">{t("run.variablesIntro")}</p>
+      <div class="fields">
+        {#each variables as variable}
+          <label class="field">
+            <span class="field-label">
+              {variable.label || variable.name}
+              {#if variable.required}<span class="required" aria-hidden="true">*</span>{/if}
+            </span>
+            <input
+              type="text"
+              class="field-input mono"
+              value={values[variable.name] ?? ""}
+              placeholder={variable.defaultValue || variable.name}
+              aria-required={variable.required}
+              oninput={(event) => setValue(variable.name, event.currentTarget.value)}
+            />
+            <span class="field-hint">{t("run.tokenLabel")} <code>{`{${variable.name}}`}</code></span>
+          </label>
+        {/each}
+      </div>
 
-    {#if missingRequired.length > 0}
-      <p class="warning" role="alert">
-        {t("run.requiredWarning", { fields: missingRequired.join(", ") })}
-      </p>
+      {#if missingRequired.length > 0}
+        <p class="warning" role="alert">
+          {t("run.requiredWarning", { fields: missingRequired.join(", ") })}
+        </p>
+      {/if}
     {/if}
-  {/if}
+  </div>
 
   {#snippet footer()}
     <button type="button" class="btn" onclick={onclose} disabled={loading}>{t("common.cancel")}</button>
@@ -89,6 +92,11 @@
 </Modal>
 
 <style>
+  .run-body {
+    padding: var(--space-4) var(--space-5);
+    overflow-y: auto;
+  }
+
   .intro {
     margin: 0 0 var(--space-4);
     color: var(--text-muted);

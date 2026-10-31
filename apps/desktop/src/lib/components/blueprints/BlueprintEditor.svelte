@@ -345,7 +345,7 @@
         <div class="collapsible-body">
           <label class="field">
             <span class="field-label">{t("jobs.general.name")}</span>
-            <input class="field-input" bind:value={blueprint.name} maxlength="120" required />
+            <input type="text" class="field-input" bind:value={blueprint.name} maxlength="120" required />
           </label>
 
           <label class="toggle">
@@ -386,6 +386,7 @@
             <label class="field">
               <span class="field-label">{t("blueprints.searchRoot")}</span>
               <input
+                type="text"
                 class="field-input"
                 bind:value={blueprint.rootPath}
                 placeholder="C:\pasta\raiz"
@@ -452,6 +453,7 @@
           <label class="field">
             <span class="field-label">{t("blueprints.renameTemplate")}</span>
             <input
+              type="text"
               class="field-input mono"
               value={renameTemplateText}
               oninput={(e) => handleRenameTemplateInput(e.currentTarget.value)}
@@ -475,6 +477,7 @@
           <label class="field">
             <span class="field-label">{t("jobs.filters.includeExtensions")}</span>
             <input
+              type="text"
               class="field-input"
               value={extensionsText}
               oninput={(e) => handleExtensionsInput(e.currentTarget.value)}
@@ -516,6 +519,7 @@
           <label class="field">
             <span class="field-label">{t("jobs.filters.nameRegex")}</span>
             <input
+              type="text"
               class="field-input"
               value={blueprint.search.nameRegex ?? ""}
               oninput={(e) => patchSearch({ nameRegex: e.currentTarget.value || null })}
@@ -525,6 +529,7 @@
           <label class="field">
             <span class="field-label">{t("jobs.filters.pathRegex")}</span>
             <input
+              type="text"
               class="field-input"
               value={blueprint.search.pathRegex ?? ""}
               oninput={(e) => patchSearch({ pathRegex: e.currentTarget.value || null })}

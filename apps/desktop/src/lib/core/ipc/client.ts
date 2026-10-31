@@ -315,6 +315,11 @@ export async function applyBlueprintWithVariables(
   return blueprintApplyResultSchema.parse(raw);
 }
 
+export async function rollbackBlueprint(id: string): Promise<RollbackResult> {
+  const raw: unknown = await invoke("blueprints_rollback", { id });
+  return rollbackResultSchema.parse(raw);
+}
+
 export async function previewBlueprintTemplate(
   pipeline: TemplatePipeline,
   samplePath: string,

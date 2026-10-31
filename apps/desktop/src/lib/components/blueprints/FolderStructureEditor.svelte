@@ -18,6 +18,7 @@
     type WatchDetectionMode as JobWatchDetectionMode,
     type WatchEventKind as JobWatchEventKind,
   } from "$lib/contracts/job";
+  import { defaultWatch as buildDefaultWatch, detectionOptions, watchEvents } from "$lib/contracts/job-options";
   import { previewBlueprintPlan } from "$lib/core/ipc/client";
   import { currentLocale, t } from "$lib/i18n";
   import { open } from "@tauri-apps/plugin-dialog";
@@ -70,27 +71,6 @@
     ];
   }
 
-  function watchEvents(): { id: JobWatchEventKind; label: string }[] {
-    return [
-      { id: "create", label: t("jobs.event.create") },
-      { id: "modify", label: t("jobs.event.modify") },
-      { id: "remove", label: t("jobs.event.remove") },
-      { id: "rename", label: t("jobs.event.rename") },
-    ];
-  }
-
-  function detectionOptions(): {
-    value: JobWatchDetectionMode["kind"];
-    label: string;
-    hint: string;
-  }[] {
-    return [
-      { value: "realtime", label: t("jobs.detection.realtime"), hint: t("jobs.detection.realtimeHint") },
-      { value: "polling", label: t("jobs.detection.polling"), hint: t("jobs.detection.pollingHint") },
-      { value: "hybrid", label: t("jobs.detection.hybrid"), hint: t("jobs.detection.hybridHint") },
-    ];
-  }
-
   $effect(() => {
     ensureFolderPlan();
   });
@@ -138,15 +118,9 @@
     blueprint = { ...blueprint, watch: { ...base, ...partial } };
   }
 
+  /** Folder watches default to auto-correct, unlike file jobs. */
   function defaultWatch(): JobWatchConfig {
-    return {
-      enabled: true,
-      settleSeconds: 2,
-      detection: { kind: "realtime" },
-      events: ["create"],
-      autoCorrect: false,
-      namingPattern: {},
-    };
+    return { ...buildDefaultWatch(), autoCorrect: true };
   }
 
   function setWatchEnabled(enabled: boolean) {
@@ -227,14 +201,14 @@
 
   function addRootAction(action: FolderAction = "create") {
     const nodes = nodesSnapshot();
-    nodes.push(createFolderActionNode(action, action === "create" ? "Nova pasta" : ""));
+    nodes.push(createFolderActionNode(action, action === "create" ? t("folders.defaultNewFolder") : ""));
     patchFolderPlan({ nodes });
   }
 
   function addChildAction(path: number[]) {
     const nodes = nodesSnapshot();
     const node = findNode(nodes, path);
-    node.children.push(createFolderActionNode("create", "Subpasta"));
+    node.children.push(createFolderActionNode("create", t("folders.defaultSubfolder")));
     patchFolderPlan({ nodes });
   }
 
@@ -252,8 +226,8 @@
   function addVariable() {
     const variables = variablesSnapshot();
     variables.push({
-      name: "cliente",
-      label: "Cliente",
+      name: t("folders.defaultVariableName"),
+      label: t("folders.defaultVariableLabel"),
       defaultValue: "",
       required: true,
     });
@@ -278,7 +252,7 @@
     <span class:danger={node.action === "delete"}>{folderActionLabel(node.action)}</span>
     <code>{node.relativePath}</code>
     {#if node.sourcePath}
-      <small>origem: {node.sourcePath}</small>
+      <small>{t("folders.previewSource")}: {node.sourcePath}</small>
     {/if}
     {#if node.children.length}
       <ul>
@@ -310,6 +284,7 @@
         <label class="field">
           <span class="field-label">{t("folders.nameTemplate")}</span>
           <input
+            type="text"
             class="field-input mono"
             value={node.name}
             placeholder={"{projectName}"}
@@ -320,15 +295,17 @@
         <label class="field">
           <span class="field-label">{t("folders.sourceFolder")}</span>
           <input
+            type="text"
             class="field-input mono"
             value={node.sourcePath}
-            placeholder="Projeto antigo"
+            placeholder={t("folders.placeholderOldProject")}
             oninput={(e) => patchNode(path, { sourcePath: e.currentTarget.value })}
           />
         </label>
         <label class="field">
           <span class="field-label">{t("folders.newNameTemplate")}</span>
           <input
+            type="text"
             class="field-input mono"
             value={node.name}
             placeholder={"{projectName}"}
@@ -339,15 +316,17 @@
         <label class="field">
           <span class="field-label">{t("folders.sourceFolder")}</span>
           <input
+            type="text"
             class="field-input mono"
             value={node.sourcePath}
-            placeholder="Entrada/Projeto"
+            placeholder={t("folders.placeholderSourceProject")}
             oninput={(e) => patchNode(path, { sourcePath: e.currentTarget.value })}
           />
         </label>
         <label class="field">
           <span class="field-label">{t("folders.targetTemplate")}</span>
           <input
+            type="text"
             class="field-input mono"
             value={node.targetPath}
             placeholder={"{projectName}"}
@@ -358,9 +337,10 @@
         <label class="field">
           <span class="field-label">{t("folders.folderToDelete")}</span>
           <input
+            type="text"
             class="field-input mono"
             value={node.sourcePath}
-            placeholder="Projeto antigo"
+            placeholder={t("folders.placeholderOldProject")}
             oninput={(e) => patchNode(path, { sourcePath: e.currentTarget.value })}
           />
         </label>
@@ -373,7 +353,12 @@
             {t("folders.childAction")}
           </button>
         {/if}
-        <button type="button" class="btn ghost danger" onclick={() => removeNode(path)}>
+        <button
+          type="button"
+          class="btn ghost danger"
+          aria-label={t("folders.removeNode")}
+          onclick={() => removeNode(path)}
+        >
           <Trash size={12} />
         </button>
       </div>
@@ -442,7 +427,7 @@
         <div class="collapsible-body">
           <label class="field">
             <span class="field-label">{t("jobs.general.name")}</span>
-            <input class="field-input" bind:value={blueprint.name} maxlength="120" required />
+            <input type="text" class="field-input" bind:value={blueprint.name} maxlength="120" required />
           </label>
 
           <label class="toggle">
@@ -458,7 +443,7 @@
           <div class="path-row">
             <label class="field">
               <span class="field-label">{t("folders.recipeRoot")}</span>
-              <input class="field-input" bind:value={blueprint.rootPath} placeholder="C:\pasta\raiz" required />
+              <input type="text" class="field-input" bind:value={blueprint.rootPath} placeholder="C:\pasta\raiz" required />
             </label>
             <button type="button" class="btn" onclick={pickRootFolder}>
               <FolderOpen size={14} />
@@ -515,6 +500,7 @@
                   <label class="field">
                     <span class="field-label">{t("folders.token")}</span>
                     <input
+                      type="text"
                       class="field-input mono"
                       value={variable.name}
                       placeholder="projectName"
@@ -526,6 +512,7 @@
                   <label class="field">
                     <span class="field-label">{t("folders.label")}</span>
                     <input
+                      type="text"
                       class="field-input"
                       value={variable.label}
                       placeholder={t("folders.labelPlaceholder")}
@@ -535,6 +522,7 @@
                   <label class="field">
                     <span class="field-label">{t("folders.defaultValue")}</span>
                     <input
+                      type="text"
                       class="field-input"
                       value={variable.defaultValue}
                       placeholder={t("folders.defaultValuePlaceholder")}
@@ -549,7 +537,12 @@
                     />
                     <span>{t("folders.required")}</span>
                   </label>
-                  <button type="button" class="btn ghost danger" onclick={() => removeVariable(index)}>
+                  <button
+                    type="button"
+                    class="btn ghost danger"
+                    aria-label={t("folders.removeNode")}
+                    onclick={() => removeVariable(index)}
+                  >
                     <Trash size={12} />
                   </button>
                 </li>

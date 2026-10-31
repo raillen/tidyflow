@@ -1,5 +1,6 @@
 <script lang="ts">
   import BlueprintEditor from "$lib/components/blueprints/BlueprintEditor.svelte";
+  import { errorMessage } from "$lib/core/errors";
   import Modal from "$lib/components/ui/Modal.svelte";
   import {
     countBlueprintFilters,
@@ -96,7 +97,7 @@
       })
       .catch((e) => {
         if (cancelled) return;
-        error = e instanceof Error ? e.message : t("blueprintForm.notFound");
+        error = errorMessage(e, t("blueprintForm.notFound"));
       })
       .finally(() => {
         if (!cancelled) loading = false;
@@ -119,7 +120,7 @@
       onsaved?.();
       onclose();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("blueprintForm.saveError");
+      error = errorMessage(e, t("blueprintForm.saveError"));
     } finally {
       saving = false;
     }
@@ -136,7 +137,7 @@
       const report = await simulateBlueprint(blueprint.id);
       onsimulated?.(report, blueprint.name.trim() || "Blueprint");
     } catch (e) {
-      error = e instanceof Error ? e.message : t("blueprintForm.simulateError");
+      error = errorMessage(e, t("blueprintForm.simulateError"));
     } finally {
       simulating = false;
     }

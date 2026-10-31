@@ -72,22 +72,23 @@
 
   function startResize(edge: string, event: MouseEvent) {
     event.preventDefault();
+    event.stopPropagation();
     resizing = edge;
+    const activeEdge = edge;
     const startX = event.clientX;
     const startY = event.clientY;
     const startW = width;
     const startH = height;
 
     function onMove(e: MouseEvent) {
-      if (!resizing) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
       let w = startW;
       let h = startH;
-      if (resizing.includes("e")) w = startW + dx;
-      if (resizing.includes("w")) w = startW - dx;
-      if (resizing.includes("s")) h = startH + dy;
-      if (resizing.includes("n")) h = startH - dy;
+      if (activeEdge.includes("e")) w = startW + dx;
+      if (activeEdge.includes("w")) w = startW - dx;
+      if (activeEdge.includes("s")) h = startH + dy;
+      if (activeEdge.includes("n")) h = startH - dy;
       width = clamp(w, MIN_W, window.innerWidth * MAX_RATIO);
       height = clamp(h, MIN_H, window.innerHeight * MAX_RATIO);
     }
@@ -148,7 +149,7 @@
         <button
           type="button"
           class="resize-handle {edge}"
-          aria-label="Redimensionar"
+          aria-label={t("common.resize")}
           onmousedown={(e) => startResize(edge, e)}
         ></button>
       {/each}

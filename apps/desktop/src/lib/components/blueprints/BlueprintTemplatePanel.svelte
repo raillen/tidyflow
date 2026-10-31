@@ -342,6 +342,7 @@
       <label class="field">
         <span class="field-label">{t("blueprints.template.sampleFile")}</span>
         <input
+          type="text"
           class="field-input mono"
           value={samplePath}
           oninput={(e) => onSamplePathChange(e.currentTarget.value)}
