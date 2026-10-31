@@ -122,6 +122,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let handle = app.handle().clone();
             let data_dir = app
@@ -173,10 +174,17 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 let state = state.clone();
                 let handle = app.handle().clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(false) = event {
+                let window_for_minimize = window.clone();
+                window.on_window_event(move |event| match event {
+                    tauri::WindowEvent::Focused(false) => {
                         lock_if_configured(&handle, &state);
                     }
+                    tauri::WindowEvent::Resized(_) => {
+                        if window_for_minimize.is_minimized().unwrap_or(false) {
+                            lock_if_configured(&handle, &state);
+                        }
+                    }
+                    _ => {}
                 });
             }
             app.manage(state);
@@ -267,6 +275,7 @@ pub fn run() {
             commands::blueprints_simulate_with_variables,
             commands::blueprints_apply,
             commands::blueprints_apply_with_variables,
+            commands::blueprints_rollback,
             commands::blueprints_preview_template,
             commands::blueprints_preview_plan,
         ])

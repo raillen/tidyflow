@@ -441,6 +441,18 @@ pub async fn blueprints_apply_with_variables(
 }
 
 #[tauri::command]
+pub async fn blueprints_rollback(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<RollbackResult, String> {
+    let id = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    state
+        .rollback_blueprint(id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn blueprints_preview_template(
     state: State<'_, AppState>,
     pipeline: TemplatePipeline,
