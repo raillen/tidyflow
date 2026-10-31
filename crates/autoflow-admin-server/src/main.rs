@@ -1,13 +1,17 @@
-use std::{env, net::SocketAddr, path::PathBuf};
+use std::{env, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use autoflow_admin_server::{router, AdminServerError, AdminServerState};
 use autoflow_domain::AdminOperatorRole;
+use rustls::ServerConfig;
+use rustls_pki_types::pem::PemObject;
+use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions},
     ConnectOptions,
 };
 use thiserror::Error;
 use tokio::net::TcpListener;
+use tokio_rustls::TlsAcceptor;
 
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:7840";
 const DEFAULT_DATABASE_PATH: &str = "autoflow-admin.sqlite";
@@ -31,14 +35,68 @@ async fn main() -> Result<(), AdminServerCliError> {
             .await?;
     }
 
-    let listener = TcpListener::bind(config.bind_addr).await?;
-    println!(
-        "AutoFlow admin server listening on http://{}",
-        config.bind_addr
-    );
+    let app = router(state);
 
-    axum::serve(listener, router(state)).await?;
-    Ok(())
+    if let (Some(cert_path), Some(key_path)) = (config.tls_cert.as_ref(), config.tls_key.as_ref()) {
+        let cert_pem = std::fs::read(cert_path)?;
+        let key_pem = std::fs::read(key_path)?;
+        let certs: Vec<CertificateDer<'static>> = CertificateDer::pem_slice_iter(&cert_pem)
+            .collect::<Result<_, _>>()
+            .map_err(|error| AdminServerCliError::Tls(error.to_string()))?;
+        let key = PrivateKeyDer::from_pem_slice(&key_pem)
+            .map_err(|error| AdminServerCliError::Tls(error.to_string()))?;
+        let tls_config = ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(certs, key)
+            .map_err(|error| AdminServerCliError::Tls(error.to_string()))?;
+        let acceptor = TlsAcceptor::from(Arc::new(tls_config));
+
+        struct TlsListener {
+            tcp: TcpListener,
+            acceptor: TlsAcceptor,
+        }
+
+        impl axum::serve::Listener for TlsListener {
+            type Io = tokio_rustls::server::TlsStream<tokio::net::TcpStream>;
+            type Addr = SocketAddr;
+
+            async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+                loop {
+                    match self.tcp.accept().await {
+                        Ok((tcp, addr)) => match self.acceptor.accept(tcp).await {
+                            Ok(tls) => return (tls, addr),
+                            Err(_) => continue,
+                        },
+                        Err(_) => continue,
+                    }
+                }
+            }
+
+            fn local_addr(&self) -> std::io::Result<Self::Addr> {
+                self.tcp.local_addr()
+            }
+        }
+
+        let tcp = TcpListener::bind(config.bind_addr).await?;
+        let listener = TlsListener { tcp, acceptor };
+
+        println!(
+            "AutoFlow admin server listening on https://{}",
+            config.bind_addr
+        );
+
+        axum::serve(listener, app).await?;
+        Ok(())
+    } else {
+        let listener = TcpListener::bind(config.bind_addr).await?;
+        println!(
+            "AutoFlow admin server listening on http://{}",
+            config.bind_addr
+        );
+
+        axum::serve(listener, app).await?;
+        Ok(())
+    }
 }
 
 struct AdminServerConfig {
@@ -48,6 +106,8 @@ struct AdminServerConfig {
     operator_token: Option<String>,
     operator_role: AdminOperatorRole,
     bootstrap_agent: Option<BootstrapAgent>,
+    tls_cert: Option<PathBuf>,
+    tls_key: Option<PathBuf>,
 }
 
 struct BootstrapAgent {
@@ -72,6 +132,8 @@ impl AdminServerConfig {
             .transpose()?
             .unwrap_or(AdminOperatorRole::Admin);
         let bootstrap_agent = bootstrap_agent_from_env()?;
+        let tls_cert = optional_env("AUTOFLOW_ADMIN_TLS_CERT").map(PathBuf::from);
+        let tls_key = optional_env("AUTOFLOW_ADMIN_TLS_KEY").map(PathBuf::from);
 
         Ok(Self {
             bind_addr,
@@ -80,6 +142,8 @@ impl AdminServerConfig {
             operator_token,
             operator_role,
             bootstrap_agent,
+            tls_cert,
+            tls_key,
         })
     }
 }
@@ -149,4 +213,6 @@ enum AdminServerCliError {
     Sqlite(#[from] sqlx::Error),
     #[error(transparent)]
     Server(#[from] AdminServerError),
+    #[error("TLS configuration failed: {0}")]
+    Tls(String),
 }

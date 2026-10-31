@@ -1,6 +1,6 @@
+use crate::vault::{open_job_secrets, seal_job_secrets, SecretVault};
 use autoflow_application::ports::JobStore;
 use autoflow_domain::{DomainError, Job, JobSummary};
-use crate::vault::{open_job_secrets, seal_job_secrets, SecretVault};
 use chrono::Utc;
 use sqlx::SqlitePool;
 use uuid::Uuid;
@@ -8,17 +8,31 @@ use uuid::Uuid;
 pub struct SqliteJobStore {
     pool: SqlitePool,
     vault: Option<SecretVault>,
+    encryption_enabled: bool,
 }
 
 impl SqliteJobStore {
     pub fn new(pool: SqlitePool) -> Self {
-        Self { pool, vault: None }
+        Self {
+            pool,
+            vault: None,
+            encryption_enabled: false,
+        }
     }
 
     pub fn with_vault(pool: SqlitePool, vault: SecretVault) -> Self {
+        Self::with_vault_enabled(pool, vault, true)
+    }
+
+    pub fn with_vault_enabled(
+        pool: SqlitePool,
+        vault: SecretVault,
+        encryption_enabled: bool,
+    ) -> Self {
         Self {
             pool,
             vault: Some(vault),
+            encryption_enabled,
         }
     }
 
@@ -26,8 +40,10 @@ impl SqliteJobStore {
         let mut job: Job =
             serde_json::from_str(payload).map_err(|e| DomainError::Database(e.to_string()))?;
         job.normalize();
-        if let Some(vault) = &self.vault {
-            open_job_secrets(&mut job, vault);
+        if self.encryption_enabled {
+            if let Some(vault) = &self.vault {
+                open_job_secrets(&mut job, vault);
+            }
         }
         Ok(job)
     }
@@ -70,8 +86,10 @@ impl JobStore for SqliteJobStore {
     async fn save(&self, job: &Job) -> Result<(), DomainError> {
         job.validate()?;
         let mut stored = job.clone();
-        if let Some(vault) = &self.vault {
-            seal_job_secrets(&mut stored, vault);
+        if self.encryption_enabled {
+            if let Some(vault) = &self.vault {
+                seal_job_secrets(&mut stored, vault);
+            }
         }
         let payload =
             serde_json::to_string(&stored).map_err(|e| DomainError::Database(e.to_string()))?;
