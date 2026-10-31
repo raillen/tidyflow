@@ -242,8 +242,7 @@ pub fn collect_files(job: &Job) -> Result<Vec<PathBuf>, std::io::Error> {
         return Ok(files);
     }
 
-    let engine = FilterEngine::from_job(job)
-        .map_err(std::io::Error::other)?;
+    let engine = FilterEngine::from_job(job).map_err(std::io::Error::other)?;
 
     if source.is_file() {
         if engine.should_process(source, job, source).unwrap_or(false) {
