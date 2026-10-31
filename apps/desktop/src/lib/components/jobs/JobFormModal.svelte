@@ -1,5 +1,6 @@
 <script lang="ts">
   import JobEditor from "$lib/components/jobs/JobEditor.svelte";
+  import { errorMessage } from "$lib/core/errors";
   import Modal from "$lib/components/ui/Modal.svelte";
   import { countActiveFilters, createEmptyJob, type Job, type SimulationReport } from "$lib/contracts/job";
   import { createJob, getJob, simulateJob, simulateJobDraft, updateJob } from "$lib/core/ipc/client";
@@ -72,7 +73,7 @@
       })
       .catch((e) => {
         if (cancelled) return;
-        error = e instanceof Error ? e.message : t("jobForm.notFound");
+        error = errorMessage(e, t("jobForm.notFound"));
       })
       .finally(() => {
         if (!cancelled) loading = false;
@@ -95,7 +96,7 @@
       onsaved?.();
       onclose();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("jobForm.saveError");
+      error = errorMessage(e, t("jobForm.saveError"));
     } finally {
       saving = false;
     }
@@ -111,7 +112,7 @@
           : await simulateJobDraft(job);
       onsimulated?.(report, job.name.trim() || t("simulation.defaultName"));
     } catch (e) {
-      error = e instanceof Error ? e.message : t("jobForm.simulateError");
+      error = errorMessage(e, t("jobForm.simulateError"));
     } finally {
       simulating = false;
     }
