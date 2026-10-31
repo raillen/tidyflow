@@ -1,4 +1,3 @@
-use autoflow_application::ports::SettingsStore;
 use autoflow_domain::{AppSettings, DomainError};
 use sqlx::SqlitePool;
 
@@ -35,31 +34,6 @@ impl SqliteSettingsStore {
         .await
         .map_err(|e| DomainError::Database(e.to_string()))?;
         Ok(())
-    }
-}
-
-impl SettingsStore for SqliteSettingsStore {
-    fn get(&self) -> AppSettings {
-        // Sync bridge for trait — prefer async methods on store directly in new code.
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                let row: (String,) = sqlx::query_as("SELECT payload FROM settings WHERE id = 1")
-                    .fetch_one(&self.pool)
-                    .await
-                    .unwrap_or_else(|_| (serde_json::to_string(&AppSettings::default()).unwrap(),));
-                serde_json::from_str::<AppSettings>(&row.0)
-                    .unwrap_or_default()
-                    .normalized()
-            })
-        })
-    }
-
-    fn update(&self, settings: AppSettings) -> Result<(), DomainError> {
-        let settings = settings.normalized();
-        settings.validate()?;
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async { self.save(&settings).await })
-        })
     }
 }
 

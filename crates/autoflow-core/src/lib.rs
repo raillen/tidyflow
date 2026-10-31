@@ -34,7 +34,7 @@ use autoflow_infrastructure::{
 use serde_json::Value;
 use uuid::Uuid;
 
-use autoflow_application::{blueprints, jobs, ports::AuditStore, ports::SettingsStore};
+use autoflow_application::{blueprints, jobs, ports::AuditStore};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -43,6 +43,11 @@ pub struct AppState {
 
 struct AppStateInner {
     settings: Arc<SqliteSettingsStore>,
+    /// Last known settings, kept warm so the tray and window event handlers can
+    /// read them synchronously. Those callbacks run on the main thread, which
+    /// has no Tokio reactor, so a blocking DB read from there would panic with
+    /// "there is no reactor running".
+    settings_cache: Arc<std::sync::RwLock<AppSettings>>,
     jobs: Arc<SqliteJobStore>,
     blueprints: Arc<SqliteBlueprintStore>,
     audit: Arc<SqliteAuditStore>,
@@ -117,6 +122,7 @@ impl AppState {
         let state = Self {
             inner: Arc::new(AppStateInner {
                 settings,
+                settings_cache: Arc::new(std::sync::RwLock::new(current_settings.clone())),
                 jobs,
                 blueprints,
                 audit,
@@ -452,11 +458,22 @@ impl AppState {
     }
 
     pub async fn get_settings(&self) -> Result<AppSettings, DomainError> {
-        self.inner.settings.get_async().await
+        let settings = self.inner.settings.get_async().await?;
+        if let Ok(mut cache) = self.inner.settings_cache.write() {
+            *cache = settings.clone();
+        }
+        Ok(settings)
     }
 
+    /// Settings for callers that cannot await, such as Tauri's window and tray
+    /// event handlers. Served from the in-memory cache: reading the database
+    /// here would need a Tokio reactor that the main thread does not have.
     pub fn get_settings_sync(&self) -> AppSettings {
-        self.inner.settings.get()
+        self.inner
+            .settings_cache
+            .read()
+            .map(|cache| cache.clone())
+            .unwrap_or_default()
     }
 
     pub async fn security_set_pin(&self, pin: String) -> Result<AppSettings, DomainError> {
@@ -485,7 +502,11 @@ impl AppState {
 
     pub async fn update_settings(&self, settings: AppSettings) -> Result<AppSettings, DomainError> {
         self.inner.settings.update_async(settings).await?;
-        self.inner.settings.get_async().await
+        let stored = self.inner.settings.get_async().await?;
+        if let Ok(mut cache) = self.inner.settings_cache.write() {
+            *cache = stored.clone();
+        }
+        Ok(stored)
     }
 
     async fn set_admin_secret_configured(
