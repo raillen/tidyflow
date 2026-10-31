@@ -38,6 +38,7 @@
     processNextAdminCommand,
     sendAdminSignedHeartbeatOnce,
   } from "$lib/core/ipc/client";
+  import { errorMessage } from "$lib/core/errors";
   import { t } from "$lib/i18n";
 
   let snapshot = $state<AdminFleetSnapshot | null>(null);
@@ -48,6 +49,7 @@
   let queuedCommands = $state<AdminQueuedCommand[]>([]);
   let loading = $state(true);
   let message = $state<string | null>(null);
+  let messageIsError = $state(false);
 
   const selectedInstance = $derived(
     snapshot?.instances.find((instance) => instance.instanceId === selectedInstanceId)
@@ -70,9 +72,12 @@
     void refresh();
   });
 
-  async function refresh() {
+  async function refresh(options: { keepMessage?: boolean } = {}) {
     loading = true;
-    message = null;
+    if (!options.keepMessage) {
+      message = null;
+      messageIsError = false;
+    }
     try {
       const [nextSnapshot, nextHeartbeat, nextQueueSummary, nextQueuedCommands] = await Promise.all([
         fetchAdminFleetSnapshot(),
@@ -96,9 +101,23 @@
           ? selectedJobId
           : nextSelectedInstance?.jobs[0]?.id ?? null;
     } catch (error) {
-      message = error instanceof Error ? error.message : t("admin.loadError");
+      message = errorMessage(error, t("admin.loadError"));
+      messageIsError = true;
     } finally {
       loading = false;
+    }
+  }
+
+  /**
+   * Runs a command handler, surfacing IPC failures in the shared banner instead
+   * of leaving an unhandled rejection with no user feedback.
+   */
+  async function runCommand(action: () => Promise<void>): Promise<void> {
+    try {
+      await action();
+    } catch (error) {
+      message = errorMessage(error, t("admin.commandError"));
+      messageIsError = true;
     }
   }
 
@@ -108,6 +127,7 @@
 
   async function cancelExecution(instance: AdminInstanceSnapshot, executionId: string) {
     message = null;
+    messageIsError = false;
     const result = await dispatchAdminCommand({
       kind: "cancelExecution",
       targetInstanceIds: [instance.instanceId],
@@ -117,7 +137,7 @@
       reason: null,
     });
     message = result.results.map((entry) => entry.message).join(" | ");
-    await refresh();
+    await refresh({ keepMessage: true });
   }
 
   async function dispatchJobCommand(
@@ -130,9 +150,10 @@
     }
 
     message = null;
+    messageIsError = false;
     const result = await dispatchAdminCommand(createAdminCommandRequest(kind, instance.instanceId, job.id));
     message = result.results.map((entry) => entry.message).join(" | ");
-    await refresh();
+    await refresh({ keepMessage: true });
   }
 
   async function enqueueJobCommand(
@@ -141,6 +162,7 @@
     kind: AdminCommandKind,
   ) {
     message = null;
+    messageIsError = false;
     const queued = await enqueueAdminCommand(
       createAdminCommandRequest(kind, instance.instanceId, job.id),
       "local-ui",
@@ -154,16 +176,18 @@
 
   async function processNextCommand() {
     message = null;
+    messageIsError = false;
     const processed = await processNextAdminCommand();
     message = processed
       ? t("admin.processed", { command: commandKindLabel(processed.request.kind) })
       : t("admin.nonePending");
-    await refresh();
+    await refresh({ keepMessage: true });
   }
 
   async function dispatchBatchCommand(instance: AdminInstanceSnapshot, kind: AdminCommandKind) {
     if (!instance.management.allowBatchCommands) {
       message = t("admin.batchDisabled");
+      messageIsError = true;
       return;
     }
     if ((kind === "deleteJob" || kind === "stopJob") && !confirmCommand(kind, t("admin.allJobs"))) {
@@ -171,6 +195,7 @@
     }
 
     message = null;
+    messageIsError = false;
     const result = await dispatchAdminCommand({
       kind,
       targetInstanceIds: [instance.instanceId],
@@ -180,7 +205,7 @@
       reason: null,
     });
     message = result.results.map((entry) => entry.message).join(" | ");
-    await refresh();
+    await refresh({ keepMessage: true });
   }
 
   function confirmCommand(kind: AdminCommandKind, targetName: string): boolean {
@@ -247,10 +272,8 @@
       await navigator.clipboard.writeText(JSON.stringify(signedHeartbeat, null, 2));
       message = t("admin.signedCopied");
     } catch (error) {
-      message =
-        error instanceof Error
-          ? error.message
-          : t("admin.signedCopyError");
+      message = errorMessage(error, t("admin.signedCopyError"));
+      messageIsError = true;
     }
   }
 
@@ -263,10 +286,8 @@
         ? t("admin.heartbeatSent", { status })
         : t("admin.heartbeatRejected", { status, message: delivery.message });
     } catch (error) {
-      message =
-        error instanceof Error
-          ? error.message
-          : t("admin.heartbeatSendConfigError");
+      message = errorMessage(error, t("admin.heartbeatSendConfigError"));
+      messageIsError = true;
     }
   }
 </script>
@@ -277,7 +298,7 @@
       <h1 class="page-title">{t("admin.pageTitle")}</h1>
       <p class="page-desc">{t("admin.subtitle")}</p>
     </div>
-    <button class="btn" type="button" onclick={refresh} disabled={loading}>
+    <button class="btn" type="button" onclick={() => void refresh()} disabled={loading}>
       <ArrowClockwise size={14} />
       {t("admin.refresh")}
     </button>
@@ -323,7 +344,7 @@
   {/if}
 
   {#if message}
-    <p class="banner" class:error={!snapshot} role="status">{message}</p>
+    <p class="banner" class:error={messageIsError} role="status">{message}</p>
   {/if}
 
   {#if loading && !snapshot}
@@ -420,34 +441,34 @@
             <h3>{t("admin.jobs")}</h3>
             <div class="job-actions">
               {#if selectedJob && isCommandAvailable(selectedInstance, "startJob")}
-                <button class="btn primary" type="button" onclick={() => startJob(selectedInstance, selectedJob)}>
+                <button class="btn primary" type="button" onclick={() => runCommand(() => startJob(selectedInstance, selectedJob))}>
                   <Play size={14} weight="fill" />
                   {t("admin.start")}
                 </button>
-                <button class="btn" type="button" onclick={() => enqueueJobCommand(selectedInstance, selectedJob, "startJob")}>
+                <button class="btn" type="button" onclick={() => runCommand(() => enqueueJobCommand(selectedInstance, selectedJob, "startJob"))}>
                   {t("admin.enqueue")}
                 </button>
               {/if}
               {#if selectedJob && isCommandAvailable(selectedInstance, "pauseJob")}
-                <button class="btn" type="button" onclick={() => dispatchJobCommand(selectedInstance, selectedJob, "pauseJob")}>
+                <button class="btn" type="button" onclick={() => runCommand(() => dispatchJobCommand(selectedInstance, selectedJob, "pauseJob"))}>
                   <Pause size={14} weight="fill" />
                   {t("admin.pause")}
                 </button>
               {/if}
               {#if selectedJob && isCommandAvailable(selectedInstance, "resumeJob")}
-                <button class="btn" type="button" onclick={() => dispatchJobCommand(selectedInstance, selectedJob, "resumeJob")}>
+                <button class="btn" type="button" onclick={() => runCommand(() => dispatchJobCommand(selectedInstance, selectedJob, "resumeJob"))}>
                   <Play size={14} />
                   {t("admin.resume")}
                 </button>
               {/if}
               {#if selectedJob && isCommandAvailable(selectedInstance, "stopJob")}
-                <button class="btn danger" type="button" onclick={() => dispatchJobCommand(selectedInstance, selectedJob, "stopJob")}>
+                <button class="btn danger" type="button" onclick={() => runCommand(() => dispatchJobCommand(selectedInstance, selectedJob, "stopJob"))}>
                   <Stop size={14} weight="fill" />
                   {t("admin.stop")}
                 </button>
               {/if}
               {#if selectedJob && isCommandAvailable(selectedInstance, "deleteJob")}
-                <button class="btn danger" type="button" onclick={() => dispatchJobCommand(selectedInstance, selectedJob, "deleteJob")}>
+                <button class="btn danger" type="button" onclick={() => runCommand(() => dispatchJobCommand(selectedInstance, selectedJob, "deleteJob"))}>
                   <Trash size={14} />
                   {t("admin.delete")}
                 </button>
@@ -456,9 +477,9 @@
           </div>
 
           <div class="batch-actions" aria-label={t("admin.batchAria")}>
-            <button class="btn" type="button" onclick={() => dispatchBatchCommand(selectedInstance, "pauseJob")}>{t("admin.pauseAll")}</button>
-            <button class="btn" type="button" onclick={() => dispatchBatchCommand(selectedInstance, "resumeJob")}>{t("admin.resumeAll")}</button>
-            <button class="btn danger" type="button" onclick={() => dispatchBatchCommand(selectedInstance, "stopJob")}>{t("admin.stopExecutions")}</button>
+            <button class="btn" type="button" onclick={() => runCommand(() => dispatchBatchCommand(selectedInstance, "pauseJob"))}>{t("admin.pauseAll")}</button>
+            <button class="btn" type="button" onclick={() => runCommand(() => dispatchBatchCommand(selectedInstance, "resumeJob"))}>{t("admin.resumeAll")}</button>
+            <button class="btn danger" type="button" onclick={() => runCommand(() => dispatchBatchCommand(selectedInstance, "stopJob"))}>{t("admin.stopExecutions")}</button>
           </div>
 
           <div class="table-wrap">
@@ -508,7 +529,7 @@
                   <button
                     class="btn danger"
                     type="button"
-                    onclick={() => cancelExecution(selectedInstance, execution.executionId)}
+                    onclick={() => runCommand(() => cancelExecution(selectedInstance, execution.executionId))}
                   >
                     <Stop size={14} weight="fill" />
                     {t("common.cancel")}
@@ -590,7 +611,7 @@
         <section>
           <div class="section-head">
             <h3>{t("admin.localQueue")}</h3>
-            <button class="btn" type="button" onclick={processNextCommand}>{t("admin.processNext")}</button>
+            <button class="btn" type="button" onclick={() => runCommand(processNextCommand)}>{t("admin.processNext")}</button>
           </div>
           {#if queueSummary}
             <div class="queue-summary" aria-label={t("admin.queueSummaryAria")}>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import JobFormModal from "$lib/components/jobs/JobFormModal.svelte";
+  import { errorMessage } from "$lib/core/errors";
   import SimulationModal from "$lib/components/jobs/SimulationModal.svelte";
   import {
     cancelExecution,
@@ -29,6 +30,7 @@
   let error = $state<string | null>(null);
   let busyId = $state<string | null>(null);
   let queuePaused = $state(false);
+  let rollbackNotice = $state<string | null>(null);
 
   let jobModalOpen = $state(false);
   let jobModalMode = $state<"create" | "edit">("create");
@@ -44,7 +46,7 @@
     try {
       jobs = await listJobs();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("flows.loadError");
+      error = errorMessage(e, t("flows.loadError"));
     } finally {
       loading = false;
     }
@@ -105,7 +107,7 @@
     try {
       await runJob(id);
     } catch (e) {
-      error = e instanceof Error ? e.message : t("flows.runError");
+      error = errorMessage(e, t("flows.runError"));
     } finally {
       busyId = null;
     }
@@ -120,7 +122,7 @@
       simulationJobName = job.name;
       simulationModalOpen = true;
     } catch (e) {
-      error = e instanceof Error ? e.message : t("flows.simulateError");
+      error = errorMessage(e, t("flows.simulateError"));
     } finally {
       busyId = null;
     }
@@ -132,7 +134,7 @@
       await deleteJob(id);
       await refresh();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("flows.deleteError");
+      error = errorMessage(e, t("flows.deleteError"));
     }
   }
 
@@ -140,7 +142,7 @@
     try {
       await cancelExecution(executionId);
     } catch (e) {
-      error = e instanceof Error ? e.message : t("flows.cancelError");
+      error = errorMessage(e, t("flows.cancelError"));
     }
   }
 
@@ -148,13 +150,17 @@
     if (!confirm(t("flows.rollbackConfirm"))) return;
     busyId = id;
     error = null;
+    rollbackNotice = null;
     try {
       const result = await rollbackJob(id);
       error = null;
       await refresh();
-      alert(t("flows.rollbackDone", { reverted: result.revertedCount, skipped: result.skippedCount }));
+      rollbackNotice = t("flows.rollbackDone", {
+        reverted: result.revertedCount,
+        skipped: result.skippedCount,
+      });
     } catch (e) {
-      error = e instanceof Error ? e.message : t("flows.rollbackError");
+      error = errorMessage(e, t("flows.rollbackError"));
     } finally {
       busyId = null;
     }
@@ -165,7 +171,7 @@
       await pauseQueue();
       queuePaused = true;
     } catch (e) {
-      error = e instanceof Error ? e.message : t("flows.pauseError");
+      error = errorMessage(e, t("flows.pauseError"));
     }
   }
 
@@ -174,7 +180,7 @@
       await resumeQueue();
       queuePaused = false;
     } catch (e) {
-      error = e instanceof Error ? e.message : t("flows.resumeError");
+      error = errorMessage(e, t("flows.resumeError"));
     }
   }
 
@@ -185,7 +191,7 @@
       await refresh();
       queuePaused = await isQueuePaused();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("flows.stopAllError");
+      error = errorMessage(e, t("flows.stopAllError"));
     }
   }
 
@@ -208,6 +214,10 @@
 
   {#if error}
     <p class="banner error" role="alert">{error}</p>
+  {/if}
+
+  {#if rollbackNotice}
+    <p class="banner success" role="status" aria-live="polite">{rollbackNotice}</p>
   {/if}
 
   {#if $lastCompleted}

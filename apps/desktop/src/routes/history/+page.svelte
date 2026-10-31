@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { errorMessage } from "$lib/core/errors";
   import {
     ArrowClockwise,
     ChartBar,
@@ -72,7 +73,7 @@
         selected = null;
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : t("history.loadError");
+      error = errorMessage(e, t("history.loadError"));
     } finally {
       loading = false;
     }
@@ -106,7 +107,7 @@
       await clearAudit(true);
       await refresh();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("history.clearError");
+      error = errorMessage(e, t("history.clearError"));
     }
   }
 
@@ -123,7 +124,7 @@
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      error = e instanceof Error ? e.message : t("history.exportError");
+      error = errorMessage(e, t("history.exportError"));
     } finally {
       exporting = null;
     }
@@ -212,6 +213,7 @@
       <span class="input-with-icon">
         <MagnifyingGlass size={14} aria-hidden="true" />
         <input
+          type="text"
           class="field-input"
           placeholder={t("history.searchPlaceholder")}
           bind:value={searchText}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import BlueprintFormModal from "$lib/components/blueprints/BlueprintFormModal.svelte";
+  import { errorMessage } from "$lib/core/errors";
   import BlueprintRunVariablesModal from "$lib/components/blueprints/BlueprintRunVariablesModal.svelte";
   import BlueprintSimulationModal from "$lib/components/blueprints/BlueprintSimulationModal.svelte";
   import {
@@ -54,7 +55,7 @@
     try {
       blueprints = await listBlueprints();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("blueprints.loadError");
+      error = errorMessage(e, t("blueprints.loadError"));
     } finally {
       loading = false;
     }
@@ -107,7 +108,7 @@
       applyResult = await applyBlueprint(id);
       await refresh();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("blueprints.applyError");
+      error = errorMessage(e, t("blueprints.applyError"));
     } finally {
       busyId = null;
     }
@@ -134,7 +135,7 @@
       simulationName = bp.name;
       simulationModalOpen = true;
     } catch (e) {
-      error = e instanceof Error ? e.message : t("blueprints.simulateError");
+      error = errorMessage(e, t("blueprints.simulateError"));
     } finally {
       busyId = null;
     }
@@ -162,7 +163,7 @@
         runBlueprint = null;
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : t("blueprints.executeError");
+      error = errorMessage(e, t("blueprints.executeError"));
     } finally {
       runLoading = false;
       busyId = null;
@@ -181,7 +182,7 @@
       await deleteBlueprint(id);
       await refresh();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("blueprints.deleteError");
+      error = errorMessage(e, t("blueprints.deleteError"));
     }
   }
 </script>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { errorMessage } from "$lib/core/errors";
   import {
     ArrowRight,
     BookOpen,
@@ -24,7 +25,7 @@
     try {
       health = await fetchHealth();
     } catch (e) {
-      error = e instanceof Error ? e.message : t("dashboard.errorConnect");
+      error = errorMessage(e, t("dashboard.errorConnect"));
     }
 
     try {

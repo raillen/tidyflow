@@ -1,5 +1,7 @@
 <script lang="ts">
   import "../app.css";
+  import "$lib/styles/editor.css";
+  import { errorMessage } from "$lib/core/errors";
   import AppShell from "$lib/components/layout/AppShell.svelte";
   import {
     executionCompletedSchema,
@@ -100,7 +102,7 @@
         pinError = "PIN incorreto.";
       }
     } catch (e) {
-      pinError = e instanceof Error ? e.message : t("pin.verifyFailed");
+      pinError = errorMessage(e, t("pin.verifyFailed"));
     } finally {
       pinLoading = false;
     }

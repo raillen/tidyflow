@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { errorMessage } from "$lib/core/errors";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import QRCode from "qrcode";
   import {
@@ -107,7 +108,7 @@
       applyAppearance(settings);
       updatePixQrCode();
     } catch (e) {
-      message = e instanceof Error ? e.message : t("settings.loadError");
+      message = errorMessage(e, t("settings.loadError"));
     }
   });
 
@@ -144,7 +145,7 @@
       }
       message = t("settings.saved");
     } catch (e) {
-      message = e instanceof Error ? e.message : t("settings.saveError");
+      message = errorMessage(e, t("settings.saveError"));
     } finally {
       saving = false;
     }
@@ -202,7 +203,7 @@
       generatedAdminSecret = null;
       message = t("settings.agentSecretSaved");
     } catch (e) {
-      message = e instanceof Error ? e.message : t("settings.agentSecretSaveError");
+      message = errorMessage(e, t("settings.agentSecretSaveError"));
     } finally {
       saving = false;
     }
@@ -218,7 +219,7 @@
       adminSecretInput = "";
       message = t("settings.agentSecretGenerated");
     } catch (e) {
-      message = e instanceof Error ? e.message : t("settings.agentSecretGenerateError");
+      message = errorMessage(e, t("settings.agentSecretGenerateError"));
     } finally {
       saving = false;
     }
@@ -237,7 +238,7 @@
       generatedAdminSecret = null;
       message = t("settings.agentSecretRemoved");
     } catch (e) {
-      message = e instanceof Error ? e.message : t("settings.agentSecretRemoveError");
+      message = errorMessage(e, t("settings.agentSecretRemoveError"));
     } finally {
       saving = false;
     }
@@ -498,7 +499,7 @@
 
             <label class="field">
               <span class="field-label">{t("settings.masterKeyHint")}</span>
-              <input class="field-input" bind:value={settings.security.masterKeyHint} placeholder={t("settings.masterKeyPlaceholder")} />
+              <input type="text" class="field-input" bind:value={settings.security.masterKeyHint} placeholder={t("settings.masterKeyPlaceholder")} />
             </label>
           </section>
         {:else if activeTab === "notifications"}
@@ -527,11 +528,11 @@
                   <div class="field-row">
                     <label class="field">
                       <span class="field-label">{t("common.name")}</span>
-                      <input class="field-input" bind:value={webhook.name} />
+                      <input type="text" class="field-input" bind:value={webhook.name} />
                     </label>
                     <label class="field">
                       <span class="field-label">URL</span>
-                      <input class="field-input" bind:value={webhook.url} placeholder="https://..." />
+                      <input type="text" class="field-input" bind:value={webhook.url} placeholder="https://..." />
                     </label>
                   </div>
                   <div class="nested-actions">
@@ -553,18 +554,18 @@
               <div class="field-row three">
                 <label class="field">
                   <span class="field-label">{t("settings.host")}</span>
-                  <input class="field-input" bind:value={settings.notifications.smtp.host} placeholder="smtp.exemplo.com" />
+                  <input type="text" class="field-input" bind:value={settings.notifications.smtp.host} placeholder="smtp.exemplo.com" />
                 </label>
                 <NumberField bind:value={settings.notifications.smtp.port} label={t("settings.port")} min={1} max={65535} />
                 <label class="field">
                   <span class="field-label">{t("settings.from")}</span>
-                  <input class="field-input" bind:value={settings.notifications.smtp.fromAddress} placeholder="tidyflow@exemplo.com" />
+                  <input type="text" class="field-input" bind:value={settings.notifications.smtp.fromAddress} placeholder="tidyflow@exemplo.com" />
                 </label>
               </div>
               <div class="field-row">
                 <label class="field">
                   <span class="field-label">{t("settings.username")}</span>
-                  <input class="field-input" bind:value={settings.notifications.smtp.username} />
+                  <input type="text" class="field-input" bind:value={settings.notifications.smtp.username} />
                 </label>
                 <label class="field">
                   <span class="field-label">{t("settings.password")}</span>
@@ -572,7 +573,7 @@
                 </label>
                 <label class="field">
                   <span class="field-label">{t("settings.to")}</span>
-                  <input class="field-input" bind:value={settings.notifications.smtp.toAddress} placeholder="destino@exemplo.com" />
+                  <input type="text" class="field-input" bind:value={settings.notifications.smtp.toAddress} placeholder="destino@exemplo.com" />
                 </label>
                 <ToggleField bind:checked={settings.notifications.smtp.useTls} label={t("settings.useTls")} />
               </div>
@@ -599,18 +600,18 @@
               </label>
               <label class="field">
                 <span class="field-label">{t("settings.displayName")}</span>
-                <input class="field-input" bind:value={settings.admin.displayName} placeholder={t("settings.displayNamePlaceholder")} />
+                <input type="text" class="field-input" bind:value={settings.admin.displayName} placeholder={t("settings.displayNamePlaceholder")} />
               </label>
             </div>
 
             <div class="field-row">
               <label class="field">
                 <span class="field-label">{t("settings.instanceId")}</span>
-                <input class="field-input" value={settings.admin.instanceId ?? t("settings.generatedOnStart")} readonly />
+                <input type="text" class="field-input" value={settings.admin.instanceId ?? t("settings.generatedOnStart")} readonly />
               </label>
               <label class="field">
                 <span class="field-label">{t("settings.serverUrl")}</span>
-                <input class="field-input" bind:value={settings.admin.serverUrl} placeholder="https://admin.tidyflow.local" />
+                <input type="text" class="field-input" bind:value={settings.admin.serverUrl} placeholder="https://admin.tidyflow.local" />
               </label>
               <label class="field">
                 <span class="field-label">{t("settings.enrollmentToken")}</span>
@@ -624,6 +625,7 @@
               <label class="field">
                 <span class="field-label">{t("settings.enrollmentTokenStatus")}</span>
                 <input
+                  type="text"
                   class="field-input"
                   value={settings.admin.enrollmentTokenConfigured ? t("settings.configured") : t("settings.notConfigured")}
                   readonly
@@ -692,7 +694,7 @@
 
             <label class="field">
               <span class="field-label">{t("settings.backupDirectory")}</span>
-              <input class="field-input" bind:value={settings.maintenance.backupDirectory} placeholder="D:\Backups\TidyFlow" />
+              <input type="text" class="field-input" bind:value={settings.maintenance.backupDirectory} placeholder="D:\Backups\TidyFlow" />
             </label>
           </section>
         {:else if activeTab === "support"}
@@ -734,7 +736,7 @@
                 {#if pixPayload}
                   <div class="copy-field margin-top-sm">
                     <span class="label-tiny">{t("settings.pixCopyPaste")}</span>
-                    <input class="field-input text-xs" readonly value={pixPayload} />
+                    <input type="text" class="field-input text-xs" readonly value={pixPayload} />
                     <button type="button" class="btn small" onclick={() => copyText(pixPayload)}>
                       {t("settings.copy")}
                     </button>
@@ -804,7 +806,7 @@ Bank Address: 5 Penn Plaza, New York, NY 10001
             <div class="field-row">
               <label class="field">
                 <span class="field-label">{t("settings.changelogSearch")}</span>
-                <input class="field-input" bind:value={changelogSearch} placeholder={t("settings.changelogSearchPlaceholder")} />
+                <input type="text" class="field-input" bind:value={changelogSearch} placeholder={t("settings.changelogSearchPlaceholder")} />
               </label>
               <label class="field">
                 <span class="field-label">{t("settings.changelogType")}</span>

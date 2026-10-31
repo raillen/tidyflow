@@ -2,18 +2,15 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { onMount } from "svelte";
+  import { t } from "$lib/i18n";
 
   onMount(() => {
     const id = $page.params.id;
-    if (id) {
-      void goto(`/flows?edit=${id}`, { replaceState: true });
-    } else {
-      void goto("/flows", { replaceState: true });
-    }
+    void goto(id ? `/flows?edit=${id}` : "/flows", { replaceState: true });
   });
 </script>
 
-<p class="muted">Abrindo editor…</p>
+<p class="muted" aria-live="polite">{t("flows.openingEditor")}</p>
 
 <style>
   .muted {
