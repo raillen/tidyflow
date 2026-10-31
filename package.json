@@ -8,6 +8,7 @@
     "build": "pnpm --filter @tidyflow/desktop tauri build",
     "check": "pnpm --filter @tidyflow/desktop check",
     "test": "pnpm --filter @tidyflow/desktop test",
+    "test:e2e": "pnpm --filter @tidyflow/desktop test:e2e",
     "test:rust": "cargo test --workspace"
   }
 }
